@@ -36,3 +36,4 @@ cmap = np.array([[255, 0, 0],
                 [255, 120, 0]])
 titles = ['Title 1', 'Title 2', 'Title 3', 'Title 4']
 plot_cmap_legend(cmap, titles)
+# Check stack overflow for answer
