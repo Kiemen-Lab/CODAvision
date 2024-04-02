@@ -14,14 +14,10 @@ def plot_cmap_legend(cmap, titles):
 
     if titles:
         im = np.rot90(im)
-        #plt.figure(figsize=(2, 0.5 * (len(cmap))))
-        plt.gca().set_xlim([0,5])
         plt.tick_params(axis='both', width=1)
         plt.imshow(im)
-        plt.axis('equal')
-        #plt.xlim(0, im.shape[1])
         plt.ylim(0, im.shape[0])
-        plt.yticks(np.arange(15, im.shape[0], 50), labels=titles[::-1])
+        plt.yticks(np.arange(25, im.shape[0], 50), labels=titles[::-1])
         plt.xticks([])
         plt.tick_params(axis='y', length=0)
         plt.tick_params(axis='both', labelsize=15)
@@ -31,9 +27,17 @@ def plot_cmap_legend(cmap, titles):
         plt.imshow(im)
 
 # Example usage:
-cmap = np.array([[255, 0, 0],
-                [0, 77, 120],
-                [255, 120, 0]])
-titles = ['Title 1', 'Title 2', 'Title 3', 'Title 4']
-plot_cmap_legend(cmap, titles)
-# Check stack overflow for answer
+#cmap = np.array([[121, 248, 252],
+#                [0, 0, 255],
+#                [80, 237, 80],
+#                [255, 255, 0],
+#                [149, 35, 184],
+#                [25, 194, 245],
+#                [255, 255, 255],
+#                [255, 0, 0],
+#                [73, 120, 111],
+#                [0, 0, 0],
+#                [135, 7, 7],
+#                [240, 159, 10]])
+#titles = ['islet', 'duct', 'blood vessel', 'fat','acini','ecm','whitespace','LG PanIN','nerves','immune','HG PanIN','PDAC']
+#plot_cmap_legend(cmap, titles)
