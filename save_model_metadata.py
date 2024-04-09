@@ -1,7 +1,15 @@
 import os
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
+import plot_cmap_legend
 
+# This function currently saves classNames as a Matlab character matrix and as a Python string list (it is the same
+# variable but each interpreter reads it differently)
+# Moreover, if there exist a neural network trained with matlab (DAGNetwork) or the variable "classNames" was saved
+# from Matlab (string vector), these variables are deleted since python doesnt recognizes these types and classifies
+# them as "None", which crashes the code
+# Because of this, the check of whether a network has already been trained hasnt been added yet
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
     if not os.path.isdir(pthDL):
@@ -18,51 +26,79 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
 
     # fix WS and classNames if there are classes to delete
     ndelete = WS[4]
-    ndelete.sort(reverse=True)
-    if ndelete:
-        for b in ndelete:
-            ncombine = WS[2]
-            nload = WS[3]
-            oldnum = ncombine[b]
-            ncombine[b] = 1
-            ncombine = [n - 1 if n > oldnum else n for n in ncombine]
-            nload = [n for n in nload if n != b]
+    if isinstance(ndelete, list):
+        ndelete.sort(reverse=True)
+        if ndelete:
+            for b in ndelete:
+                ncombine = WS[2]
+                nload = WS[3]
+                oldnum = ncombine[b - 1]
+                ncombine[b - 1] = 1
+                ncombine = [n - 1 if n > oldnum else n for n in ncombine]
+                nload = [n for n in nload if n != b]
 
-            if len(classNames) == max(WS[2]):
-                zz = [i for i in range(len(classNames)) if i + 1 not in [b, oldnum]]
-                classNames = [classNames[i] for i in zz]
-                cmap = cmap[zz]
+                if len(classNames) + 1 == max(WS[2]):
+                    zz = [i for i in range(len(classNames)) if i + 1 not in [b, oldnum]]
+                    classNames = [classNames[i] for i in zz]
+                    cmap = cmap[zz]
+
+                WS[2] = ncombine
 
             WS[2] = ncombine
+            WS[3] = nload
+    elif isinstance(ndelete, int):
+        ncombine = WS[2]
+        nload = WS[3]
+        oldnum = ncombine[ndelete - 1]
+        ncombine[ndelete - 1] = 1
+        ncombine = [n - 1 if n > oldnum else n for n in ncombine]
+        nload = [n for n in nload if n != ndelete]
 
+        if len(classNames) == max(WS[2]):
+            zz = [i for i in range(len(classNames)) if i + 1 not in [oldnum]]
+            classNames = [classNames[i] for i in zz]
+            cmap = cmap[zz]
         WS[2] = ncombine
         WS[3] = nload
 
-    nwhite = WS[2][WS[1] - 1]
-    nwhite = nwhite[0]
-
+    nwhite = WS[2]
+    nwhite = nwhite[WS[1][0] - 1]
     if max(WS[2]) != len(classNames):
         raise ValueError('The length of classNames does not match the number of classes specified in WS[2].')
-
     if classNames[-1] != "black":
         classNames.append("black")
-
     nblack = len(classNames)
 
-    if os.path.isfile(datafile):
-        variable_info = scipy.io.whosmat(datafile)
-        if 'net' in variable_info and 'pthim' in variable_info:
-            raise ValueError(f'A network has already been trained for model {nm}. Choose a new model name to retrain.')
-        elif 'net' in variable_info and 'pthim' not in variable_info:
-            np.savez(datafile, pthim=pthim, WS=WS, nm=nm, umpix=umpix, cmap=cmap, sxy=sxy, nblack=nblack,
-                     nwhite=nwhite, classNames=classNames, ntrain=ntrain, nvalidate=nvalidate)
-            raise ValueError(
-                f'A network has already been trained for model {nm}. Metadata added to net.mat file. Choose a new model name to retrain.')
-
-    # if file doesn't exist, save all the variables
-    np.savez(datafile, pthim=pthim, WS=WS, nm=nm, umpix=umpix, cmap=cmap, sxy=sxy, nblack=nblack,
-             nwhite=nwhite, classNames=classNames, ntrain=ntrain, nvalidate=nvalidate)
+    existing_variables = {}
+    loaded_data = scipy.io.loadmat(datafile)
+    for key, value in loaded_data.items():
+        if value is not None:
+            existing_variables[key] = value
+    existing_variables.update({"WS": WS, "cmap": cmap, "nblack": nblack, "nwhite": nwhite,
+                               "classNames":classNames,"pthDL":pthDL,"pthim":pthim,"nm":nm,"umpix":umpix,"sxy":sxy,"ntrain":ntrain,"nvalidate":nvalidate})
+    scipy.io.savemat(datafile, existing_variables)
 
     # plot color legend
-    plot_cmap_legend(cmap, classNames)
+    plot_cmap_legend.plot_cmap_legend(cmap, classNames)
     plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
+
+
+pthDL=r'\\10.99.68.52\kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\04_03_2024'
+pthim=r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Test Dashboard\5x'
+WS = [[0,0,0,0,0,2,0],[6,6],[1,2,3,4,5,6,3],[7,2,4,3,1,6],4]
+nm = '04_03_2024'
+umpix = 2
+cmap = np.array([[0, 255, 0],
+                 [255, 255, 0],
+                 [255, 128, 0],
+                 [0, 255, 255],
+                 [0, 0, 255],
+                 [0, 0, 0]])
+sxy = 1000
+classNames = ["bronchioles","alveolo","smooth_operator","mets","test","whitespace","black"]
+ntrain = 15
+nvalidate = 3
+nblack = 6
+nwhite = 4
+
+save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
