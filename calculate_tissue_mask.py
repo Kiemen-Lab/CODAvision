@@ -1,0 +1,48 @@
+import os
+import numpy as np
+from skimage import io, morphology
+import cv2
+import scipy
+from skimage.morphology import remove_small_objects
+
+def calculate_tissue_mask(pth, imnm): # pth: path to image folder      #imnm: image name
+    outpth = os.path.join(pth.rstrip('\\'), 'TA')
+    if not os.path.isdir(outpth):
+        os.mkdir(outpth)
+    try:
+        im0 = io.imread(os.path.join(pth, imnm + '.tif'))
+    except:
+        try:
+            im0 = io.imread(os.path.join(pth, imnm + '.jpg'))
+        except:
+            im0 = io.imread(os.path.join(pth, imnm + '.jp2'))
+    if os.path.isfile(os.path.join(outpth, imnm + '.tif')):
+        TA = cv2.imread(os.path.join(outpth, imnm + '.tif'), cv2.IMREAD_GRAYSCALE)
+        print('Existing TA loaded')
+        return im0, TA, outpth
+
+    print('     Calculating TA image')
+    if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')):
+        data = scipy.io.loadmat(os.path.join(outpth, 'TA_cutoff.mat'))
+        cts = data['cts']
+        ct=0
+        for i in cts:
+            for j in i:
+                ct += j
+            ct = ct/len(i)
+    else:
+        ct = 210
+
+    TA = im0[:, :, 1] < ct
+    kernel_size = 3
+    kernel = morphology.disk(kernel_size)
+    TA = morphology.binary_closing(TA, kernel)
+    min_area = 10
+    TA = remove_small_objects(TA, min_size=min_area)
+    cv2.imwrite(os.path.join(outpth, imnm + '.tif'), TA.astype(np.uint8))
+    return im0, TA, outpth
+
+imnm = '84 - 2024-02-26 10.33.40'
+pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
+calculate_tissue_mask(pth, imnm)
+os.rename('calculare_tissue_mask.py','calculate_tissue_mask.py')
