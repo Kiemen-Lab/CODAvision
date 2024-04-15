@@ -1,5 +1,7 @@
 import xmltodict
 import pandas as pd
+
+
 def load_annotations(xml_file):
     """
        Load annotation coordinates from an XML file into a DataFrame.
@@ -21,11 +23,13 @@ def load_annotations(xml_file):
     xyout = []
 
     reduced_annotations = my_dict['Annotations'].get('@MicronsPerPixel')
+    reduced_annotations = float(reduced_annotations)
 
     annotations = my_dict.get("Annotations", {}).get("Annotation", [])
 
     for annotation in annotations:
-        if 'Region' in annotation.get("Regions", {}):
+
+        if 'Region' in annotation.get("Regions", {}):  #checks weather there are annotations in the layer
             annotation_id = float(annotation.get('@Id'))
             regions = annotation["Regions"]["Region"]
             for region in regions:
@@ -39,8 +43,7 @@ def load_annotations(xml_file):
     xyout_df = pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
     return reduced_annotations, xyout_df
 
-
-#Example usage
+# #Example usage
 # def main():
 #     xml_file = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\SG_013_0061.xml'
 #
