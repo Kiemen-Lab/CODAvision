@@ -1,10 +1,22 @@
 import os
 import numpy as np
 from skimage import io, morphology
-from skimage.morphology import remove_small_objects
 import cv2
+from scipy.ndimage import label
 
-def optimize_TA_old(pth, imnm): # pth: path to image folder\        #imnm: image name
+def optimize_TA_old(pth, imnm): # pth: path to image folder    #imnm: image name
+    """
+               Reads an image and returns the image as a numpy array and a binary copy of the image's green value after it has been thresholded.
+
+               Parameters:
+               - pth (str): The path where the images are located.
+               - imnm (str): The name of the image.
+
+               Returns:
+               - im0 (np.ndarray): The image as a numpy array.
+               - TA (np.ndarray): The binary copy of the image's green value.
+               - outpth (str): The path where TA has been saved.
+        """
     outpth = os.path.join(pth.rstrip('\\'), 'TA')
     if not os.path.isdir(outpth):
         os.mkdir(outpth)
@@ -24,10 +36,10 @@ def optimize_TA_old(pth, imnm): # pth: path to image folder\        #imnm: image
     kernel_size = 3
     kernel = morphology.disk(kernel_size)
     TA = morphology.binary_closing(TA, kernel)
-    min_area = 4
-    TA = remove_small_objects(TA, min_size=min_area)
+    TA = label(TA, np.ones((3, 3)))[0] >= 4
     cv2.imwrite(os.path.join(outpth, imnm + '.tif'), TA.astype(np.uint8))
     return im0, TA, outpth
 
 imnm = '2024-02-26 10.36.39'
-pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
+pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\5x'
+optimize_TA_old(pth, imnm)
