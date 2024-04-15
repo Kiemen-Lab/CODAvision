@@ -4,8 +4,20 @@ from skimage import io, morphology
 import cv2
 import scipy
 from skimage.morphology import remove_small_objects
+import pickle
 
-def calculate_tissue_mask(pth, imnm): # pth: path to image folder      #imnm: image name
+def calculate_tissue_mask(pth, imnm):
+    """
+        Reads an image and returns the image as a numpy array and a binary copy of the image's green value after it has been thresholded.
+
+        Parameters:
+            - pth (str): The path where the images are located.
+            - imnm (str): The name of the image.
+
+        Returns:
+            - im0 (np.ndarray): The image as a numpy array.
+            - outpth (str): The path where TA has been saved.
+           """
     outpth = os.path.join(pth.rstrip('\\'), 'TA')
     if not os.path.isdir(outpth):
         os.mkdir(outpth)
@@ -24,6 +36,8 @@ def calculate_tissue_mask(pth, imnm): # pth: path to image folder      #imnm: im
     print('     Calculating TA image')
     if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')):
         data = scipy.io.loadmat(os.path.join(outpth, 'TA_cutoff.mat'))
+        #with open(os.path.join(outpth, 'TA_cutoff.pkl'), 'rb') as f: # todo: uncomment these two lines and delete the one avobe when TA_cutoff.plk has been created
+            #data = pickle.load(f)      # todo: check if bugs arise after changing .mat file for .pkl file
         cts = data['cts']
         ct=0
         for i in cts:
@@ -42,7 +56,6 @@ def calculate_tissue_mask(pth, imnm): # pth: path to image folder      #imnm: im
     cv2.imwrite(os.path.join(outpth, imnm + '.tif'), TA.astype(np.uint8))
     return im0, TA, outpth
 
-imnm = '84 - 2024-02-26 10.33.40'
-pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
-calculate_tissue_mask(pth, imnm)
-os.rename('calculare_tissue_mask.py','calculate_tissue_mask.py')
+# imnm = '84 - 2024-02-26 10.33.40'
+# pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
+# calculate_tissue_mask(pth, imnm)
