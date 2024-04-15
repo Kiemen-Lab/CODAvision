@@ -1,6 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 def plot_cmap_legend(cmap, titles):
+    """
+               Plots the model colormap with the classnames in a figure .
+
+               Parameters:
+               - cmap (ndarray{n,3}): The color map of the model with one column per RGB value
+               - titles (ndarray): Array of strings containing class names
+
+               Returns:
+               The figure displaying the model colormap.
+        """
     im = np.zeros((50, 50 * len(cmap), 3), dtype=np.uint8)
     for k in range(len(cmap)):
         tmp = cmap[k].reshape(1, 1, 3)
