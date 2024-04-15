@@ -1,21 +1,39 @@
 import os
 import numpy as np
-import scipy
 import matplotlib.pyplot as plt
 import plot_cmap_legend
+import pickle
 
 # This function currently saves classNames as a Matlab character matrix and as a Python string list (it is the same
 # variable but each interpreter reads it differently)
 # Moreover, if there exist a neural network trained with matlab (DAGNetwork) or the variable "classNames" was saved
-# from Matlab (string vector), these variables are deleted since python doesnt recognizes these types and classifies
+# from Matlab (string vector), these variables remain unchanged since python doesnt recognize these types and classifies
 # them as "None", which crashes the code
 # Because of this, the check of whether a network has already been trained hasnt been added yet
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
+    """
+           Saves model metadata to pickle file.
+
+           Parameters:
+           - pthDL (str): The path where the model metadata is saved
+           - pthIm (str): The path where the images are located.
+           - WS (list): List of 5 int vectors that contains whitespace removal options, tissue order, tissues being deleted and whitespace distribution
+           - nm (str): The name of the model
+           - umpix (int/ndarray{1,1}): scaling factor
+           - cmap (ndarray{n,3}): The color map of the model with one column per RGB value
+           - sxy (ndarray{1,1}): Training tiles size
+           - classNames (ndarray): Array of strings containing class names
+           - ntrain (ndarray{1,1): Number of training tiles
+           - nvalidate (ndarray{1,1}): Number of validation tiles
+
+           Returns:
+           Nothing, but saves metadata to pickle file.
+    """
     if not os.path.isdir(pthDL):
         os.mkdir(pthDL)
 
-    datafile = os.path.join(pthDL.rstrip('\\'), 'net.mat')
+    datafile = os.path.join(pthDL.rstrip('\\'), 'net.pkl')
     print('Saving model metadata and classification colormap...')
 
     if classNames[-1] != "black":
@@ -70,20 +88,23 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
     nblack = len(classNames)
 
     existing_variables = {}
-    loaded_data = scipy.io.loadmat(datafile)
+
+    with open(datafile, 'rb') as f:
+        loaded_data = pickle.load(f)
     for key, value in loaded_data.items():
         if value is not None:
             existing_variables[key] = value
-    existing_variables.update({"WS": WS, "cmap": cmap, "nblack": nblack, "nwhite": nwhite,
-                               "classNames":classNames,"pthDL":pthDL,"pthim":pthim,"nm":nm,"umpix":umpix,"sxy":sxy,"ntrain":ntrain,"nvalidate":nvalidate})
-    scipy.io.savemat(datafile, existing_variables)
+    existing_variables.update({"WS": WS, "cmap": cmap, "nblack": nblack, "nwhite": nwhite})
+    # Save the data to a pickle file
+    with open(datafile, 'wb') as f:
+        pickle.dump(existing_variables, f)
 
     # plot color legend
     plot_cmap_legend.plot_cmap_legend(cmap, classNames)
     plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
 
 
-pthDL=r'\\10.99.68.52\kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\04_03_2024'
+pthDL=r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\5x\04_03_2024'
 pthim=r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Test Dashboard\5x'
 WS = [[0,0,0,0,0,2,0],[6,6],[1,2,3,4,5,6,3],[7,2,4,3,1,6],4]
 nm = '04_03_2024'
