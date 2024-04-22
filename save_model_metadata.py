@@ -1,39 +1,42 @@
+"""
+Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: April 17, 2024
+"""
+
 import os
-import numpy as np
 import matplotlib.pyplot as plt
 import plot_cmap_legend
 import pickle
-
-# This function currently saves classNames as a Matlab character matrix and as a Python string list (it is the same
-# variable but each interpreter reads it differently)
-# Moreover, if there exist a neural network trained with matlab (DAGNetwork) or the variable "classNames" was saved
-# from Matlab (string vector), these variables remain unchanged since python doesnt recognize these types and classifies
-# them as "None", which crashes the code
-# Because of this, the check of whether a network has already been trained hasnt been added yet
+import numpy as np
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
     """
-           Saves model metadata to pickle file.
+      Saves model metadata to a pickle file and generates a color map legend plot.
 
-           Parameters:
-           - pthDL (str): The path where the model metadata is saved
-           - pthIm (str): The path where the images are located.
-           - WS (list): List of 5 int vectors that contains whitespace removal options, tissue order, tissues being deleted and whitespace distribution
-           - nm (str): The name of the model
-           - umpix (int/ndarray{1,1}): scaling factor
-           - cmap (ndarray{n,3}): The color map of the model with one column per RGB value
-           - sxy (ndarray{1,1}): Training tiles size
-           - classNames (ndarray): Array of strings containing class names
-           - ntrain (ndarray{1,1): Number of training tiles
-           - nvalidate (ndarray{1,1}): Number of validation tiles
+      Parameters:
+      - pthDL (str): The path where the model metadata will be saved.
+      - pthim (str): The path where the images are located.
+      - WS (list): List containing whitespace removal options, tissue order, tissues being deleted,
+                   and whitespace distribution.
+      - nm (str): The name of the model.
+      - umpix (int/ndarray{1,1}): Scaling factor.
+      - cmap (ndarray{n,3}): The color map of the model with one column per RGB value.
+      - sxy (int/ndarray{1,1}): Training tiles size.
+      - classNames (list): List of strings containing class names.
+      - ntrain (int/ndarray{1,1}): Number of training tiles.
+      - nvalidate (int/ndarray{1,1}): Number of validation tiles.
 
-           Returns:
-           Nothing, but saves metadata to pickle file.
-    """
+      Returns:
+      None
+
+      This function saves the provided model metadata to a pickle file located at the specified path (pthDL).
+      It also creates a color map legend plot based on the provided color map and class names, and saves
+      the plot as 'model_color_legend.png' in the same directory as the model metadata.
+      """
+
     if not os.path.isdir(pthDL):
         os.mkdir(pthDL)
 
-    datafile = os.path.join(pthDL.rstrip('\\'), 'net.pkl')
     print('Saving model metadata and classification colormap...')
 
     if classNames[-1] != "black":
@@ -87,39 +90,52 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
         classNames.append("black")
     nblack = len(classNames)
 
-    existing_variables = {}
+    datafile = os.path.join(pthDL.rstrip('\\'), 'net.pkl')
 
-    with open(datafile, 'rb') as f:
-        loaded_data = pickle.load(f)
-    for key, value in loaded_data.items():
-        if value is not None:
-            existing_variables[key] = value
-    existing_variables.update({"WS": WS, "cmap": cmap, "nblack": nblack, "nwhite": nwhite})
     # Save the data to a pickle file
-    with open(datafile, 'wb') as f:
-        pickle.dump(existing_variables, f)
+    if os.path.exists(datafile):
+        print('Net file already exists, updating data...')
+        with open(datafile, 'rb') as f:
+            try:
+                existing_data = pickle.load(f)
+            except EOFError:
+                existing_data = {}
+
+        existing_data.update(
+            {"pthim": pthim, "pthDL": pthDL, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
+             "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "nvalidate": nvalidate})
+
+        with open(datafile, 'wb') as f:
+            pickle.dump(existing_data, f)
+    else:
+        print('Creating Net metadata file...')
+        with open(datafile, 'wb') as f:
+            pickle.dump({"pthim": pthim, "pthDL": pthDL, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
+                         "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite,
+                         "nvalidate": nvalidate}, f)
 
     # plot color legend
     plot_cmap_legend.plot_cmap_legend(cmap, classNames)
-    plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
+    plt.savefig(os.path.join(pthDL, 'model_color_legend.png'), bbox_inches='tight')
+    plt.show()
+    # plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
 
+# Example usage
+if __name__ == "__main__":
+    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\variables'
+    pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Test Dashboard\5x'
+    WS = [[0, 0, 0, 0, 0, 2, 0], [6, 6], [1, 2, 3, 4, 5, 6, 3], [7, 2, 4, 5, 3, 1, 6], 2]
+    nm = '04_03_2024'
+    umpix = 2
+    cmap = np.array([[0, 255, 0],
+                     [255, 255, 0],
+                     [255, 128, 0],
+                     [0, 255, 255],
+                     [0, 0, 255],
+                     [0, 0, 0]])
+    sxy = 1000
+    classNames = ["bronchioles", "alveoli", "smooth_operator", "mets", "test", "whitespace", "black"]
+    ntrain = 15
+    nvalidate = 3
 
-pthDL=r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\5x\04_03_2024'
-pthim=r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Test Dashboard\5x'
-WS = [[0,0,0,0,0,2,0],[6,6],[1,2,3,4,5,6,3],[7,2,4,3,1,6],4]
-nm = '04_03_2024'
-umpix = 2
-cmap = np.array([[0, 255, 0],
-                 [255, 255, 0],
-                 [255, 128, 0],
-                 [0, 255, 255],
-                 [0, 0, 255],
-                 [0, 0, 0]])
-sxy = 1000
-classNames = ["bronchioles","alveolo","smooth_operator","mets","test","whitespace","black"]
-ntrain = 15
-nvalidate = 3
-nblack = 6
-nwhite = 4
-
-save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
+    save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)

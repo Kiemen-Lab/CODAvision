@@ -36,8 +36,16 @@ def calculate_tissue_mask(pth, imnm):
     print('     Calculating TA image')
     if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')):
         data = scipy.io.loadmat(os.path.join(outpth, 'TA_cutoff.mat'))
-        #with open(os.path.join(outpth, 'TA_cutoff.pkl'), 'rb') as f: # todo: uncomment these two lines and delete the one avobe when TA_cutoff.plk has been created
-            #data = pickle.load(f)      # todo: check if bugs arise after changing .mat file for .pkl file
+
+    # if os.path.exists(os.path.join(outpth, 'TA_cutoff.pkl')):   # todo: uncomment these two lines and delete the one avobe when TA_cutoff.plk has been created
+    #     with open(os.path.join(outpth, 'TA_cutoff.pkl'), 'rb') as f:
+    #         try:
+    #             data = pickle.load(f)      # todo: check if bugs arise after changing .mat file for .pkl file
+    #         except EOFError:
+    #             existing_data = {}
+    # else:
+    #     print('No TA_cuttoff file found')
+
         cts = data['cts']
         ct=0
         for i in cts:
