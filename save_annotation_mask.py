@@ -4,10 +4,6 @@ import os
 from skimage import io
 import numpy as np
 from scipy.ndimage import label, binary_fill_holes
-import scipy
-import calculate_tissue_mask
-from IPython.display import display
-import pandas as pd
 from skimage.morphology import remove_small_objects
 import pickle
 
@@ -27,7 +23,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):  #I is the image in matrix
         if xyout.size == 0:
             J = np.zeros(I.size)
         else:
-            xyout[:,2:3] = round(xyout[:,2:3]/umpix)
+            xyout[:,2:4] = np.round(xyout[:,2:4]/umpix)
             if TA.size > 0:
                 TA = TA > 0
                 TA = remove_small_objects(TA.astype(bool), min_size=30, connectivity=2)
@@ -85,12 +81,18 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):  #I is the image in matrix
             # format annotations to keep or remove whitespace
             J, ind = format_white.format_white(J, Ig, WS, szz)
             from PIL import Image
-            Image.fromarray(np.uint8(J)).save(outpth + 'view_annotations_raw.tif')
-    except:
+            Image.fromarray(np.uint8(J)).save(os.path.join(outpth.rstrip('\\'), 'view_annotations_raw.tif'))
+    except EOFError:
         J=np.zeros(I.size)
     return J
 
-
-pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
-imnm = '2024-02-26 10.36.39'
-I = io.imread(os.path.join(pth, imnm + '.tif'))
+# Example usage
+# if __name__ == "__main__":
+#     import calculate_tissue_mask
+#     outpth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\data\84 - 2024-02-26 10.33.40'
+#     umpix=2
+#     imnm = '84 - 2024-02-26 10.33.40'
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\5x'
+#     WS = [[0,2,0,0,0,2,0],[6,7],[1,2,3,4,1,5,6],[7,2,4,3,1,6],[5]]
+#     [I0,TA,_] = calculate_tissue_mask.calculate_tissue_mask(pth,imnm)
+#     J0 = save_annotation_mask(I0,outpth,WS,umpix,TA)
