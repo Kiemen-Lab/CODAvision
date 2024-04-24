@@ -1,6 +1,24 @@
+"""
+Author: Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: April 24, 2024
+"""
 import numpy as np
 
 def format_white(J0, Ig, WS, szz):
+    """
+        Creates the annotation mask of the image from the annotation coordinates and the nesting order
+
+        Parameters:
+            - J0 (list) ; List containing the coordinates of the annotations of each layer
+            - Ig (np.ndarray): The non-zero indexes of TA
+            - WS (list): List containing whitespace removal options, tissue order, tissues being deleted,
+                       and whitespace distribution
+            - szz (turple); Contains the dimensions of the image
+
+        Outputs:
+            - J (np.ndarray): The annotation mask of the image.
+            - ind (list)
+    """
     p = 1  # image number I think
     ws = WS[0]  # defines keep or delete whitespace
     wsa0 = WS[1]  # defines non-tissue label

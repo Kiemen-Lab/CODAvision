@@ -1,3 +1,7 @@
+"""
+Author: Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: April 24, 2024
+"""
 import os
 import numpy as np
 from skimage import io, morphology
@@ -16,25 +20,26 @@ def calculate_tissue_mask(pth, imnm):
 
         Returns:
             - im0 (np.ndarray): The image as a numpy array.
+            - TA (np.ndarray): The binary copy of the image's green value after it has been thresholded.
             - outpth (str): The path where TA has been saved.
            """
     outpth = os.path.join(pth.rstrip('\\'), 'TA')
-    if not os.path.isdir(outpth):
+    if not os.path.isdir(outpth): #Check if the path to the image exists
         os.mkdir(outpth)
     try:
-        im0 = io.imread(os.path.join(pth, imnm + '.tif'))
+        im0 = io.imread(os.path.join(pth, imnm + '.tif')) #Check for TIFF images
     except:
         try:
-            im0 = io.imread(os.path.join(pth, imnm + '.jpg'))
+            im0 = io.imread(os.path.join(pth, imnm + '.jpg')) #Check for jpg images
         except:
-            im0 = io.imread(os.path.join(pth, imnm + '.jp2'))
-    if os.path.isfile(os.path.join(outpth, imnm + '.tif')):
+            im0 = io.imread(os.path.join(pth, imnm + '.jp2')) #Check for jp2 images
+    if os.path.isfile(os.path.join(outpth, imnm + '.tif')): # If there already is an TA image in the outpth, load it and return
         TA = cv2.imread(os.path.join(outpth, imnm + '.tif'), cv2.IMREAD_GRAYSCALE)
         print('Existing TA loaded')
         return im0, TA, outpth
 
     print('     Calculating TA image')
-    if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')):
+    if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')): # Check if the TA value has already been calculated
         data = scipy.io.loadmat(os.path.join(outpth, 'TA_cutoff.mat'))
 
     # if os.path.exists(os.path.join(outpth, 'TA_cutoff.pkl')):   # todo: uncomment these two lines and delete the one avobe when TA_cutoff.plk has been created
@@ -53,9 +58,9 @@ def calculate_tissue_mask(pth, imnm):
                 ct += j
             ct = ct/len(i)
     else:
-        ct = 210
+        ct = 210 #If there is no previous TA value, use 210
 
-    TA = im0[:, :, 1] < ct
+    TA = im0[:, :, 1] < ct # Threshold the image green values
     kernel_size = 3
     kernel = morphology.disk(kernel_size)
     TA = morphology.binary_closing(TA, kernel)
