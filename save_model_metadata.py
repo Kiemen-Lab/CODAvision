@@ -137,5 +137,4 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
 #     classNames = ["bronchioles", "alveoli", "smooth_operator", "mets", "test", "whitespace", "black"]
 #     ntrain = 15
 #     nvalidate = 3
-
-    save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
+#     save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)

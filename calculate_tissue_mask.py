@@ -69,6 +69,8 @@ def calculate_tissue_mask(pth, imnm):
     cv2.imwrite(os.path.join(outpth, imnm + '.tif'), TA.astype(np.uint8))
     return im0, TA, outpth
 
-# imnm = '84 - 2024-02-26 10.33.40'
-# pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
-# calculate_tissue_mask(pth, imnm)
+# Example usage
+# if __name__ == "__main__":
+#   imnm = '84 - 2024-02-26 10.33.40'
+#   pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
+#   calculate_tissue_mask(pth, imnm)

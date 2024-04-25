@@ -38,17 +38,18 @@ def plot_cmap_legend(cmap, titles):
         plt.imshow(im)
 
 # Example usage:
-# cmap = np.array([[121, 248, 252],
-#                [0, 0, 255],
-#                [80, 237, 80],
-#                [255, 255, 0],
-#                [149, 35, 184],
-#                [25, 194, 245],
-#                [255, 255, 255],
-#                [255, 0, 0],
-#                [73, 120, 111],
-#                [0, 0, 0],
-#                [135, 7, 7],
-#                [240, 159, 10]])
-# titles = ['islet', 'duct', 'blood vessel', 'fat','acini','ecm','whitespace','LG PanIN','nerves','immune','HG PanIN','PDAC']
-# plot_cmap_legend(cmap, titles)
+# if __name__ == "__main__":
+#     cmap = np.array([[121, 248, 252],
+#                    [0, 0, 255],
+#                    [80, 237, 80],
+#                    [255, 255, 0],
+#                    [149, 35, 184],
+#                    [25, 194, 245],
+#                    [255, 255, 255],
+#                    [255, 0, 0],
+#                    [73, 120, 111],
+#                    [0, 0, 0],
+#                    [135, 7, 7],
+#                    [240, 159, 10]])
+#     titles = ['islet', 'duct', 'blood vessel', 'fat','acini','ecm','whitespace','LG PanIN','nerves','immune','HG PanIN','PDAC']
+#     plot_cmap_legend(cmap, titles)
