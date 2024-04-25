@@ -4,7 +4,6 @@ Date: April 25, 2024
 """
 import numpy as np
 import cv2
-import rotate_image
 def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, rsz=False):
     """
     Randomly augments with rotation, scaling, hue, and blur
@@ -68,7 +67,7 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
 
     # Random blurring
     if blr:
-        # bll = np.concatenate((np.arange(1.05, 1.25, 0.05), np.ones(46))) # i dont understand why were using a 2/25 chance of blurring if the user said yes
+        # bll = np.concatenate((np.arange(1.05, 1.25, 0.05), np.ones(46))) # todo: i dont understand why were using a 2/25 chance of blurring if the user said yes
         bll = np.arange(1.05, 1.25, 0.05)
         ibl = np.random.permutation(len(bll))[0]
         bll = bll[ibl]
@@ -82,7 +81,7 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
             cent = int(np.round(szh / 2))
             sz1 = int((szz - 1) // 2)
             sz2 = int(np.ceil((szz - 1)/2))
-            imh = imh[cent - sz1:cent + sz2+1, cent - sz1:cent + sz2+1, :]
+            imh = imh[cent - sz1:cent + sz2, cent - sz1:cent + sz2, :]
             imlabel = imlabel[cent - sz1:cent + sz2+1, cent - sz1:cent + sz2+1]
         elif szh < szz:
             tt = szz - szh
@@ -100,11 +99,11 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
 # if __name__ == "__main__":
 #     import os
 #     from skimage import io
-#     imnm = '5.tif'
+#     imnm = '00004.tif'
 #     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\04_03_2024\training'
 #     imh0 = io.imread(os.path.join(os.path.join(pth, 'im'),imnm))
 #     imlabel0 = io.imread(os.path.join(os.path.join(pth, 'label'),imnm))
 #     outpth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\04_03_2024\augment_test'
-#     [im,imlabel] = augment_annotation(imh0, imlabel0,False,True,False,False,True)
+#     [im,imlabel] = augment_annotation(imh0, imlabel0,True,True,True,False,False)
 #     cv2.imwrite(os.path.join(os.path.join(outpth,'im'), imnm), im.astype(np.uint8))
 #     cv2.imwrite(os.path.join(os.path.join(outpth, 'label'), imnm), imlabel.astype(np.uint8))
