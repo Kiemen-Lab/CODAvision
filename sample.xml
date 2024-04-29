@@ -1,0 +1,7 @@
+
+    <XMLname attrib1="Some value">
+        <Element>Some text</Element>
+        <DifferentElement attrib2="2">Some more text</DifferentElement>
+        <DifferentElement attrib3="2" attrib4="1">Even more text</DifferentElement>
+    </XMLname>
+    
