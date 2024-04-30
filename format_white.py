@@ -64,3 +64,4 @@ def format_white(J0, Ig, WS, szz):
         ind.extend(P)
 
     return J, ind
+

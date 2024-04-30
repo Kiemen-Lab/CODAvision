@@ -10,7 +10,7 @@ from scipy.ndimage import label, binary_fill_holes
 from skimage.morphology import remove_small_objects
 import pickle
 
-def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
+def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):  
     """
     Creates and saves the annotation mask of an image
 
@@ -28,7 +28,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
     if umpix == 100:
         umpix = 1
     elif umpix==200:
-        umpix = 2
+        umpix=2
     elif umpix==400:
         umpix = 4
     print('     2. of 4. Interpolating annotated regions and saving mask image')
