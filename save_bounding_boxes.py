@@ -97,7 +97,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         with open(annotations_file, 'wb') as f:  # save data to new file 'write binary mode'
             pickle.dump(data, f)
 
-
+    return numann, ctlist
 # # Example usage:
 # if __name__ == '__main__':
 #     from calculate_tissue_mask import calculate_tissue_mask
