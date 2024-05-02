@@ -57,7 +57,10 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
                 pickle.dump(existing_data, f)
         else:
             print('Creating file...')
+            print('savin data 1')
             with open(annotations_file, 'wb') as f:
+                print('savin data')
+                print(xyout_df.values)
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
 
     return xyout_df, reduced_annotations
