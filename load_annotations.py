@@ -32,9 +32,17 @@ def load_annotations(xml_file):
         if 'Region' in annotation.get("Regions", {}):  #checks weather there are annotations in the layer
             annotation_id = float(annotation.get('@Id'))
             regions = annotation["Regions"]["Region"]
-            for region in regions:
-                annotation_number = float(region.get('@Id'))
-                vertices = region.get("Vertices", {}).get("Vertex", [])
+            if type(regions) == list:
+                for region in regions:
+                    annotation_number = float(region.get('@Id'))
+                    vertices = region.get("Vertices", {}).get("Vertex", [])
+                    for vertex in vertices:
+                        x = float(vertex.get('@X'))
+                        y = float(vertex.get('@Y'))
+                        xyout.append([annotation_id, annotation_number, x, y])
+            elif type(regions) == dict:
+                annotation_number = float(regions.get('@Id'))
+                vertices = regions.get("Vertices", {}).get("Vertex", [])
                 for vertex in vertices:
                     x = float(vertex.get('@X'))
                     y = float(vertex.get('@Y'))
