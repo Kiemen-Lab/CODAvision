@@ -31,7 +31,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         None. The function saves the bounding box tiles and a pickle file containing annotation information.
 
     """
-    print('4. of 4. Creating bounding box tiles of all annotations')
+    print(' 4. of 4. Creating bounding box tiles of all annotations')
     try:
         imlabel = np.array(Image.open(os.path.join(outpth, 'view_annotations.tif')))
     except:
@@ -87,33 +87,44 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
     bb = 1  # indicate that xml file is fully analyzed
 
     annotations_file = os.path.join(outpth, 'annotations.pkl')
-    data = {'numann': numann, 'ctlist': ctlist, 'bb': bb}  # create dictionary to append data on annotation.pkl file
 
     # Save data on .pkl file
     if os.path.join(outpth, 'annotations.pkl'):
-        with open(annotations_file, 'ab') as f:  # append new data if the file already exists
+        with open(annotations_file, 'rb') as f:
+            data = pickle.load(f)
+            data['numann'] = numann
+            data['ctlist'] = ctlist
+            data['bb'] = bb
+        with open(annotations_file, 'wb') as f:
             pickle.dump(data, f)
+            f.close()
     else:
+        data = {'numann': numann, 'ctlist': ctlist, 'bb': bb}  # create dictionary to append data on annotation.pkl file
         with open(annotations_file, 'wb') as f:  # save data to new file 'write binary mode'
             pickle.dump(data, f)
+            f.close()
+    return numann, ctlist
 
 
 # # Example usage:
 # if __name__ == '__main__':
-#     from calculate_tissue_mask import calculate_tissue_mask
-#
-#     # Inputs
-#     WS = [[2, 0, 0, 1, 0, 0, 2, 0, 2, 2, 2, 0, 0], [7, 6], [1, 2, 3, 4, 5, 6, 7, 8, 7, 9, 10, 8, 11],
-#           [6, 5, 4, 11, 1, 2, 3, 8, 10, 12, 13, 7, 9], []]
-#     imnm = 'SG_013_0061'
-#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
-#     I0, TA, _ = calculate_tissue_mask(pth, imnm)
-#     model_name = '02_23_2024'
-#     numclass = max(WS[3])
-#     print(f'numclass: {numclass}')
-#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-#     outpth = os.path.join(pth, 'data', imnm, '')
-#     print(f'outpth: {outpth}')
-#
-#     # Function
-#     save_bounding_boxes(I0, outpth, model_name, numclass)
+    # from calculate_tissue_mask import calculate_tissue_mask
+    #
+    # # Inputs
+    # WS = [[2, 0, 0, 1, 0, 0, 2, 0, 2, 2, 2, 0, 0], [7, 6], [1, 2, 3, 4, 5, 6, 7, 8, 7, 9, 10, 8, 11],
+    #       [6, 5, 4, 11, 1, 2, 3, 8, 10, 12, 13, 7, 9], []]
+    # imnm = 'SG_013_0061'
+    # pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
+    # I0, TA, _ = calculate_tissue_mask(pth, imnm)
+    # model_name = '04_19_2024'
+    # numclass = max(WS[3])
+    # print(f'numclass: {numclass}')
+    # pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
+    # outpth = os.path.join(pth, 'data', imnm, '')
+    # print(f'outpth: {outpth}')
+    #
+    # # Function
+    # numann , ctlist = save_bounding_boxes(I0, outpth, model_name, numclass)
+    # print(f'numann: {len(numann)}')
+    # print(f'ctlist: {ctlist}')
+    #
