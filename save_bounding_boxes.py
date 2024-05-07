@@ -90,6 +90,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 
     # Save data on .pkl file
     if os.path.join(outpth, 'annotations.pkl'):
+
         with open(annotations_file, 'rb') as f:
             data = pickle.load(f)
             data['numann'] = numann

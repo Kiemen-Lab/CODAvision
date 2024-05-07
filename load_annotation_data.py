@@ -68,7 +68,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
         modification_time = os.path.getmtime(os.path.join(pth, f'{imnm}.xml'))
         date_modified = time.ctime(modification_time)
-
         if dm == str(date_modified) and bb == 1 and not reload_xml:
             print(' annotation data previously loaded')
             with open(annotations_file, 'rb') as f:
