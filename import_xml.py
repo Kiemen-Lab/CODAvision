@@ -44,7 +44,7 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             os.makedirs(annotations_dir)
 
         if os.path.exists(annotations_file):
-            print('File already exists, updating data...')
+            print('  File already exists, updating data...')
             with open(annotations_file, 'rb') as f:
                 try:
                     existing_data = pickle.load(f)
@@ -56,7 +56,7 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             with open(annotations_file, 'wb') as f:
                 pickle.dump(existing_data, f)
         else:
-            print('Creating file...')
+            print('  Creating file...')
             with open(annotations_file, 'wb') as f:
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
 
