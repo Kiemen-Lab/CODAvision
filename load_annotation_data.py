@@ -14,10 +14,15 @@ import shutil
 import numpy as np
 from skimage import io
 import time
+import warnings
+
 
 def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     print(' ')
     print('Importing annotation data...')
+
+    # Turn off user warnings
+    warnings.filterwarnings("ignore")
 
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
@@ -45,8 +50,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             raise FileNotFoundError(f'Cannot find a tif or jpg file for xml file: {imnm}.xml')
     # for each annotation file
     start_time = time.time()  # Capture the start time before the loop
-    for idx, imnm in enumerate(imlist, start=1):
-        print(f' Image {idx} of {len(imlist)}: {imnm[:-4]}')
+    for idx, imnm in enumerate(imlist, start=0):
+        print(f' Image {idx+1} of {len(imlist)}: {imnm[:-4]}')
         imnm = imnm[:-4]
         outpth = os.path.join(pth, 'data', imnm)
         annotations_file = os.path.join(outpth, 'annotations.pkl')
@@ -62,7 +67,10 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         else:
             dm, bb = '', 0
 
-        date_modified = os.path.getmtime(os.path.join(pth, f'{imnm}.xml'))
+        modification_time = os.path.getmtime(os.path.join(pth, f'{imnm}.xml'))
+        date_modified = time.ctime(modification_time)
+        # print(modification_time)
+        # print(date_modified)
         if dm == str(date_modified) and bb == 1 and not reload_xml:
             print(' annotation data previously loaded')
             with open(annotations_file, 'rb') as f:
@@ -93,7 +101,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         with open(annotations_file, 'rb') as f:  #
             data = pickle.load(f)  #
         I0, TA, _ = calculate_tissue_mask(pthim, imnm)
-        print(os.path.join(outpth, 'annotations.pkl'))
+        # print(os.path.join(outpth, 'annotations.pkl'))
         J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
         io.imsave(os.path.join(outpth, 'view_annotations.tif'), J0.astype(np.uint8))
 
