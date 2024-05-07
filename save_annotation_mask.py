@@ -31,7 +31,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
         umpix=2
     elif umpix==400:
         umpix = 4
-    print('     2. of 4. Interpolating annotated regions and saving mask image')
+    print(' 2. of 4. Interpolating annotated regions and saving mask image')
     num = len(WS[0])
     try:    # Try to load 'xyout' from 'annotations.pkl' if the pkl file exists
         with open(os.path.join(outpth, 'annotations.pkl'), 'rb') as f:
@@ -84,7 +84,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
                         try:
                             indnew = np.ravel_multi_index((ynew, xnew), szz) # calculate the linear indices of the interpolated points
                         except ValueError:
-                            print('annotation out of bounds')
+                            print('  annotation out of bounds')
                             continue
                         indnew = indnew[~np.isnan(indnew)].astype(int) # Remove NaN values
                         bwtypek.flat[indnew] = 1 #Make the values in bwtypek one in the coordinates with an annotation vertix
