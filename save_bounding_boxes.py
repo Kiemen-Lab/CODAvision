@@ -97,6 +97,8 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         with open(annotations_file, 'wb') as f:  # save data to new file 'write binary mode'
             pickle.dump(data, f)
 
+    return numann, ctlist
+
 
 # # Example usage:
 # if __name__ == '__main__':
@@ -116,4 +118,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 #     print(f'outpth: {outpth}')
 #
 #     # Function
-#     save_bounding_boxes(I0, outpth, model_name, numclass)
+#     numann , ctlist = save_bounding_boxes(I0, outpth, model_name, numclass)
+#     print(f'numann: {len(numann)}')
+#     print(f'ctlist: {ctlist}')
+
