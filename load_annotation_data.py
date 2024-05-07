@@ -17,6 +17,22 @@ import time
 import warnings
 
 def load_annotation_data(pthDL,pth,pthim,classcheck=0):
+    """
+      Loads the annotation data from the .xml files, creates tissue mask and bounding boxes and saves the bounding boxes
+      as tif images, both for the H&E image and the labeled image
+
+      Parameters:
+      pthDL (str): The file path to save the model data.
+      pth (str): The file path to the annotations.
+      pthim (str): The file path to the tif images of the desired resolution.
+      classcheck (float, optional): Used in validate_annotations. #todo: check its purpose once this is coded
+
+      Returns:
+      ctlist0 (list): List containing the bounding boxes filenames and the path to them.
+      numann0 (np.ndarray): An array containing the number of pixels per class per bounding box. Each row is a bounding
+                            box and each column is a class.
+      """
+
     print(' ')
     print('Importing annotation data...')
 
@@ -47,8 +63,10 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         jpg_file = os.path.join(pthim, f'{imnm}.jpg')
         if not os.path.isfile(tif_file) and not os.path.isfile(jpg_file):
             raise FileNotFoundError(f'Cannot find a tif or jpg file for xml file: {imnm}.xml')
+
     # for each annotation file
     start_time = time.time()  # Capture the start time before the loop
+
     for idx, imnm in enumerate(imlist, start=1):
         print(f'Image {idx} of {len(imlist)}: {imnm[:-4]}')
         imnm = imnm[:-4]
@@ -112,16 +130,10 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         J3 = J3.reshape(J.shape)
         mask = np.dstack((J1, J2, J3))
         I = (I * 0.5) + (mask * 0.5)
-        # J2 = J0 + 1
-        # cmap3 = cmap2[np.min(J2):np.max(J2) + 1, :]
-        # mask = cmap3[J2]
-        # I = I0[::2, ::2, :].astype(np.float64) * 0.5 + mask[::2, ::2, :] * 0.5
         io.imsave(os.path.join(outim, f'{imnm}.jpg'), (I * 255).astype(np.uint8))
 
         # create annotation bounding boxes and update data to annotation.pkl file
         numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
-        # with open(annotations_file, 'wb') as f:
-        #     pickle.dump({'dm': str(date_modified), 'bb': 1, 'numann': numann, 'ctlist': ctlist}, f)
         numann0.extend(numann)
         ctlist0.extend(ctlist)
 
