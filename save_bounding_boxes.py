@@ -31,7 +31,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         None. The function saves the bounding box tiles and a pickle file containing annotation information.
 
     """
-    print('4. of 4. Creating bounding box tiles of all annotations')
+    print(' 4. of 4. Creating bounding box tiles of all annotations')
     try:
         imlabel = np.array(Image.open(os.path.join(outpth, 'view_annotations.tif')))
     except:
@@ -87,15 +87,20 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
     bb = 1  # indicate that xml file is fully analyzed
 
     annotations_file = os.path.join(outpth, 'annotations.pkl')
-    data = {'numann': numann, 'ctlist': ctlist, 'bb': bb}  # create dictionary to append data on annotation.pkl file
 
     # Save data on .pkl file
     if os.path.join(outpth, 'annotations.pkl'):
-        with open(annotations_file, 'ab') as f:  # append new data if the file already exists
-        # with open(annotations_file, 'a+') as f:
+
+        with open(annotations_file, 'rb') as f:
+            data = pickle.load(f)
+            data['numann'] = numann
+            data['ctlist'] = ctlist
+            data['bb'] = bb
+        with open(annotations_file, 'wb') as f:
             pickle.dump(data, f)
             f.close()
     else:
+        data = {'numann': numann, 'ctlist': ctlist, 'bb': bb}  # create dictionary to append data on annotation.pkl file
         with open(annotations_file, 'wb') as f:  # save data to new file 'write binary mode'
             pickle.dump(data, f)
             f.close()

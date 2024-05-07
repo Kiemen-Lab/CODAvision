@@ -16,7 +16,6 @@ from skimage import io
 import time
 import warnings
 
-
 def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     print(' ')
     print('Importing annotation data...')
@@ -50,8 +49,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             raise FileNotFoundError(f'Cannot find a tif or jpg file for xml file: {imnm}.xml')
     # for each annotation file
     start_time = time.time()  # Capture the start time before the loop
-    for idx, imnm in enumerate(imlist, start=0):
-        print(f' Image {idx+1} of {len(imlist)}: {imnm[:-4]}')
+    for idx, imnm in enumerate(imlist, start=1):
+        print(f'Image {idx} of {len(imlist)}: {imnm[:-4]}')
         imnm = imnm[:-4]
         outpth = os.path.join(pth, 'data', imnm)
         annotations_file = os.path.join(outpth, 'annotations.pkl')
@@ -69,8 +68,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
         modification_time = os.path.getmtime(os.path.join(pth, f'{imnm}.xml'))
         date_modified = time.ctime(modification_time)
-        # print(modification_time)
-        # print(date_modified)
         if dm == str(date_modified) and bb == 1 and not reload_xml:
             print(' annotation data previously loaded')
             with open(annotations_file, 'rb') as f:
@@ -86,8 +83,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
         # 1 read xml annotation files and save as pkl files
         import_xml(annotations_file, os.path.join(pth, f'{imnm}.xml'), date_modified)
-        # print(f'annotation_file: {annotations_file}')
-        # print("xml_file:", os.path.join(pth, f'{imnm}.xml'))
         with open(annotations_file, 'rb') as f:  #
             data = pickle.load(f)  #
             data['WS'] = WS
@@ -96,12 +91,12 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             data['pthim'] = pthim
         with open(annotations_file, 'wb') as f:
             pickle.dump(data, f)
+            f.close()
 
         # 2 fill annotation outlines and delete unwanted pixels
         with open(annotations_file, 'rb') as f:  #
             data = pickle.load(f)  #
         I0, TA, _ = calculate_tissue_mask(pthim, imnm)
-        # print(os.path.join(outpth, 'annotations.pkl'))
         J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
         io.imsave(os.path.join(outpth, 'view_annotations.tif'), J0.astype(np.uint8))
 
@@ -130,21 +125,15 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         ctlist0.extend(ctlist)
 
         print(f' Finished image in {round(time.time() - start_time)} seconds.')
+    return ctlist0, numann0
 
-        return ctlist0, numann0
-
-if __name__ == "__main__":
-    # Example usage
-
-    # Inputs
-    pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
-    pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
-    classcheck = 0
-
-    ctlist0, numann0 = load_annotation_data(pthDL, pth, pthim, classcheck)
-    print(f'Ctlist0: {ctlist0}')
-    print(type(ctlist0))
-    print(f'Numann0: {len(numann0)}')
-
-
+# if __name__ == "__main__":
+#     # Example usage
+#
+#     # Inputs
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
+#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
+#     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
+#     classcheck = 0
+#
+#     load_annotation_data(pthDL, pth, pthim,classcheck)
