@@ -78,8 +78,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
         # 1 read xml annotation files and save as pkl files
         import_xml(annotations_file, os.path.join(pth, f'{imnm}.xml'), date_modified)
-        print(f'annotation_file: {annotations_file}')
-        print("xml_file:", os.path.join(pth, f'{imnm}.xml'))
+        # print(f'annotation_file: {annotations_file}')
+        # print("xml_file:", os.path.join(pth, f'{imnm}.xml'))
         with open(annotations_file, 'rb') as f:  #
             data = pickle.load(f)  #
             data['WS'] = WS
@@ -135,5 +135,8 @@ if __name__ == "__main__":
     classcheck = 0
 
     ctlist0, numann0 = load_annotation_data(pthDL, pth, pthim, classcheck)
+    print(f'Ctlist0: {ctlist0}')
+    print(type(ctlist0))
+    print(f'Numann0: {len(numann0)}')
 
 
