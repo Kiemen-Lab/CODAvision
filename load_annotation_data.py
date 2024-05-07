@@ -125,8 +125,9 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         ctlist0.extend(ctlist)
 
         print(f' Finished image in {round(time.time() - start_time)} seconds.')
-    return ctlist0, numann0
 
+    return ctlist0, numann0
+#
 # if __name__ == "__main__":
 #     # Example usage
 #
