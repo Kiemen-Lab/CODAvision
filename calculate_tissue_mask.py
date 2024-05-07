@@ -35,10 +35,10 @@ def calculate_tissue_mask(pth, imnm):
             im0 = io.imread(os.path.join(pth, imnm + '.jp2')) #Check for jp2 images
     if os.path.isfile(os.path.join(outpth, imnm + '.tif')): # If there already is an TA image in the outpth, load it and return
         TA = cv2.imread(os.path.join(outpth, imnm + '.tif'), cv2.IMREAD_GRAYSCALE)
-        print('Existing TA loaded')
+        print('  Existing TA loaded')
         return im0, TA, outpth
 
-    print('     Calculating TA image')
+    print('  Calculating TA image')
     if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')): # Check if the TA value has already been calculated
         data = scipy.io.loadmat(os.path.join(outpth, 'TA_cutoff.mat'))
 
