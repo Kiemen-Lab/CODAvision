@@ -149,4 +149,4 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 #     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
 #     classcheck = 0
 #
-#     load_annotation_data(pthDL, pth, pthim,classcheck)
+#     ctlist0, numann0 = load_annotation_data(pthDL, pth, pthim,classcheck)
