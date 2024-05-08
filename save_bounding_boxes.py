@@ -87,16 +87,13 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
     bb = 1  # indicate that xml file is fully analyzed
 
     annotations_file = os.path.join(outpth, 'annotations.pkl')
-    data = {'numann': numann, 'ctlist': ctlist, 'bb': bb}  # create dictionary to append data on annotation.pkl file
 
     # Save data on .pkl file
     if os.path.join(outpth, 'annotations.pkl'):
-        with open(annotations_file, 'ab') as f:  # append new data if the file already exists
             pickle.dump(data, f)
     else:
         with open(annotations_file, 'wb') as f:  # save data to new file 'write binary mode'
             pickle.dump(data, f)
-
     return numann, ctlist
 # # Example usage:
 # if __name__ == '__main__':
@@ -108,7 +105,6 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 #     imnm = 'SG_013_0061'
 #     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
 #     I0, TA, _ = calculate_tissue_mask(pth, imnm)
-#     model_name = '02_23_2024'
 #     numclass = max(WS[3])
 #     print(f'numclass: {numclass}')
 #     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
@@ -116,4 +112,3 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 #     print(f'outpth: {outpth}')
 #
 #     # Function
-#     save_bounding_boxes(I0, outpth, model_name, numclass)

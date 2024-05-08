@@ -45,7 +45,6 @@ def load_annotations(xml_file):
 
 # #Example usage
 # def main():
-#     xml_file = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\SG_013_0061.xml'
 #
 #     reduced_annotations, annotations_df = load_annotations(xml_file)
 #

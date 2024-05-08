@@ -58,22 +58,13 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
         else:
             print('Creating file...')
             with open(annotations_file, 'wb') as f:
-                print(xyout_df.values)
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
 
     return xyout_df, reduced_annotations
 
 
 # if __name__ == "__main__":
-#     # Example usage
-#
-#     # Inputs
-#     annotations_file = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\data\SG_013_0061\annotations.pkl'
-#     xmlfile = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\SG_013_0061.xml'
-#     dm = '17-Apr-2024 16:56:26'
 #     ra = None
-#
-#     xyout_df, reduced_annotations = import_xml(annotations_file, xmlfile, dm)
 #
 #     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
 #     print("\nAnnotations Coordinates DataFrame:")
