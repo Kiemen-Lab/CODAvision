@@ -31,7 +31,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         None. The function saves the bounding box tiles and a pickle file containing annotation information.
 
     """
-    print(' 4. of 4. Creating bounding box tiles of all annotations')
+    print('4. of 4. Creating bounding box tiles of all annotations')
     try:
         imlabel = np.array(Image.open(os.path.join(outpth, 'view_annotations.tif')))
     except:
@@ -95,6 +95,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         with open(annotations_file, 'wb') as f:  # save data to new file 'write binary mode'
             pickle.dump(data, f)
     return numann, ctlist
+
 # # Example usage:
 # if __name__ == '__main__':
 #     from calculate_tissue_mask import calculate_tissue_mask
