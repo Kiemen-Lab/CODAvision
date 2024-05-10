@@ -59,9 +59,9 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
     tmp = morphology.remove_small_objects(tmp, min_size=300)
 
     L = label(tmp)
-    numann = np.zeros((np.max(L) + 1, numclass))
+    numann = np.zeros((np.max(L), numclass))
 
-    for pk in range(1, np.max(L) + 1):
+    for pk in range(1, np.max(L)+1):
 
         # Create a binary mask for the current component
         tmp = (L == pk).astype(float)
@@ -70,18 +70,18 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         rect = [np.nonzero(b)[0][0], np.nonzero(b)[0][-1], np.nonzero(a)[0][0], np.nonzero(a)[0][-1]]
 
         # Crop the binary mask to the region defined by the bounding box
-        tmp = tmp[rect[2]:rect[3] + 1, rect[0]:rect[1] + 1]
+        tmp = tmp[rect[2]:rect[3], rect[0]:rect[1]]
 
         # Make label and image bounding boxes
-        tmplabel = imlabel[rect[2]:rect[3] + 1, rect[0]:rect[1] + 1] * tmp
-        tmpim = I0[rect[2]:rect[3] + 1, rect[0]:rect[1] + 1, :]
+        tmplabel = imlabel[rect[2]:rect[3], rect[0]:rect[1]] * tmp
+        tmpim = I0[rect[2]:rect[3], rect[0]:rect[1], :]
 
         nm = str(pk).zfill(5)
         Image.fromarray(tmpim.astype(np.uint8)).save(os.path.join(pthim, f'{nm}.tif'))
         Image.fromarray(tmplabel.astype(np.uint8)).save(os.path.join(pthlabel, f'{nm}.tif'))
 
         for anns in range(numclass):
-            numann[pk, anns] = np.sum(tmplabel == anns)
+            numann[pk-1, anns] = np.sum(tmplabel == anns+1)
 
     ctlist = [f for f in os.listdir(pthim) if f.endswith('.tif')]
     bb = 1  # indicate that xml file is fully analyzed
@@ -90,7 +90,6 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 
     # Save data on .pkl file
     if os.path.join(outpth, 'annotations.pkl'):
-
         with open(annotations_file, 'rb') as f:
             data = pickle.load(f)
             data['numann'] = numann
