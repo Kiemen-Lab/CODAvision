@@ -1,6 +1,10 @@
 import xmltodict
 import pandas as pd
 
+"""
+Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: May 05, 2024
+"""
 
 def load_annotations(xml_file):
     """
@@ -27,25 +31,27 @@ def load_annotations(xml_file):
 
     annotations = my_dict.get("Annotations", {}).get("Annotation", [])
 
-    for annotation in annotations:
-
-        if 'Region' in annotation.get("Regions", {}):  #checks weather there are annotations in the layer
-            annotation_id = float(annotation.get('@Id'))
-            regions = annotation["Regions"]["Region"]
-            for region in regions:
-                annotation_number = float(region.get('@Id'))
-                vertices = region.get("Vertices", {}).get("Vertex", [])
+    for layer in annotations:
+        if 'Region' in layer.get("Regions", {}):  # checks weather there are annotations in the layer
+            layer_id = int(layer.get('@Id'))
+            regions = layer["Regions"]["Region"]
+            for annotation in regions:
+                if type(annotation) is not dict:
+                    print('Error: layer had only one annotation')
+                    continue
+                annotation_number = float(annotation["@Id"])
+                vertices = annotation.get("Vertices", {}).get("Vertex", [])
                 for vertex in vertices:
                     x = float(vertex.get('@X'))
                     y = float(vertex.get('@Y'))
-                    xyout.append([annotation_id, annotation_number, x, y])
+                    xyout.append([layer_id, annotation_number, x, y])
 
     xyout_df = pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
     return reduced_annotations, xyout_df
 
 # #Example usage
 # def main():
-#
+#     xml_file= r'put your path here'
 #     reduced_annotations, annotations_df = load_annotations(xml_file)
 #
 #     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
