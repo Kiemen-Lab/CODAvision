@@ -28,7 +28,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         numclass (int): The number of classes or annotations present in the image.
 
     Returns:
-        None. The function saves the bounding box tiles and a pickle file containing annotation information.
+        Numann and ctlist
 
     """
     print(' 4. of 4. Creating bounding box tiles of all annotations')
