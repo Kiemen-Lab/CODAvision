@@ -44,7 +44,7 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             os.makedirs(annotations_dir)
 
         if os.path.exists(annotations_file):
-            print('  File already exists, updating data...')
+            print('File already exists, updating data...')
             with open(annotations_file, 'rb') as f:
                 try:
                     existing_data = pickle.load(f)
@@ -56,7 +56,7 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             with open(annotations_file, 'wb') as f:
                 pickle.dump(existing_data, f)
         else:
-            print('  Creating file...')
+            print(' Creating file...')
             with open(annotations_file, 'wb') as f:
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
 
@@ -64,16 +64,8 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
 
 
 # if __name__ == "__main__":
-    # Example usage
-
-    # Inputs
-    # annotations_file = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\data\SG_014_0016\annotations.pkl'
-    # xmlfile = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\SG_014_0016.xml'
-    # #dm = '17-Apr-2024 16:56:26'
-    # ra = None
-
-    # xyout_df, reduced_annotations = import_xml(annotations_file, xmlfile)
-    #
-    # print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
-    # print("\nAnnotations Coordinates DataFrame:")
-    # print(xyout_df)
+#     ra = None
+#
+#     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
+#     print("\nAnnotations Coordinates DataFrame:")
+#     print(xyout_df)
