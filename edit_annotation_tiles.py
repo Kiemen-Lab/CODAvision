@@ -65,7 +65,7 @@ def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, 
 
 
 # ___________________________________________
-
+#
 # Example usage
 if __name__ == "__main__":
     from load_annotation_data import load_annotation_data

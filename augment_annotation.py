@@ -4,6 +4,8 @@ Date: May 14, 2024
 """
 import numpy as np
 import cv2
+from scipy.ndimage import gaussian_filter
+
 def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, rsz=False):
     """
     Randomly augments with rotation, scaling, hue, and blur
@@ -73,13 +75,18 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         imh[:, :, 2] = 255 - (imb * bl[ibl])
 
     # Random blurring
+
     if blr:
-        # bll = np.concatenate((np.arange(1.05, 1.25, 0.05), np.ones(46))) # todo: i dont understand why were using a 2/25 chance of blurring if the user said yes
-        bll = np.arange(1.05, 1.25, 0.05)
-        ibl = np.random.permutation(len(bll))[0]
+        bll = np.ones(50)
+        bll[0] = 1.05
+        bll[1] = 1.1
+        bll[2] = 1.15
+        bll[3] = 1.2
+        ibl = np.random.randint(len(bll))
         bll = bll[ibl]
+
         if bll != 1:
-            imh = cv2.GaussianBlur(imh, (0, 0), bll)
+            imh = gaussian_filter(imh, sigma=bll)
 
     # If scaling augmentation was performed, resize images to be correct tilesize
     if rsz:
