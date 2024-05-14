@@ -65,48 +65,48 @@ def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, 
 
 
 # ___________________________________________
+# #
+# # Example usage
+# if __name__ == "__main__":
+#     from load_annotation_data import load_annotation_data
+#     import os
+#     import matplotlib.pyplot as plt
 #
-# Example usage
-if __name__ == "__main__":
-    from load_annotation_data import load_annotation_data
-    import os
-    import matplotlib.pyplot as plt
-
-    # Pre - inputs
-    pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
-    pthim_ann = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
-    classcheck = 0
-    _, numann = load_annotation_data(pthDL, pth, pthim_ann, classcheck)
-
-    pthlabel = (r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test '
-                r'model\data\SG_014_0016\04_19_2024_boundbox\label')
-    pthim = (r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test '
-             r'model\data\SG_014_0016\04_19_2024_boundbox\im')
-    imnm = '00226.tif'  #image names/idx differ from the ones in matlab, as the tiles are created in a random order
-    size_tile = 10200
-    imT = np.zeros((size_tile, size_tile), dtype=np.uint8)
-    pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-
-    # ________inputs of the function________
-    im = np.array(plt.imread(os.path.join(pthim, imnm)), dtype=np.float64)
-    # print(f'im: {os.path.join(pthim, imnm)}')
-    TA = np.array(plt.imread(os.path.join(pthlabel, imnm)), dtype=np.float64)
-    # print(f'TA: {os.path.join(pthlabel, imnm)}')
-    do_augmentation = True
-    class_id = 1
-    big_tile_size = imT.shape[0]
-    # print(f'big tile size: {big_tile_size}')
-    Shape_numann = 11
-    # print(f'Shape Numann: {Shape_numann}')
-    num_pixels_class = np.zeros(Shape_numann, dtype=np.int32)
-    # print(f'num_pixels_class: {num_pixels_class}')
-    kpall = 1
-
-    # Function
-    im, TA, kpout = edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, big_tile_size, kpall)
-    print('\nOUTPUTS:')
-    print(f'Unique TA labels (Kpout): {kpout}')
-    plt.imshow(im)
-    plt.title(imnm + ' augmented tile & edit_tile() processing')
-    plt.show()
+#     # Pre - inputs
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
+#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
+#     pthim_ann = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
+#     classcheck = 0
+#     _, numann = load_annotation_data(pthDL, pth, pthim_ann, classcheck)
+#
+#     pthlabel = (r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test '
+#                 r'model\data\SG_014_0016\04_19_2024_boundbox\label')
+#     pthim = (r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test '
+#              r'model\data\SG_014_0016\04_19_2024_boundbox\im')
+#     imnm = '00226.tif'  #image names/idx differ from the ones in matlab, as the tiles are created in a random order
+#     size_tile = 10200
+#     imT = np.zeros((size_tile, size_tile), dtype=np.uint8)
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
+#
+#     # ________inputs of the function________
+#     im = np.array(plt.imread(os.path.join(pthim, imnm)), dtype=np.float64)
+#     # print(f'im: {os.path.join(pthim, imnm)}')
+#     TA = np.array(plt.imread(os.path.join(pthlabel, imnm)), dtype=np.float64)
+#     # print(f'TA: {os.path.join(pthlabel, imnm)}')
+#     do_augmentation = True
+#     class_id = 1
+#     big_tile_size = imT.shape[0]
+#     # print(f'big tile size: {big_tile_size}')
+#     Shape_numann = 11
+#     # print(f'Shape Numann: {Shape_numann}')
+#     num_pixels_class = np.zeros(Shape_numann, dtype=np.int32)
+#     # print(f'num_pixels_class: {num_pixels_class}')
+#     kpall = 1
+#
+#     # Function
+#     im, TA, kpout = edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, big_tile_size, kpall)
+#     print('\nOUTPUTS:')
+#     print(f'Unique TA labels (Kpout): {kpout}')
+#     plt.imshow(im)
+#     plt.title(imnm + ' augmented tile & edit_tile() processing')
+#     plt.show()
