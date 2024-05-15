@@ -1,9 +1,11 @@
 """
-Author: Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: April 25, 2024
+Author: Jaime Gomez/Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: May 14, 2024
 """
 import numpy as np
 import cv2
+from scipy.ndimage import gaussian_filter
+
 def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, rsz=False):
     """
     Randomly augments with rotation, scaling, hue, and blur
@@ -34,8 +36,12 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         ii = np.random.permutation(len(angs))[0] # Get a random rotation angle from the desired value range (angs)
         height, width = imh.shape[:2]
         rotation_matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angs[ii], 1)
-        imh = cv2.warpAffine(imh, rotation_matrix, (width, height), borderValue=(0, 0, 0))
-        imlabel = cv2.warpAffine(imlabel, rotation_matrix, (width, height), borderValue=(0, 0, 0))
+        imh = cv2.warpAffine(imh, rotation_matrix, (width, height), borderValue=(0, 0, 0), flags=cv2.INTER_NEAREST)
+        imlabel = cv2.warpAffine(imlabel, rotation_matrix, (width, height), borderValue=(0, 0, 0),
+                                 flags=cv2.INTER_NEAREST)
+        # This interpolation methods introduce new labels
+        # imh = cv2.warpAffine(imh, rotation_matrix, (width, height), borderValue=(0, 0, 0))
+        # imlabel = cv2.warpAffine(imlabel, rotation_matrix, (width, height), borderValue=(0, 0, 0))
 
     # Random scaling
     if sc:
@@ -43,6 +49,9 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         ii = np.random.permutation(len(scales))[0] # Get a random scaling factor from the desired value range (scales)
         imh = cv2.resize(imh, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
         imlabel = cv2.resize(imlabel, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
+        # This interpolation methods introduce new labels
+        # imh = cv2.resize(imh, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
+        # imlabel = cv2.resize(imlabel, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
 
     # Random hue adjustment
     if hue:
@@ -66,13 +75,18 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         imh[:, :, 2] = 255 - (imb * bl[ibl])
 
     # Random blurring
+
     if blr:
-        # bll = np.concatenate((np.arange(1.05, 1.25, 0.05), np.ones(46))) # todo: i dont understand why were using a 2/25 chance of blurring if the user said yes
-        bll = np.arange(1.05, 1.25, 0.05)
-        ibl = np.random.permutation(len(bll))[0]
+        bll = np.ones(50)
+        bll[0] = 1.05
+        bll[1] = 1.1
+        bll[2] = 1.15
+        bll[3] = 1.2
+        ibl = np.random.randint(len(bll))
         bll = bll[ibl]
+
         if bll != 1:
-            imh = cv2.GaussianBlur(imh, (0, 0), bll)
+            imh = gaussian_filter(imh, sigma=bll)
 
     # If scaling augmentation was performed, resize images to be correct tilesize
     if rsz:
@@ -80,12 +94,12 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         if szh > szz:
             cent = int(np.round(szh / 2))
             sz1 = int((szz - 1) // 2)
-            sz2 = int(np.ceil((szz - 1)/2))
+            sz2 = int(np.ceil((szz - 1) / 2))
             imh = imh[cent - sz1:cent + sz2, cent - sz1:cent + sz2, :]
-            imlabel = imlabel[cent - sz1:cent + sz2+1, cent - sz1:cent + sz2+1]
+            imlabel = imlabel[cent - sz1:cent + sz2, cent - sz1:cent + sz2]
         elif szh < szz:
             tt = szz - szh
-            imh = np.pad(imh, ((0, tt), (0, tt),(0,0)), mode='constant', constant_values=0)
+            imh = np.pad(imh, ((0, tt), (0, tt), (0, 0)), mode='constant', constant_values=0)
             imlabel = np.pad(imlabel, ((0, tt), (0, tt)), mode='constant', constant_values=0)
 
     # Remove non-annotated pixels from imH
