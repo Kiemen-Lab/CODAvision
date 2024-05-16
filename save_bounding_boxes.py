@@ -83,7 +83,8 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         for anns in range(numclass):
             numann[pk-1, anns] = np.sum(tmplabel == anns+1)
 
-    ctlist = [f for f in os.listdir(pthim) if f.endswith('.tif')]
+    ctlist = ["".join([pthim, f]) for f in os.listdir(pthim) if f.endswith('.tif')]
+    print('hiii')
     bb = 1  # indicate that xml file is fully analyzed
 
     annotations_file = os.path.join(outpth, 'annotations.pkl')
