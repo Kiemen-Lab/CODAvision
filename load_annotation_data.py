@@ -52,7 +52,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     numclass = np.max(WS[2])
     imlist = [f for f in os.listdir(pth) if f.endswith('.xml')]
     numann0 = []
-    ctlist0 = []
+    ctlist0 = {'tile_name': [], 'tile_pth': []}
     outim = os.path.join(pth, 'check_annotations')
     os.makedirs(outim, exist_ok=True)
 
@@ -93,8 +93,12 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
                 data = pickle.load(f)
                 numann, ctlist = data.get('numann', []), data.get('ctlist', [])
             numann0.extend(numann)
-            ctlist0.extend(ctlist)
+            # ctlist0.extend(ctlist)
+            #ctlist0 is now a dictionary
+            ctlist0['tile_name'].extend(ctlist['tile_name'])
+            ctlist0['tile_pth'].extend(ctlist['tile_pth'])
             continue
+
 
         if os.path.isdir(outpth):
             shutil.rmtree(outpth)
@@ -135,7 +139,11 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         # create annotation bounding boxes and update data to annotation.pkl file
         numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
         numann0.extend(numann)
-        ctlist0.extend(ctlist)
+        # ctlist0.extend(ctlist)
+
+        #ctlist0 is now a dictionary
+        ctlist0['tile_name'].extend(ctlist['tile_name'])
+        ctlist0['tile_pth'].extend(ctlist['tile_pth'])
 
         print(f' Finished image in {round(time.time() - start_time)} seconds.')
     return ctlist0, numann0
