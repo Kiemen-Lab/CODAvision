@@ -32,16 +32,25 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
 
     # Random rotation
     if rot:
+
         angs = np.arange(0, 360, 5)
-        ii = np.random.permutation(len(angs))[0] # Get a random rotation angle from the desired value range (angs)
+        angle = np.random.choice(angs)  # Get a random rotation angle
         height, width = imh.shape[:2]
-        rotation_matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angs[ii], 1)
-        imh = cv2.warpAffine(imh, rotation_matrix, (width, height), borderValue=(0, 0, 0), flags=cv2.INTER_NEAREST)
-        imlabel = cv2.warpAffine(imlabel, rotation_matrix, (width, height), borderValue=(0, 0, 0),
+        rotation_matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1)
+
+        # Calculate the new bounding box after rotation
+        cos = np.abs(rotation_matrix[0, 0])
+        sin = np.abs(rotation_matrix[0, 1])
+        new_width = int(height * sin + width * cos)
+        new_height = int(height * cos + width * sin)
+
+        rotation_matrix[0, 2] += (new_width / 2) - width / 2
+        rotation_matrix[1, 2] += (new_height / 2) - height / 2
+
+        imh = cv2.warpAffine(imh, rotation_matrix, (new_width, new_height), borderValue=(0, 0, 0),
+                             flags=cv2.INTER_NEAREST)
+        imlabel = cv2.warpAffine(imlabel, rotation_matrix, (new_width, new_height), borderValue=(0, 0, 0),
                                  flags=cv2.INTER_NEAREST)
-        # This interpolation methods introduce new labels
-        # imh = cv2.warpAffine(imh, rotation_matrix, (width, height), borderValue=(0, 0, 0))
-        # imlabel = cv2.warpAffine(imlabel, rotation_matrix, (width, height), borderValue=(0, 0, 0))
 
     # Random scaling
     if sc:
@@ -49,9 +58,6 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         ii = np.random.permutation(len(scales))[0] # Get a random scaling factor from the desired value range (scales)
         imh = cv2.resize(imh, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
         imlabel = cv2.resize(imlabel, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
-        # This interpolation methods introduce new labels
-        # imh = cv2.resize(imh, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
-        # imlabel = cv2.resize(imlabel, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
 
     # Random hue adjustment
     if hue:
