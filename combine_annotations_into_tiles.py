@@ -9,6 +9,7 @@ from scipy.ndimage import distance_transform_edt
 from edit_annotation_tiles import edit_annotations_tiles
 from PIL import Image
 from scipy.ndimage import convolve
+import time
 
 
 
@@ -66,9 +67,13 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
 # Here comes the fun part, tiles are going to be added to the big black tile until the cutoff is achieved ~55%
     iteration = 1
+    # start iteration timing
+    iter_start_time = time.time()
+    print('Starting time for the while loop')
     while sf < cutoff:
-        iteration += 1
         print(f'Iteration: {iteration}')
+        print(f' How full the tile is: {sf:.2e}')
+
         # choose one of each class in order in a loop
         if count % 10 == 1:
             type_ = tcount
@@ -80,7 +85,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             tmp[type0] = np.max(tmp)
             type_ = np.argmin(tmp)
 
-        # print(f"type_: {type_}")
+        print(f" type_: {type_}")
 
         num = np.where(numann[:, type_] > 0)[0]
 
@@ -164,6 +169,13 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
         count += 1
         type0 = type_
+        iteration += 1
+
+    # End of while loop timer
+    end_time = time.time()
+    total_time_while = end_time - iter_start_time
+    print(f'Total time elapsed for the while loop: {total_time_while}')
+
 
     # cut edges off tile
     imH = imH[100:-100, 100:-100, :].astype(np.uint8)
@@ -227,8 +239,11 @@ if __name__ == '__main__':
     outpth = r'training'
 
     # Function
+    full_function_start_time = time.time()
+    print('Starting timer for the function call')
     numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, outpth, sxy)
-
+    end_fucntion_time = time.time() - full_function_start_time
+    print (f'Total time elapsed for the combine_annotations_into_tiles function: {end_fucntion_time}')
 
 
 
