@@ -72,7 +72,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     print('Starting time for the while loop')
     while sf < cutoff:
         print(f'Iteration: {iteration}')
-        print(f' How full the tile is: {sf:.2e}')
+        print(f' Bigtile occupancy rate: {(sf:.2e)*100} %')
 
         # choose one of each class in order in a loop
         if count % 10 == 1:
@@ -109,7 +109,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         numann[num, kp - 1] = 0  # kp-1 due to layer index starting in 1 and python index starting in 0
         percann[num, kp - 1, 0] += 1
         percann[num, kp - 1, 1] = 2
-        fx = (TA != 0)
+        fx = (TA != 0) #linear idx of tissue pixels in the mask bb
         if np.sum(fx) < 30:
             print('skipped')
             continue
@@ -138,6 +138,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         szzA = tuple(map(int, szzA))
         szzB = tuple(map(int, szzB))
 
+        #x,y - Location in the big tile to add the BB to
         if x + szzA[0] > imT.shape[1]:
             x -= szzA[0]
         if y + szzA[1] > imT.shape[0]:
@@ -147,12 +148,12 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         if y - szzB[1] < 0:
             y += szzB[1]
 
-        tmpT = imT[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1].copy()
+        tmpT = imT[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1].copy() #imT is the bigtile mask
         tmpT[fx] = TA[fx]
         tmpH = imH[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1, :].copy()
         tmpH[np.dstack((fx, fx, fx))] = im[np.dstack((fx, fx, fx))]
         imT[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1] = tmpT
-        imH[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1, :] = tmpH
+        imH[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1, :] = tmpH #imH is the bigtile HE
 
         # Update total count
         if count % 2 == 0:
@@ -243,7 +244,9 @@ if __name__ == '__main__':
     print('Starting timer for the function call')
     numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, outpth, sxy)
     end_fucntion_time = time.time() - full_function_start_time
-    print (f'Total time elapsed for the combine_annotations_into_tiles function: {end_fucntion_time}')
+    hours, re, = divmod(end_fucntion_time, 3600)
+    minutes, seconds = divmod(re, 60)
+    print(f'Function call took {hours}h {minutes}m {seconds}s')
 
 
 

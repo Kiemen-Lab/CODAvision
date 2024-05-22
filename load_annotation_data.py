@@ -25,7 +25,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
       pthDL (str): The file path to save the model data.
       pth (str): The file path to the annotations.
       pthim (str): The file path to the tif images of the desired resolution.
-      classcheck (float, optional): Used in validate_annotations. #todo: check its purpose once this is coded
+      classcheck (float, optional): Used in validate_annotations.
 
       Returns:
       ctlist0 (list): List containing the bounding boxes filenames and the path to them.
@@ -70,7 +70,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     for idx, imnm in enumerate(imlist, start=1):
         print(f'Image {idx} of {len(imlist)}: {imnm[:-4]}')
         imnm = imnm[:-4]
-        outpth = os.path.join(pth, 'data', imnm)
+        outpth = os.path.join(pth, 'data py', imnm)
         annotations_file = os.path.join(outpth, 'annotations.pkl')
 
         # check if model parameters have changed

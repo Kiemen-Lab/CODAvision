@@ -126,7 +126,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
     # numclass = max(WS[3])
     # print(f'numclass: {numclass}')
     # pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-    # outpth = os.path.join(pth, 'data', imnm, '')
+    # outpth = os.path.join(pth, 'data py', imnm, '')
     # print(f'outpth: {outpth}')
     #
     # # Function
