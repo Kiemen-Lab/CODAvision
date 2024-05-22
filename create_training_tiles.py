@@ -14,7 +14,7 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     """
     Builds training and validation tiles using the annotation bounding boxes and saves them to the model name folder
 
-    Args:
+    Inputs:
         pthDL (str): Path to the main data directory.
         numann0 (numpy.ndarray): Array containing annotations.
         ctlist0 (list): List of image paths.
