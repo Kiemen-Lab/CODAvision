@@ -7,8 +7,10 @@ import os
 import numpy as np
 from scipy.ndimage import distance_transform_edt
 from edit_annotation_tiles import edit_annotations_tiles
-from PIL import Image
+# from PIL import Image
+# import tifffile as tiff
 from scipy.ndimage import convolve
+from skimage import io
 import time
 
 
@@ -72,7 +74,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     print('Starting time for the while loop')
     while sf < cutoff:
         print(f'Iteration: {iteration}')
-        print(f' Bigtile occupancy rate: {(sf:.2e)*100} %')
+        print(f' Bigtile occupancy rate: {sf*100:.2e} %')
 
         # choose one of each class in order in a loop
         if count % 10 == 1:
@@ -101,8 +103,11 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         pf = tile_path.rfind('\\', 0, tile_path.rfind('\\'))
         pthlabel = os.path.join(tile_path[0:pf], 'label')
 
-        im = np.array(Image.open(tile_path))
-        TA = np.array(Image.open(os.path.join(pthlabel, tile_name)))
+        # im = np.array(Image.open(tile_path))
+        # TA = np.array(Image.open(os.path.join(pthlabel, tile_name)))
+        im = io.imread(tile_path)
+        TA = io.imread(os.path.join(pthlabel, tile_name))
+
 
         doaug = (count % 3 == 1)
         im, TA, kp = edit_annotations_tiles(im, TA, doaug, type_, ct, imT.shape[0], kpall)
@@ -195,16 +200,22 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             except ValueError:
                 continue
 
-            Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.tif"))
-            Image.fromarray(imTtmp).save(os.path.join(outpthlabel, f"{nm0}.tif"))
+            # Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.tif"))
+            # Image.fromarray(imTtmp).save(os.path.join(outpthlabel, f"{nm0}.tif"))
+            io.imsave(os.path.join(outpthim, f"{nm0}.tif"), imHtmp)
+            io.imsave(os.path.join(outpthlabel, f"{nm0}.tif"), imTtmp)
+
+
             nm0 += 1
 
     nm1 = len([f for f in os.listdir(outpthbg) if f.startswith('HE')]) + 1
 
     # save large tiles
     print('Saving big tiles')
-    Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
-    Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
+    # Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
+    # Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
+    io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
+    io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
 
     return numann, percann
 
