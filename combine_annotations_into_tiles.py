@@ -7,8 +7,8 @@ import os
 import numpy as np
 from scipy.ndimage import distance_transform_edt
 from edit_annotation_tiles import edit_annotations_tiles
-# from PIL import Image
-# import tifffile as tiff
+from PIL import Image
+import tifffile as tiff
 from scipy.ndimage import convolve
 from skimage import io
 import time
@@ -99,14 +99,19 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
         # chosen random tile to be processed
         tile_name = imlist['tile_name'][num[0]]
+        #debugging mode, chosing specif tile:
+        # tile_name = '00004.tif' #--> 00276.tif in matlab
+
         tile_path = os.path.join(imlist['tile_pth'][num[0]], tile_name)
         pf = tile_path.rfind('\\', 0, tile_path.rfind('\\'))
         pthlabel = os.path.join(tile_path[0:pf], 'label')
 
         # im = np.array(Image.open(tile_path))
         # TA = np.array(Image.open(os.path.join(pthlabel, tile_name)))
-        im = io.imread(tile_path)
-        TA = io.imread(os.path.join(pthlabel, tile_name))
+        # im = io.imread(tile_path)
+        # TA = io.imread(os.path.join(pthlabel, tile_name))
+        im = tiff.imread(tile_path)
+        TA = tiff.imread(os.path.join(pthlabel, tile_name))
 
 
         doaug = (count % 3 == 1)
@@ -124,10 +129,10 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         tmp2 = tmp[::rsf, ::rsf]
         tmp2 = convolve(tmp2.astype(float), h, mode='constant', cval=0.0)
         tmp = distance_transform_edt(tmp2 == 0)
-        tmp[:19, :] = 0
-        tmp[-20:, :] = 0
-        tmp[:, :19] = 0
-        tmp[:, -20:] = 0
+        tmp[:20, :] = 0   # Sets the first 20 rows to 0
+        tmp[:, :20] = 0   # Sets the first 20 columns to 0
+        tmp[-20:, :] = 0  # Sets the last 20 rows to 0
+        tmp[:, -20:] = 0  # Sets the last 20 columns to 0
         xii = np.argmax(tmp)
         xii = np.random.choice(xii, size=1, replace=False)
         x, y = np.unravel_index(xii, tmp.shape)
@@ -136,6 +141,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         y = int(y * rsf)
 
         szz = np.array(TA.shape) - 1
+        # szz = np.array(TA.shape)
         szzA = szz // 2
         szzB = szz - szzA
 
@@ -148,17 +154,45 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             x -= szzA[0]
         if y + szzA[1] > imT.shape[0]:
             y -= szzA[1]
-        if x - szzB[0] < 0:
+        if x - szzB[0] < 0: #less than 0 cause indxing starts at 0 not 1 as in MATLAB
             x += szzB[0]
         if y - szzB[1] < 0:
             y += szzB[1]
 
-        tmpT = imT[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1].copy() #imT is the bigtile mask
+        #_______________________quick fix -- CHECK THIS!!! we should not need to be doing this_____________________.
+
+        x_tmp = len(range(x - szzB[0],x + szzA[0] + 1))
+        y_tmp = len(range(y - szzB[1],y + szzA[1] + 1))
+
+        #initialize len_x and len_y
+        len_x, len_y = 0, 0
+
+        # Check if the dimension between TA and tmpT match, if not adjust lenght
+        if x_tmp != TA.shape[0]:
+            len_x = TA.shape[0] - x_tmp
+        if y_tmp != TA.shape[1]:
+            len_y = TA.shape[1] - y_tmp
+
+        # Create tmpT with adjusted dimensions
+        tmpT = imT[x - szzB[0]:x + szzA[0] + 1 + len_x, y - szzB[1]:y + szzA[1] + 1 + len_y].copy()
+
+        # _______________________end of quick fix_____________________.
+        #original line: tmpT = imT[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1].copy()
+
+
         tmpT[fx] = TA[fx]
         tmpH = imH[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1, :].copy()
+        tmpH = imH[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1, :].copy()
+        # tmpH = imH[x - szzB[0]:x + szzA[0] , y - szzB[1]:y + szzA[1] , :].copy()
+        # tmpH = imH[x - szzB[0]:x + szzA[0] , y - szzB[1]:y + szzA[1] , :].copy()
+
+
         tmpH[np.dstack((fx, fx, fx))] = im[np.dstack((fx, fx, fx))]
-        imT[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1] = tmpT
+
+        imT[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1] = tmpT #imT is the bigtile mask
         imH[x - szzB[0]:x + szzA[0] + 1, y - szzB[1]:y + szzA[1] + 1, :] = tmpH #imH is the bigtile HE
+        # imT[x - szzB[0]:x + szzA[0] , y - szzB[1]:y + szzA[1] ] = tmpT
+        # imH[x - szzB[0]:x + szzA[0] , y - szzB[1]:y + szzA[1] , :] = tmpH  # imH is the bigtile HE
 
         # Update total count
         if count % 2 == 0:
@@ -185,7 +219,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
     # cut edges off tile
     imH = imH[100:-100, 100:-100, :].astype(np.uint8)
-    imT = imT[100:-100, 100:-100].astype(np.uint8)
+    imT = imT[100:-100, 100:-100, :].astype(np.uint8)
     for p in range(nblack - 1):  # the '-1' has to do with python indxing
         ct[p] = np.sum(imT == p)
     imT[imT == 0] = nblack
@@ -196,14 +230,16 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         for s2 in range(0, sz[1], sxy):
             try:
                 imHtmp = imH[s1:s1 + sxy, s2:s2 + sxy, :]
-                imTtmp = imT[s1:s1 + sxy, s2:s2 + sxy]
+                imTtmp = imT[s1:s1 + sxy, s2:s2 + sxy, :]
             except ValueError:
                 continue
 
             # Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.tif"))
             # Image.fromarray(imTtmp).save(os.path.join(outpthlabel, f"{nm0}.tif"))
-            io.imsave(os.path.join(outpthim, f"{nm0}.tif"), imHtmp)
-            io.imsave(os.path.join(outpthlabel, f"{nm0}.tif"), imTtmp)
+            # io.imsave(os.path.join(outpthim, f"{nm0}.tif"), imHtmp)
+            # io.imsave(os.path.join(outpthlabel, f"{nm0}.tif"), imTtmp)
+            tiff.imsave(os.path.join(outpthim, f"{nm0}.tif"), imHtmp)
+            tiff.imsave(os.path.join(outpthlabel, f"{nm0}.tif"), imTtmp)
 
 
             nm0 += 1
@@ -212,53 +248,53 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
     # save large tiles
     print('Saving big tiles')
-    # Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
-    # Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
-    io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
-    io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
+    Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
+    Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
+    # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
+    # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
 
     return numann, percann
 
-# Example usage
-
-if __name__ == '__main__':
-
-    # Pre - inputs
-    pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
-    pthim_ann = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
-    classcheck = 0
-    datafile = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024\net.pkl'
-
-    # Inputs
-    import pickle
-    from load_annotation_data import load_annotation_data
-
-    with open(datafile, 'rb') as f:
-        data = pickle.load(f)
-    nblack = data['nblack']
-    sxy = data['sxy']
-    ctlist0, numann0 = load_annotation_data(pthDL, pth, pthim_ann, classcheck)
-    numann0 = np.array(numann0)  # Convert numann0 to a NumPy array
-
-    numann = numann0.copy()
-    percann = np.double(numann0 > 0)
-    percann = np.dstack((percann, percann))
-    percann0 = percann.copy()
-    stile = None
-    nbg = None
-
-    outpth = r'training'
-
-    # Function
-    full_function_start_time = time.time()
-    print('Starting timer for the function call')
-    numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, outpth, sxy)
-    end_fucntion_time = time.time() - full_function_start_time
-    hours, re, = divmod(end_fucntion_time, 3600)
-    minutes, seconds = divmod(re, 60)
-    print(f'Function call took {hours}h {minutes}m {seconds}s')
-
-
-
-
+# # Example usage
+#
+# if __name__ == '__main__':
+#
+#     # Pre - inputs
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
+#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
+#     pthim_ann = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
+#     classcheck = 0
+#     datafile = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024\net.pkl'
+#
+#     # Inputs
+#     import pickle
+#     from load_annotation_data import load_annotation_data
+#
+#     with open(datafile, 'rb') as f:
+#         data = pickle.load(f)
+#     nblack = data['nblack']
+#     sxy = data['sxy']
+#     ctlist0, numann0 = load_annotation_data(pthDL, pth, pthim_ann, classcheck)
+#     numann0 = np.array(numann0)  # Convert numann0 to a NumPy array
+#
+#     numann = numann0.copy()
+#     percann = np.double(numann0 > 0)
+#     percann = np.dstack((percann, percann))
+#     percann0 = percann.copy()
+#     stile = None
+#     nbg = None
+#
+#     outpth = r'training'
+#
+#     # Function
+#     full_function_start_time = time.time()
+#     print('Starting timer for the function call')
+#     numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, outpth, sxy)
+#     end_fucntion_time = time.time() - full_function_start_time
+#     hours, re, = divmod(end_fucntion_time, 3600)
+#     minutes, seconds = divmod(re, 60)
+#     print(f'Function call took {hours}h {minutes}m {seconds}s')
+#
+#
+#
+#
