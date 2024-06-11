@@ -7,11 +7,17 @@ Date: June 11, 2024
 from tensorflow import image as tf_image
 from tensorflow import io as tf_io
 import numpy as np
+import tensorflow as tf
 
 
-def read_image(image_path, image_size, mask=False):
+def read_image(image_input, image_size, mask=False):
     try:
-        image = tf_io.read_file(image_path)
+        if isinstance(image_input, str):
+            # If input is a file path
+            image = tf_io.read_file(image_input)
+        else:
+            # If input is an image array
+            image = tf.convert_to_tensor(image_input)  ## check this!!!
         if mask:
             image = tf_image.decode_png(image, channels=1)
             image.set_shape([None, None, 1])
@@ -22,7 +28,7 @@ def read_image(image_path, image_size, mask=False):
             image = tf_image.resize(images=image, size=[image_size, image_size])
         return image
     except Exception as e:
-        print(f"Error reading image {image_path}: {e}")
+        print(f"Error reading image {image_input}: {e}")
         return None
 
 def infer(model, image_tensor):
