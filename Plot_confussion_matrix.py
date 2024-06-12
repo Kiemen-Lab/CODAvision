@@ -39,19 +39,19 @@ def plot_confusion_matrix(test_images_path, test_masks_path, classNames, image_s
     # Calculate confusion matrix
     cm = confusion_matrix(y_true, y_pred, labels=range(len(classNames)))
 
-    # Calculate precission, recall and overall accuracy
-    precision = []
-    recall = []
-    total_correct = np.sum(np.diag(cm))  # Calculate total correct predictions
-    total_elements = np.sum(cm)  # Calculate total elements in the matrix (all predictions)
-    overall_accuracy = total_correct / total_elements
-
-    for i in range(len(classNames)):
-        tp = cm[i, i]
-        fp = cm[:, i].sum() - cm[i, i]
-        fn = cm[i, :].sum() - cm[i, i]
-        precision.append(tp / (tp + fp))
-        recall.append(tp / (tp + fn))
+    # # Calculate precission, recall and overall accuracy
+    # precision = []
+    # recall = []
+    # total_correct = np.sum(np.diag(cm))  # Calculate total correct predictions
+    # total_elements = np.sum(cm)  # Calculate total elements in the matrix (all predictions)
+    # overall_accuracy = total_correct / total_elements
+    #
+    # for i in range(len(classNames)):
+    #     tp = cm[i, i]
+    #     fp = cm[:, i].sum() - cm[i, i]
+    #     fn = cm[i, :].sum() - cm[i, i]
+    #     precision.append(tp / (tp + fp))
+    #     recall.append(tp / (tp + fn))
 
 
     #  Plot confusion matrix
