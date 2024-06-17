@@ -12,20 +12,21 @@ import tensorflow as tf
 
 def read_image(image_input, image_size, mask=False):
     try:
-        if isinstance(image_input, str):
-            # If input is a file path
-            image = tf_io.read_file(image_input)
-        else:
+        if isinstance(image_input, np.ndarray):
             # If input is an image array
-            image = tf.convert_to_tensor(image_input)  ## check this!!!
-        if mask:
-            image = tf_image.decode_png(image, channels=1)
-            image.set_shape([None, None, 1])
-            image = tf_image.resize(images=image, size=[image_size, image_size])
+            image = tf.convert_to_tensor(image_input)
+            image = tf.image.resize(image, [image_size, image_size])
         else:
-            image = tf_image.decode_png(image, channels=3)
-            image.set_shape([None, None, 3])
-            image = tf_image.resize(images=image, size=[image_size, image_size])
+            # If input is a file path
+            image = tf.io.read_file(image_input)
+            if mask:
+                image = tf.image.decode_png(image, channels=1)
+                image.set_shape([None, None, 1])
+                image = tf.image.resize(images=image, size=[image_size, image_size])
+            else:
+                image = tf.image.decode_png(image, channels=3)
+                image.set_shape([None, None, 3])
+                image = tf.image.resize(images=image, size=[image_size, image_size])
         return image
     except Exception as e:
         print(f"Error reading image {image_input}: {e}")
