@@ -58,6 +58,9 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         ii = np.random.permutation(len(scales))[0] # Get a random scaling factor from the desired value range (scales)
         imh = cv2.resize(imh, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
         imlabel = cv2.resize(imlabel, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
+        # This interpolation methods introduce new labels
+        # imh = cv2.resize(imh, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
+        # imlabel = cv2.resize(imlabel, None, fx=scales[ii], fy=scales[ii], interpolation=cv2.INTER_NEAREST)
 
     # Random hue adjustment
     if hue:
