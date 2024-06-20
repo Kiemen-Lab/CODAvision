@@ -109,7 +109,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
 #Example usage
 # if __name__ == "__main__":
 #     import calculate_tissue_mask
-#     outpth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\data\84 - 2024-02-26 10.33.40'
+#     outpth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\data py\84 - 2024-02-26 10.33.40'
 #     umpix=2
 #     imnm = '84 - 2024-02-26 10.33.40'
 #     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\5x'

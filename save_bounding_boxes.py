@@ -83,7 +83,13 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         for anns in range(numclass):
             numann[pk-1, anns] = np.sum(tmplabel == anns+1)
 
-    ctlist = [f for f in os.listdir(pthim) if f.endswith('.tif')]
+    # ctlist = [f for f in os.listdir(pthim) if f.endswith('.tif')]
+
+    ctlist = {
+        'tile_name': [f for f in os.listdir(pthim) if f.endswith('.tif')],
+        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in os.listdir(pthim) if f.endswith('.tif')]
+    }
+
     bb = 1  # indicate that xml file is fully analyzed
 
     annotations_file = os.path.join(outpth, 'annotations.pkl')
@@ -120,7 +126,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
     # numclass = max(WS[3])
     # print(f'numclass: {numclass}')
     # pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-    # outpth = os.path.join(pth, 'data', imnm, '')
+    # outpth = os.path.join(pth, 'data py', imnm, '')
     # print(f'outpth: {outpth}')
     #
     # # Function

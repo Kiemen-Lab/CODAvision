@@ -25,7 +25,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
       pthDL (str): The file path to save the model data.
       pth (str): The file path to the annotations.
       pthim (str): The file path to the tif images of the desired resolution.
-      classcheck (float, optional): Used in validate_annotations. #todo: check its purpose once this is coded
+      classcheck (float, optional): Used in validate_annotations.
 
       Returns:
       ctlist0 (list): List containing the bounding boxes filenames and the path to them.
@@ -52,7 +52,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     numclass = np.max(WS[2])
     imlist = [f for f in os.listdir(pth) if f.endswith('.xml')]
     numann0 = []
-    ctlist0 = []
+    ctlist0 = {'tile_name': [], 'tile_pth': []}
     outim = os.path.join(pth, 'check_annotations')
     os.makedirs(outim, exist_ok=True)
 
@@ -70,7 +70,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     for idx, imnm in enumerate(imlist, start=1):
         print(f'Image {idx} of {len(imlist)}: {imnm[:-4]}')
         imnm = imnm[:-4]
-        outpth = os.path.join(pth, 'data', imnm)
+        outpth = os.path.join(pth, 'data py', imnm)
         annotations_file = os.path.join(outpth, 'annotations.pkl')
 
         # check if model parameters have changed
@@ -93,8 +93,12 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
                 data = pickle.load(f)
                 numann, ctlist = data.get('numann', []), data.get('ctlist', [])
             numann0.extend(numann)
-            ctlist0.extend(ctlist)
+            # ctlist0.extend(ctlist)
+            #ctlist0 is now a dictionary
+            ctlist0['tile_name'].extend(ctlist['tile_name'])
+            ctlist0['tile_pth'].extend(ctlist['tile_pth'])
             continue
+
 
         if os.path.isdir(outpth):
             shutil.rmtree(outpth)
@@ -135,18 +139,22 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         # create annotation bounding boxes and update data to annotation.pkl file
         numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
         numann0.extend(numann)
-        ctlist0.extend(ctlist)
+        # ctlist0.extend(ctlist)
+
+        #ctlist0 is now a dictionary
+        ctlist0['tile_name'].extend(ctlist['tile_name'])
+        ctlist0['tile_pth'].extend(ctlist['tile_pth'])
 
         print(f' Finished image in {round(time.time() - start_time)} seconds.')
     return ctlist0, numann0
 
-if __name__ == "__main__":
-    # Example usage
-
-    # Inputs
-    pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime'
-    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\04_19_2024'
-    pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\5x'
-    classcheck = 0
-
-    load_annotation_data(pthDL, pth, pthim,classcheck)
+# if __name__ == "__main__":
+#     # Example usage
+#
+#     # Inputs
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime'
+#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\04_19_2024'
+#     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\5x'
+#     classcheck = 0
+#
+#     load_annotation_data(pthDL, pth, pthim,classcheck)
