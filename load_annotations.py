@@ -1,6 +1,10 @@
 import xmltodict
 import pandas as pd
 
+"""
+Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: May 05, 2024
+"""
 
 def load_annotations(xml_file):
     """
@@ -28,21 +32,15 @@ def load_annotations(xml_file):
     annotations = my_dict.get("Annotations", {}).get("Annotation", [])
 
     for layer in annotations:
-
-        if 'Region' in layer.get("Regions", {}):  #checks weather there are annotations in the layer
-            layer_id = float(layer.get('@Id'))
+        if 'Region' in layer.get("Regions", {}):  # checks weather there are annotations in the layer
+            layer_id = int(layer.get('@Id'))
             regions = layer["Regions"]["Region"]
-            if type(regions) == list:
-                for annotation in regions:
-                    annotation_number = float(annotation.get('@Id'))
-                    vertices = annotation.get("Vertices", {}).get("Vertex", [])
-                    for vertex in vertices:
-                        x = float(vertex.get('@X'))
-                        y = float(vertex.get('@Y'))
-                        xyout.append([layer_id, annotation_number, x, y])
-            elif type(regions) == dict:
-                annotation_number = float(regions.get('@Id'))
-                vertices = regions.get("Vertices", {}).get("Vertex", [])
+            for annotation in regions:
+                if type(annotation) is not dict:
+                    print('Error: layer had only one annotation')
+                    continue
+                annotation_number = float(annotation["@Id"])
+                vertices = annotation.get("Vertices", {}).get("Vertex", [])
                 for vertex in vertices:
                     x = float(vertex.get('@X'))
                     y = float(vertex.get('@Y'))
@@ -51,16 +49,15 @@ def load_annotations(xml_file):
     xyout_df = pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
     return reduced_annotations, xyout_df
 
-#Example usage
-def main():
-    xml_file = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\SG_013_0061.xml'
-
-    reduced_annotations, annotations_df = load_annotations(xml_file)
-
-    print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
-    print("\nAnnotations DataFrame:")
-    # print(annotations_df.head())
-    print(annotations_df)
-
-if __name__ == "__main__":
-    main()
+# #Example usage
+# def main():
+#     xml_file= r'put your path here'
+#     reduced_annotations, annotations_df = load_annotations(xml_file)
+#
+#     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
+#     print("\nAnnotations DataFrame:")
+#     # print(annotations_df.head())
+#     print(annotations_df)
+#
+# if __name__ == "__main__":
+#     main()

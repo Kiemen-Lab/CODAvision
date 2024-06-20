@@ -7,7 +7,6 @@ import os
 import matplotlib.pyplot as plt
 import plot_cmap_legend
 import pickle
-import numpy as np
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
     """
@@ -58,7 +57,7 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
                 ncombine = [n - 1 if n > oldnum else n for n in ncombine]
                 nload = [n for n in nload if n != b]
 
-                if len(classNames) == max(WS[2]):
+                if len(classNames) + 1 == max(WS[2]):
                     zz = [i for i in range(len(classNames)) if i + 1 not in [b, oldnum]]
                     classNames = [classNames[i] for i in zz]
                     cmap = cmap[zz]
@@ -116,15 +115,13 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
 
     # plot color legend
     plot_cmap_legend.plot_cmap_legend(cmap, classNames)
-    plt.savefig(os.path.join(pthDL, 'model_color_legend.png'), bbox_inches='tight')
-    plt.show()
-    # plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
+    plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
 
-# Example usage
+# # Example usage
 # if __name__ == "__main__":
 #     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\variables'
 #     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Test Dashboard\5x'
-#     WS = [[0, 0, 0, 0, 0, 2, 0], [6, 6], [1, 2, 3, 4, 5, 6, 2], [7, 2, 4, 5, 3, 1, 6],[]]
+#     WS = [[0, 0, 0, 0, 0, 2, 0], [6, 6], [1, 2, 3, 4, 5, 6, 3], [7, 2, 4, 3, 1, 6], 4]
 #     nm = '04_03_2024'
 #     umpix = 2
 #     cmap = np.array([[0, 255, 0],
@@ -137,4 +134,5 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
 #     classNames = ["bronchioles", "alveoli", "smooth_operator", "mets", "test", "whitespace", "black"]
 #     ntrain = 15
 #     nvalidate = 3
+#
 #     save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
