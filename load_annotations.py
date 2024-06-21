@@ -55,14 +55,14 @@ def load_annotations(xml_file):
     return reduced_annotations, xyout_df
 
 # #Example usage
-def main():
-     xml_file= r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\SG_013_0061.xml'
-     reduced_annotations, annotations_df = load_annotations(xml_file)
+# def main():
+#     xml_file= r'put your path here'
+#     reduced_annotations, annotations_df = load_annotations(xml_file)
 #
-     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
-     print("\nAnnotations DataFrame:")
-    # print(annotations_df.head())
-     print(annotations_df)
+#     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
+#     print("\nAnnotations DataFrame:")
+#     # print(annotations_df.head())
+#     print(annotations_df)
 #
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
