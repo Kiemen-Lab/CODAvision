@@ -148,13 +148,12 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         print(f' Finished image in {round(time.time() - start_time)} seconds.')
     return ctlist0, numann0
 
-# if __name__ == "__main__":
-#     # Example usage
-#
-#     # Inputs
-#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime'
-#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\04_19_2024'
-#     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\5x'
-#     classcheck = 0
-#
-#     load_annotation_data(pthDL, pth, pthim,classcheck)
+if __name__ == "__main__":
+     # Example usage
+     # Inputs
+     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime'
+     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\04_19_2024'
+     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\5x'
+     classcheck = 0
+
+     load_annotation_data(pthDL, pth, pthim,classcheck)
