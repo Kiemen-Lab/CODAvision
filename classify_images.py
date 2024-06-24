@@ -75,15 +75,14 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
             TA = binary_fill_holes(TA.astype(bool))
 
         # Pad image so we classify all the way to the edge
-        im_array = np.pad(im_array, ((sxy + b, sxy + b), (sxy + b, sxy + b), (0, 0)), mode='constant',
-                          constant_values=0)
-        TA = np.pad(TA, ((sxy + b, sxy + b), (sxy + b, sxy + b)), mode='constant', constant_values=True)
+        # im_array = np.pad(im_array, pad_width=((sxy + b, sxy + b), (sxy + b, sxy + b), (0, 0)), mode='constant',
+        #                   constant_values=0)
+        # TA = np.pad(TA, pad_width=((sxy+b, sxy+b), (sxy+b, sxy+b)), mode='constant', constant_values=1)
 
         imclassify = np.zeros(TA.shape, dtype=np.uint8)
         sz = np.array(im).shape
 
         # Calculate the total number of tiles
-        total_tiles = 0
         padded_height, padded_width, _ = np.array(im).shape  # Get the padded image dimensions
         tile_rows = (padded_height - sxy) // (sxy - b * 2) + 1
         tile_cols = (padded_width - sxy) // (sxy - b * 2) + 1
@@ -93,15 +92,15 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         for s1 in range(0, sz[0] - sxy, sxy - b * 2):
             for s2 in range(0, sz[1] - sxy, sxy - b * 2):
 
-                print(f'   Tile: {count} of {total_tiles}')
-
                 tileHE = im_array[s1:s1 + sxy, s2:s2 + sxy, :]
-                tileHE_image = Image.fromarray(tileHE)
-                save_path_HE = os.path.join(save_dirHE,
-                                            f'{img_name}_tileHE_{count}.png')  # You can change the filename as needed
-                tileHE_image.save(save_path_HE)
+                # tileHE_image = Image.fromarray(tileHE)
+                # save_path_HE = os.path.join(save_dirHE, f'{img_name}_tileHE_{count}.png')  # You can change the filename as needed
+                # tileHE_image.save(save_path_HE)
 
                 tileTA = TA[s1:s1 + sxy, s2:s2 + sxy]
+
+                print(f'   Tile: {count} of {total_tiles} at ({s1}, {s2}), size: {tileHE.shape}')
+
 
                 if np.sum(tileTA) < 100:
                     tileclassify = np.zeros(TA.shape)
@@ -112,9 +111,9 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
 
                 # Convert to uint8 before saving
                 tileclassify_uint8 = (tileclassify * 10).astype(np.uint8)
-                tilemask_image = Image.fromarray(tileclassify_uint8)
-                save_path_mask = os.path.join(save_dirmask, f'{img_name}_tilemask_{count}.png')
-                tilemask_image.save(save_path_mask)
+                # tilemask_image = Image.fromarray(tileclassify_uint8)
+                # save_path_mask = os.path.join(save_dirmask, f'{img_name}_tilemask_{count}.png')
+                # tilemask_image.save(save_path_mask)
 
                 imclassify[s1 + b:s1 + sxy - b, s2 + b:s2 + sxy - b] = tileclassify
                 count += 1
@@ -135,7 +134,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         # Make color image overlay on H&E
         if color_overlay_HE:
             save_path = os.path.join(outpth, 'check_classification')
-            _ = make_overlay(img_path, imclassify, image_size=sxy, colormap=cmap, save_path=save_path)
+            _ = make_overlay(img_path, imclassify, colormap=cmap, save_path=save_path)
 
         if color_mask:
             outpthcolor = os.path.join(outpth, 'color')
@@ -182,4 +181,4 @@ if __name__ == '__main__':
     color_overlay_HE = False  # set to true in the real code
     color_mask = False
 
-    _ = classify_images(pthim, pthDL, color_overlay_HE=False, color_mask=False)
+    _ = classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False)

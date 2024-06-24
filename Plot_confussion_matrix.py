@@ -1,86 +1,81 @@
-import tensorflow as tf
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-import matplotlib.pyplot as plt
 import numpy as np
-from Semanticseg import read_image, semantic_seg
-
-def plot_confusion_matrix(test_images_path, test_masks_path, classNames, image_size, model):
-    """
-    Plot the confusion matrix for the semantic segmentation model.
-
-    Inputs:
-    - test_images_path (list of str): Paths to the test image files.
-    - test_masks_path (list of str): Paths to the ground truth mask files.
-    - class_names (list of str): List of class names.
-    - image_size (int): Size to which the input images should be resized, it should be the same as the training tile size
-    - model (tf.keras.Model): Pre-trained TensorFlow/Keras model for semantic segmentation.
-
-    Outputs:
-    - Confusion matrix for the semantic segmentation model
-
-    """
-    y_true = []
-    y_pred = []
-
-    # Read images and masks, perform segmentation, and collect predictions and true labels
-    for img_path, mask_path in zip(test_images_path, test_masks_path):
-        image_tensor = read_image(img_path, image_size)
-        mask_tensor = read_image(mask_path, image_size, mask=True)
-
-        if image_tensor is not None and mask_tensor is not None:
-            pred_mask = semantic_seg(img_path, image_size, model)
-            true_mask = tf.squeeze(mask_tensor).numpy().astype(int)
-
-            y_true.extend(true_mask.flatten())
-            y_pred.extend(pred_mask.flatten())
-        else:
-            print(f"Error processing image or mask at {img_path} or {mask_path}")
-
-    # Calculate confusion matrix
-    cm = confusion_matrix(y_true, y_pred, labels=range(len(classNames)))
-
-    # # Calculate precission, recall and overall accuracy
-    # precision = []
-    # recall = []
-    # total_correct = np.sum(np.diag(cm))  # Calculate total correct predictions
-    # total_elements = np.sum(cm)  # Calculate total elements in the matrix (all predictions)
-    # overall_accuracy = total_correct / total_elements
-    #
-    # for i in range(len(classNames)):
-    #     tp = cm[i, i]
-    #     fp = cm[:, i].sum() - cm[i, i]
-    #     fn = cm[i, :].sum() - cm[i, i]
-    #     precision.append(tp / (tp + fp))
-    #     recall.append(tp / (tp + fn))
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.patches import Rectangle
 
 
-    #  Plot confusion matrix
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classNames)
-    disp.plot(include_values=True, cmap='viridis', ax=None, xticks_rotation='vertical')
+def plot_confusion_matrix(confusion_data, classNames, pthDL):
+    # Ensure confusion_data is a numpy array
+    confusion_data = np.array(confusion_data)
 
-    # # Add precission and recall
-    # plt.xticks(np.arange(len(classNames)) + 0.5, classNames, rotation=45,
-    #            ha='right')  # Adjust x-axis for additional columns
-    # plt.sca(disp.ax_)  # Add columns to existing axis
-    # plt.barh(classNames, precision, color='skyblue', label='Precision')
-    # plt.barh(classNames, recall, color='coral', label='Recall')
-    # plt.legend(loc='upper left')
-    #
-    # # Add overall accuracy text at bottom right corner
-    # plt.text(len(cm) + 0.2, 0.05, f"Overall Accuracy: {overall_accuracy:.2f}",
-    #          ha='right', va='bottom', fontsize=12, bbox=dict(boxstyle='round', facecolor='white', edgecolor='0.3'))
+    # Calculate precision, recall, and accuracy
+    precision = np.diag(confusion_data) / np.sum(confusion_data, axis=0)
+    recall = np.diag(confusion_data) / np.sum(confusion_data, axis=1)
+    accuracy = np.sum(np.diag(confusion_data)) / np.sum(confusion_data)
 
-    plt.title('Confusion Matrix')
-    plt.xlabel('Predicted')
-    plt.ylabel('Ground Truth')
+    # Round to one decimal place
+    precision = np.round(precision * 100, 1)
+    recall = np.round(recall * 100, 1)
+    accuracy = np.round(accuracy * 100, 1)
+
+    # Custom colormap for precision and recall
+    colors = [(1, 0.8, 0.8), (1, 1, 0.8), (0.8, 1, 0.8)]  # Light Red -> Light Yellow -> Light Green
+    positions = [0, 0.6, 1]  # Positions for 0%, 60%, 100%
+    n_bins = 100  # Discretize the interpolation into bins
+    cmap_name = 'red_yellow_green'
+    cm = LinearSegmentedColormap.from_list(cmap_name, list(zip(positions, colors)), N=n_bins)
+
+    # Add precision column and recall row
+    confusion_with_metrics = np.zeros((confusion_data.shape[0] + 1, confusion_data.shape[1] + 1))
+    confusion_with_metrics[:-1, :-1] = confusion_data
+    confusion_with_metrics[:-1, -1] = recall
+    confusion_with_metrics[-1, :-1] = precision
+    confusion_with_metrics[-1, -1] = accuracy
+
+    # Set up the plot
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(confusion_with_metrics, annot=True, fmt='g', cmap='Blues',
+                xticklabels=classNames + ['RECALL'],
+                yticklabels=classNames + ['PRECISION'], cbar=False)
+
+
+    # Plot the precision, recall, and accuracy values with the custom colormap
+    mask = np.zeros_like(confusion_with_metrics, dtype=bool)
+    mask[:-1, :-1] = True
+    sns.heatmap(confusion_with_metrics, annot=True, fmt='g', cmap=cm, mask=mask,
+                xticklabels=classNames + ['RECALL'], yticklabels=classNames + ['PRECISION'], cbar=False)
+
+    # Add black bold border around the accuracy cell
+    ax = plt.gca()
+    rect = Rectangle((confusion_data.shape[1], confusion_data.shape[0]), 1, 1, fill=False, edgecolor='black', lw=3)
+    ax.add_patch(rect)
+
+
+    # Labels, title and ticks
+    plt.xlabel('Predicted labels')
+    plt.ylabel('True labels')
+    plt.title('Confusion Matrix', fontweight='bold')
+
+    # Rotate the tick labels and set their alignment
+    plt.setp(plt.gca().get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+
+    # Move the x-axis label to the top
+    plt.gca().xaxis.set_label_position('top')
+    plt.gca().xaxis.tick_top()
+
+    # Tight layout to ensure all labels are visible
+    plt.tight_layout()
+
+    # Save the figure
+    plt.savefig(os.path.join(pthDL, 'confusion_matrix.png'))
+
+    # Show the plot
     plt.show()
 
-# # Example usage:
-# if __name__ == '__main__':
-#     test_images_path = ['path_to_image1.png', 'path_to_image2.png', ...]
-#     test_masks_path = ['path_to_mask1.png', 'path_to_mask2.png', ...]
-#     class_names = ['class1', 'class2', 'class3', ...]
-#     image_size = 1024  # Example image size
-#     model = ...  # Your pre-trained model
-#
-#     plot_confusion_matrix(test_images_path, test_masks_path, class_names, image_size, model)
+    print(f"Confusion matrix saved to {os.path.join(pthDL, 'confusion_matrix.png')}")
+
+    print(f"\nOverall Accuracy: {accuracy}%")
+
+    return confusion_with_metrics
