@@ -88,7 +88,6 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             type_ = np.argmin(tmp)
 
         print(f" type_: {type_}")
-
         num = np.where(numann[:, type_] > 0)[0]
 
         if len(num) == 0:
