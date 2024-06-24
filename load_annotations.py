@@ -31,26 +31,25 @@ def load_annotations(xml_file):
 
     annotations = my_dict.get("Annotations", {}).get("Annotation", [])
 
-    for annotation in annotations:
-
-        if 'Region' in annotation.get("Regions", {}):  # checks weather there are annotations in the layer
-            annotation_id = float(annotation.get('@Id'))
-            regions = annotation["Regions"]["Region"]
+    for layer in annotations:
+        if 'Region' in layer.get("Regions", {}):  # checks weather there are annotations in the layer
+            layer_id = int(layer.get('@Id'))
+            regions = layer["Regions"]["Region"]
             if type(regions) == list:
-                for region in regions:
-                    annotation_number = float(region.get('@Id'))
-                    vertices = region.get("Vertices", {}).get("Vertex", [])
+                for annotation in regions:
+                    annotation_number = float(annotation["@Id"])
+                    vertices = annotation.get("Vertices", {}).get("Vertex", [])
                     for vertex in vertices:
                         x = float(vertex.get('@X'))
                         y = float(vertex.get('@Y'))
-                        xyout.append([annotation_id, annotation_number, x, y])
+                        xyout.append([layer_id, annotation_number, x, y])
             elif type(regions) == dict:
-                annotation_number = float(regions.get('@Id'))
+                annotation_number = float(regions.get("@Id"))
                 vertices = regions.get("Vertices", {}).get("Vertex", [])
                 for vertex in vertices:
                     x = float(vertex.get('@X'))
                     y = float(vertex.get('@Y'))
-                    xyout.append([annotation_id, annotation_number, x, y])
+                    xyout.append([layer_id, annotation_number, x, y])
 
     xyout_df = pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
     return reduced_annotations, xyout_df
