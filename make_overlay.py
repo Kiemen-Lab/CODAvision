@@ -51,7 +51,7 @@ def make_overlay(image_file, prediction_mask, colormap, save_path):
     os.makedirs(save_path, exist_ok=True)
     image_tensor = read_image_overlay(image_file)
     prediction_colormap = decode_segmentation_masks(prediction_mask, colormap,
-                                                    n_classes=len(colormap) - 1)  #Take out the black label
+                                                    n_classes=len(colormap))
     overlay = get_overlay(image_tensor, prediction_colormap)
 
     # Save the overlay as jpg
