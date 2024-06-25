@@ -33,8 +33,9 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         nwhite = data['nwhite']
         cmap = data['cmap']
         nm = data['nm']
+        sxy = data['sxy']
 
-    sxy = 1024  #need to update
+
 
     outpth = os.path.join(pthim, 'classification_' + nm)
     os.makedirs(outpth, exist_ok=True)
@@ -51,10 +52,10 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     print('   ')
 
     classification_st = time.time()
-    save_dirHE = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\PNG\tilesHE'
-    save_dirmask = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\PNG\tilesmask'
-    os.makedirs(save_dirHE, exist_ok=True)
-    os.makedirs(save_dirmask, exist_ok=True)
+    # save_dirHE = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\PNG\tilesHE'
+    # save_dirmask = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\PNG\tilesmask'
+    # os.makedirs(save_dirHE, exist_ok=True)
+    # os.makedirs(save_dirmask, exist_ok=True)
 
     for i, img_path in enumerate(imlist):
         img_name = os.path.basename(img_path)
@@ -75,12 +76,12 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
             TA = binary_fill_holes(TA.astype(bool))
 
         # Pad image so we classify all the way to the edge
-        # im_array = np.pad(im_array, pad_width=((sxy + b, sxy + b), (sxy + b, sxy + b), (0, 0)), mode='constant',
-        #                   constant_values=0)
-        # TA = np.pad(TA, pad_width=((sxy+b, sxy+b), (sxy+b, sxy+b)), mode='constant', constant_values=1)
+        im_array = np.pad(im_array, pad_width=((sxy + b, sxy + b), (sxy + b, sxy + b), (0, 0)), mode='constant',
+                          constant_values=0)
+        TA = np.pad(TA, pad_width=((sxy+b, sxy+b), (sxy+b, sxy+b)), mode='constant', constant_values=1)
 
         imclassify = np.zeros(TA.shape, dtype=np.uint8)
-        sz = np.array(im).shape
+        sz = np.array(im_array).shape
 
         # Calculate the total number of tiles
         padded_height, padded_width, _ = np.array(im).shape  # Get the padded image dimensions
@@ -105,12 +106,12 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
                 if np.sum(tileTA) < 100:
                     tileclassify = np.zeros(TA.shape)
                 else:
-                    tileclassify = semantic_seg(tileHE, image_size=1024, model=model)
+                    tileclassify = semantic_seg(tileHE, image_size=sxy, model=model)
 
                 tileclassify = tileclassify[b:-b, b:-b]
 
                 # Convert to uint8 before saving
-                tileclassify_uint8 = (tileclassify * 10).astype(np.uint8)
+                # tileclassify_uint8 = (tileclassify * 10).astype(np.uint8)
                 # tilemask_image = Image.fromarray(tileclassify_uint8)
                 # save_path_mask = os.path.join(save_dirmask, f'{img_name}_tilemask_{count}.png')
                 # tilemask_image.save(save_path_mask)
@@ -125,7 +126,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         imclassify[np.logical_or(imclassify == nblack, imclassify == 0)] = nwhite  #Change black labels to whitespace
 
         elapsed_time = round(time.time() - classification_st)
-        print(f'{i + 1} of {len(imlist)} {elapsed_time}')
+        print(f'{i + 1} of {len(imlist)} classified in {elapsed_time} seconds')
 
         # Save Classified Image
         imclassify_PIL = Image.fromarray(imclassify)  # Convert NumPy array to PIL Image
@@ -176,7 +177,8 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
 #Example:
 if __name__ == '__main__':
     # Inputs:
-    pthim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\PNG'
+    # pthim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\PNG'
+    pthim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\benchmark test classify tile'
     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
     color_overlay_HE = False  # set to true in the real code
     color_mask = False
