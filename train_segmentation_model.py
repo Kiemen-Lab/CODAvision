@@ -212,3 +212,6 @@ def train_segmentation_model(pthDL):
 
     return
 
+if __name__ == '__main__':
+    pthDL = r'C:\\Users\\Valentina\\OneDrive - Johns Hopkins\\Desktop\\python model 2\\06_26_2024_raw_mattiles'
+    train_segmentation_model(pthDL)

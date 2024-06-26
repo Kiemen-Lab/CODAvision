@@ -65,22 +65,13 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
             # Get true and predicted class at testing annotation locations
             L = np.where(J0 > 0)
 
-            # Create a mask of the same shape as the original image
-            mask = np.zeros_like(J0, dtype=bool)
-            mask[L] = True
-            predicted_J0 = imDL_array * mask
-            predicted_J0_img = Image.fromarray(predicted_J0.astype(np.uint8))
-            predicted_J0_img.save(
-                os.path.join(r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images\5x',
-                             'predicted_J0.png'))
-
             true_labels = np.concatenate((true_labels, J0[L]))
             predicted_labels = np.concatenate((predicted_labels, imDL_array[L]))
 
 
     predicted_labels = np.array(predicted_labels)
     predicted_labels[predicted_labels == nblack] = nwhite
-    predicted_labels = predicted_labels - 1 #MATCH the indexing of the true labels CHECK THIS!!!
+    predicted_labels = predicted_labels
 
 
 
