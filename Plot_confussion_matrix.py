@@ -26,13 +26,13 @@ def plot_confusion_matrix(confusion_data, classNames, pthDL):
 
     # Custom colormap for precision and recall
     colors = [(1, 0, 0), (1, 0.8, 0.8), (1, 1, 0.8), (0.8, 1, 0.8)]  # Light Red -> Light Yellow -> Light Green
-    positions = [0, 0.6, 0.8, 1]  # Positions for 0%, 60%, 100%
+    positions = [0, 0.5, 0.8, 1]  # Positions for 0%, 60%, 100%
     n_bins = 100  # Discretize the interpolation into bins
     cmap_name = 'red_yellow_green'
     cm = LinearSegmentedColormap.from_list(cmap_name, list(zip(positions, colors)), N=n_bins)
 
     # Normalize the data to the new range
-    norm = plt.Normalize(60, 100)
+    norm = plt.Normalize(50, 100)
 
     # Add precision column and recall row
     confusion_with_metrics = np.zeros((confusion_data.shape[0] + 1, confusion_data.shape[1] + 1))
@@ -62,7 +62,7 @@ def plot_confusion_matrix(confusion_data, classNames, pthDL):
 
     # Labels, title and ticks
     plt.xlabel('Predicted labels')
-    plt.ylabel('True labels')
+    plt.ylabel('Ground truth')
     plt.title('Confusion Matrix', fontweight='bold')
 
     # Rotate the tick labels and set their alignment

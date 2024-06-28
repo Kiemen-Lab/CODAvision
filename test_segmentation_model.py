@@ -139,7 +139,7 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
 #Example:
 if __name__ == '__main__':
     # Inputs:
-    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
+    pthDL = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\python model 2\06_26_2024_raw_mattiles'
     pthtest = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images'
     pthtestim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images\5x'
 

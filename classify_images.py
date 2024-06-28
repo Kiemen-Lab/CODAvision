@@ -28,7 +28,6 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         data = pickle.load(f)
         model = data['model']
         classNames = data['classNames']
-        # sxy = data['sxy']
         nblack = data['nblack']
         nwhite = data['nwhite']
         cmap = data['cmap']
@@ -84,7 +83,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         sz = np.array(im_array).shape
 
         # Calculate the total number of tiles
-        padded_height, padded_width, _ = np.array(im).shape  # Get the padded image dimensions
+        padded_height, padded_width, _ = np.array(im_array).shape  # Get the padded image dimensions
         tile_rows = (padded_height - sxy) // (sxy - b * 2) + 1
         tile_cols = (padded_width - sxy) // (sxy - b * 2) + 1
         total_tiles = tile_rows * tile_cols
@@ -123,6 +122,8 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         im_array = im_array[sxy + b:-sxy - b, sxy + b:-sxy - b, :]
         imclassify = imclassify[sxy + b:-sxy - b, sxy + b:-sxy - b]
 
+        imclassify = imclassify + 1 # MATCH MATLAB/INDEXING CHECK THIS!! TINA EDIT
+
         imclassify[np.logical_or(imclassify == nblack, imclassify == 0)] = nwhite  #Change black labels to whitespace
 
         elapsed_time = round(time.time() - classification_st)
@@ -134,6 +135,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
 
         # Make color image overlay on H&E
         if color_overlay_HE:
+            imclassify = imclassify - 1
             save_path = os.path.join(outpth, 'check_classification')
             _ = make_overlay(img_path, imclassify, colormap=cmap, save_path=save_path)
 
