@@ -17,13 +17,15 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(995, 431)
+        MainWindow.resize(770, 499)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
-        self.gridLayout = QGridLayout(self.centralwidget)
-        self.gridLayout.setObjectName(u"gridLayout")
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
+        self.tabWidget.setGeometry(QRect(20, 10, 731, 471))
+        self.tabWidget.setTabShape(QTabWidget.TabShape.Triangular)
+        self.tabWidget.setMovable(False)
+        self.tabWidget.setTabBarAutoHide(True)
         self.tab = QWidget()
         self.tab.setObjectName(u"tab")
         self.gridLayout_3 = QGridLayout(self.tab)
@@ -74,10 +76,6 @@ class Ui_MainWindow(object):
 
         self.gridLayout_3.addLayout(self.horizontalLayout_2, 1, 0, 1, 4)
 
-        self.verticalSpacer = QSpacerItem(20, 187, QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        self.gridLayout_3.addItem(self.verticalSpacer, 4, 3, 1, 1)
-
         self.horizontalSpacer_3 = QSpacerItem(419, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
 
         self.gridLayout_3.addItem(self.horizontalSpacer_3, 2, 2, 1, 1)
@@ -118,82 +116,103 @@ class Ui_MainWindow(object):
         self.horizontalLayout_9.addWidget(self.Save_FL_PB)
 
 
-        self.gridLayout_3.addLayout(self.horizontalLayout_9, 5, 0, 1, 4)
+        self.gridLayout_3.addLayout(self.horizontalLayout_9, 6, 0, 1, 4)
+
+        self.verticalSpacer = QSpacerItem(20, 187, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.gridLayout_3.addItem(self.verticalSpacer, 5, 0, 1, 1)
 
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
         self.tab_2.setObjectName(u"tab_2")
-        self.gridLayout_2 = QGridLayout(self.tab_2)
-        self.gridLayout_2.setObjectName(u"gridLayout_2")
-        self.tableWidget = QTableWidget(self.tab_2)
-        self.tableWidget.setObjectName(u"tableWidget")
+        self.gridLayout = QGridLayout(self.tab_2)
+        self.gridLayout.setObjectName(u"gridLayout")
+        self.verticalLayout_5 = QVBoxLayout()
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
+        self.tissue_segmentation_TW = QTableWidget(self.tab_2)
+        self.tissue_segmentation_TW.setObjectName(u"tissue_segmentation_TW")
 
-        self.gridLayout_2.addWidget(self.tableWidget, 0, 0, 1, 2)
+        self.verticalLayout_5.addWidget(self.tissue_segmentation_TW)
+
+        self.changecolor_PB = QPushButton(self.tab_2)
+        self.changecolor_PB.setObjectName(u"changecolor_PB")
+
+        self.verticalLayout_5.addWidget(self.changecolor_PB)
 
         self.verticalLayout = QVBoxLayout()
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.horizontalLayout_4 = QHBoxLayout()
         self.horizontalLayout_4.setObjectName(u"horizontalLayout_4")
-        self.label_5 = QLabel(self.tab_2)
-        self.label_5.setObjectName(u"label_5")
+        self.label_6 = QLabel(self.tab_2)
+        self.label_6.setObjectName(u"label_6")
 
-        self.horizontalLayout_4.addWidget(self.label_5)
+        self.horizontalLayout_4.addWidget(self.label_6)
 
-        self.pushButton_4 = QPushButton(self.tab_2)
-        self.pushButton_4.setObjectName(u"pushButton_4")
+        self.addws_CB = QComboBox(self.tab_2)
+        self.addws_CB.addItem("")
+        self.addws_CB.setObjectName(u"addws_CB")
 
-        self.horizontalLayout_4.addWidget(self.pushButton_4)
-
-        self.pushButton_5 = QPushButton(self.tab_2)
-        self.pushButton_5.setObjectName(u"pushButton_5")
-
-        self.horizontalLayout_4.addWidget(self.pushButton_5)
+        self.horizontalLayout_4.addWidget(self.addws_CB)
 
 
         self.verticalLayout.addLayout(self.horizontalLayout_4)
 
-        self.comboBox_4 = QComboBox(self.tab_2)
-        self.comboBox_4.setObjectName(u"comboBox_4")
-
-        self.verticalLayout.addWidget(self.comboBox_4)
-
-
-        self.gridLayout_2.addLayout(self.verticalLayout, 1, 0, 1, 1)
-
-        self.verticalLayout_2 = QVBoxLayout()
-        self.verticalLayout_2.setObjectName(u"verticalLayout_2")
-        self.horizontalLayout_6 = QHBoxLayout()
-        self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
-        self.label_6 = QLabel(self.tab_2)
-        self.label_6.setObjectName(u"label_6")
-
-        self.horizontalLayout_6.addWidget(self.label_6)
-
-        self.comboBox_2 = QComboBox(self.tab_2)
-        self.comboBox_2.setObjectName(u"comboBox_2")
-
-        self.horizontalLayout_6.addWidget(self.comboBox_2)
-
-
-        self.verticalLayout_2.addLayout(self.horizontalLayout_6)
-
-        self.horizontalLayout_7 = QHBoxLayout()
-        self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
+        self.horizontalLayout_5 = QHBoxLayout()
+        self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
         self.label_7 = QLabel(self.tab_2)
         self.label_7.setObjectName(u"label_7")
 
-        self.horizontalLayout_7.addWidget(self.label_7)
+        self.horizontalLayout_5.addWidget(self.label_7)
 
-        self.comboBox_3 = QComboBox(self.tab_2)
-        self.comboBox_3.setObjectName(u"comboBox_3")
+        self.addnonws_CB = QComboBox(self.tab_2)
+        self.addnonws_CB.addItem("")
+        self.addnonws_CB.setObjectName(u"addnonws_CB")
 
-        self.horizontalLayout_7.addWidget(self.comboBox_3)
-
-
-        self.verticalLayout_2.addLayout(self.horizontalLayout_7)
+        self.horizontalLayout_5.addWidget(self.addnonws_CB)
 
 
-        self.gridLayout_2.addLayout(self.verticalLayout_2, 1, 1, 1, 1)
+        self.verticalLayout.addLayout(self.horizontalLayout_5)
+
+
+        self.verticalLayout_5.addLayout(self.verticalLayout)
+
+
+        self.gridLayout.addLayout(self.verticalLayout_5, 0, 0, 2, 1)
+
+        self.groupBox = QGroupBox(self.tab_2)
+        self.groupBox.setObjectName(u"groupBox")
+        self.gridLayout_4 = QGridLayout(self.groupBox)
+        self.gridLayout_4.setObjectName(u"gridLayout_4")
+        self.gridLayout_2 = QGridLayout()
+        self.gridLayout_2.setObjectName(u"gridLayout_2")
+        self.wsoptions_CB = QComboBox(self.groupBox)
+        self.wsoptions_CB.addItem("")
+        self.wsoptions_CB.addItem("")
+        self.wsoptions_CB.addItem("")
+        self.wsoptions_CB.addItem("")
+        self.wsoptions_CB.setObjectName(u"wsoptions_CB")
+
+        self.gridLayout_2.addWidget(self.wsoptions_CB, 0, 0, 1, 1)
+
+        self.apply_PB = QPushButton(self.groupBox)
+        self.apply_PB.setObjectName(u"apply_PB")
+
+        self.gridLayout_2.addWidget(self.apply_PB, 0, 1, 1, 1)
+
+        self.applyall_PB = QPushButton(self.groupBox)
+        self.applyall_PB.setObjectName(u"applyall_PB")
+
+        self.gridLayout_2.addWidget(self.applyall_PB, 0, 2, 1, 1)
+
+
+        self.gridLayout_4.addLayout(self.gridLayout_2, 0, 0, 1, 1)
+
+
+        self.gridLayout.addWidget(self.groupBox, 0, 1, 1, 1)
+
+        self.verticalSpacer_3 = QSpacerItem(20, 327, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.gridLayout.addItem(self.verticalSpacer_3, 1, 1, 1, 1)
 
         self.horizontalLayout_8 = QHBoxLayout()
         self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
@@ -201,42 +220,42 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_8.addItem(self.horizontalSpacer_2)
 
-        self.pushButton_8 = QPushButton(self.tab_2)
-        self.pushButton_8.setObjectName(u"pushButton_8")
+        self.return_ts_PB = QPushButton(self.tab_2)
+        self.return_ts_PB.setObjectName(u"return_ts_PB")
 
-        self.horizontalLayout_8.addWidget(self.pushButton_8)
+        self.horizontalLayout_8.addWidget(self.return_ts_PB)
 
-        self.pushButton_6 = QPushButton(self.tab_2)
-        self.pushButton_6.setObjectName(u"pushButton_6")
+        self.save_ts_PB = QPushButton(self.tab_2)
+        self.save_ts_PB.setObjectName(u"save_ts_PB")
 
-        self.horizontalLayout_8.addWidget(self.pushButton_6)
+        self.horizontalLayout_8.addWidget(self.save_ts_PB)
 
 
-        self.gridLayout_2.addLayout(self.horizontalLayout_8, 2, 0, 1, 2)
+        self.gridLayout.addLayout(self.horizontalLayout_8, 2, 0, 1, 2)
 
         self.tabWidget.addTab(self.tab_2, "")
         self.tab_3 = QWidget()
         self.tab_3.setObjectName(u"tab_3")
-        self.tableView = QTableView(self.tab_3)
-        self.tableView.setObjectName(u"tableView")
-        self.tableView.setGeometry(QRect(10, 10, 256, 321))
-        self.layoutWidget = QWidget(self.tab_3)
-        self.layoutWidget.setObjectName(u"layoutWidget")
-        self.layoutWidget.setGeometry(QRect(272, 10, 79, 104))
-        self.verticalLayout_4 = QVBoxLayout(self.layoutWidget)
+        self.gridLayout_5 = QGridLayout(self.tab_3)
+        self.gridLayout_5.setObjectName(u"gridLayout_5")
+        self.nesting_TW = QTableView(self.tab_3)
+        self.nesting_TW.setObjectName(u"nesting_TW")
+
+        self.gridLayout_5.addWidget(self.nesting_TW, 0, 0, 2, 1)
+
+        self.verticalLayout_4 = QVBoxLayout()
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
-        self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_3 = QVBoxLayout()
         self.verticalLayout_3.setObjectName(u"verticalLayout_3")
-        self.pushButton_7 = QPushButton(self.layoutWidget)
-        self.pushButton_7.setObjectName(u"pushButton_7")
+        self.moveup_PB = QPushButton(self.tab_3)
+        self.moveup_PB.setObjectName(u"moveup_PB")
 
-        self.verticalLayout_3.addWidget(self.pushButton_7)
+        self.verticalLayout_3.addWidget(self.moveup_PB)
 
-        self.pushButton_9 = QPushButton(self.layoutWidget)
-        self.pushButton_9.setObjectName(u"pushButton_9")
+        self.Movedown_PB = QPushButton(self.tab_3)
+        self.Movedown_PB.setObjectName(u"Movedown_PB")
 
-        self.verticalLayout_3.addWidget(self.pushButton_9)
+        self.verticalLayout_3.addWidget(self.Movedown_PB)
 
 
         self.verticalLayout_4.addLayout(self.verticalLayout_3)
@@ -245,10 +264,256 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_4.addItem(self.verticalSpacer_2)
 
+
+        self.gridLayout_5.addLayout(self.verticalLayout_4, 0, 1, 1, 1)
+
+        self.horizontalSpacer_5 = QSpacerItem(305, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.gridLayout_5.addItem(self.horizontalSpacer_5, 1, 2, 1, 1)
+
+        self.horizontalLayout_10 = QHBoxLayout()
+        self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
+        self.horizontalSpacer_4 = QSpacerItem(438, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.horizontalLayout_10.addItem(self.horizontalSpacer_4)
+
+        self.return_nesting_PB = QPushButton(self.tab_3)
+        self.return_nesting_PB.setObjectName(u"return_nesting_PB")
+
+        self.horizontalLayout_10.addWidget(self.return_nesting_PB)
+
+        self.save_nesting_PB = QPushButton(self.tab_3)
+        self.save_nesting_PB.setObjectName(u"save_nesting_PB")
+
+        self.horizontalLayout_10.addWidget(self.save_nesting_PB)
+
+
+        self.gridLayout_5.addLayout(self.horizontalLayout_10, 2, 0, 1, 3)
+
         self.tabWidget.addTab(self.tab_3, "")
+        self.tab_4 = QWidget()
+        self.tab_4.setObjectName(u"tab_4")
+        self.gridLayout_9 = QGridLayout(self.tab_4)
+        self.gridLayout_9.setObjectName(u"gridLayout_9")
+        self.verticalLayout_10 = QVBoxLayout()
+        self.verticalLayout_10.setObjectName(u"verticalLayout_10")
+        self.horizontalLayout_11 = QHBoxLayout()
+        self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
+        self.label_5 = QLabel(self.tab_4)
+        self.label_5.setObjectName(u"label_5")
 
-        self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
+        self.horizontalLayout_11.addWidget(self.label_5)
 
+        self.tts_SB = QSpinBox(self.tab_4)
+        self.tts_SB.setObjectName(u"tts_SB")
+        self.tts_SB.setMinimum(1)
+        self.tts_SB.setMaximum(2048)
+        self.tts_SB.setSingleStep(1)
+        self.tts_SB.setValue(1024)
+        self.tts_SB.setDisplayIntegerBase(10)
+
+        self.horizontalLayout_11.addWidget(self.tts_SB)
+
+
+        self.verticalLayout_10.addLayout(self.horizontalLayout_11)
+
+        self.horizontalLayout_12 = QHBoxLayout()
+        self.horizontalLayout_12.setObjectName(u"horizontalLayout_12")
+        self.label_10 = QLabel(self.tab_4)
+        self.label_10.setObjectName(u"label_10")
+
+        self.horizontalLayout_12.addWidget(self.label_10)
+
+        self.ttn_SB = QSpinBox(self.tab_4)
+        self.ttn_SB.setObjectName(u"ttn_SB")
+        self.ttn_SB.setMaximum(100)
+        self.ttn_SB.setSingleStep(1)
+        self.ttn_SB.setValue(15)
+
+        self.horizontalLayout_12.addWidget(self.ttn_SB)
+
+
+        self.verticalLayout_10.addLayout(self.horizontalLayout_12)
+
+        self.horizontalLayout_13 = QHBoxLayout()
+        self.horizontalLayout_13.setObjectName(u"horizontalLayout_13")
+        self.label_11 = QLabel(self.tab_4)
+        self.label_11.setObjectName(u"label_11")
+
+        self.horizontalLayout_13.addWidget(self.label_11)
+
+        self.vtn_SB = QSpinBox(self.tab_4)
+        self.vtn_SB.setObjectName(u"vtn_SB")
+        self.vtn_SB.setMaximum(100)
+        self.vtn_SB.setSingleStep(1)
+        self.vtn_SB.setValue(3)
+
+        self.horizontalLayout_13.addWidget(self.vtn_SB)
+
+
+        self.verticalLayout_10.addLayout(self.horizontalLayout_13)
+
+        self.horizontalLayout_14 = QHBoxLayout()
+        self.horizontalLayout_14.setObjectName(u"horizontalLayout_14")
+        self.label_12 = QLabel(self.tab_4)
+        self.label_12.setObjectName(u"label_12")
+
+        self.horizontalLayout_14.addWidget(self.label_12)
+
+        self.TA_SB = QSpinBox(self.tab_4)
+        self.TA_SB.setObjectName(u"TA_SB")
+        self.TA_SB.setMaximum(10)
+        self.TA_SB.setSingleStep(1)
+        self.TA_SB.setValue(3)
+        self.TA_SB.setDisplayIntegerBase(15)
+
+        self.horizontalLayout_14.addWidget(self.TA_SB)
+
+
+        self.verticalLayout_10.addLayout(self.horizontalLayout_14)
+
+
+        self.gridLayout_9.addLayout(self.verticalLayout_10, 0, 0, 1, 1)
+
+        self.groupBox_4 = QGroupBox(self.tab_4)
+        self.groupBox_4.setObjectName(u"groupBox_4")
+        self.gridLayout_6 = QGridLayout(self.groupBox_4)
+        self.gridLayout_6.setObjectName(u"gridLayout_6")
+        self.horizontalLayout_16 = QHBoxLayout()
+        self.horizontalLayout_16.setObjectName(u"horizontalLayout_16")
+        self.verticalLayout_6 = QVBoxLayout()
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
+        self.Combine_TW_1 = QTableWidget(self.groupBox_4)
+        self.Combine_TW_1.setObjectName(u"Combine_TW_1")
+        self.Combine_TW_1.setAlternatingRowColors(True)
+
+        self.verticalLayout_6.addWidget(self.Combine_TW_1)
+
+        self.addcombo_PB = QPushButton(self.groupBox_4)
+        self.addcombo_PB.setObjectName(u"addcombo_PB")
+
+        self.verticalLayout_6.addWidget(self.addcombo_PB)
+
+
+        self.horizontalLayout_16.addLayout(self.verticalLayout_6)
+
+        self.verticalLayout_7 = QVBoxLayout()
+        self.verticalLayout_7.setObjectName(u"verticalLayout_7")
+        self.removecombo_PB = QPushButton(self.groupBox_4)
+        self.removecombo_PB.setObjectName(u"removecombo_PB")
+
+        self.verticalLayout_7.addWidget(self.removecombo_PB)
+
+        self.Combine_TW_2 = QTableWidget(self.groupBox_4)
+        self.Combine_TW_2.setObjectName(u"Combine_TW_2")
+        self.Combine_TW_2.setEnabled(True)
+        self.Combine_TW_2.setAlternatingRowColors(True)
+
+        self.verticalLayout_7.addWidget(self.Combine_TW_2)
+
+
+        self.horizontalLayout_16.addLayout(self.verticalLayout_7)
+
+
+        self.gridLayout_6.addLayout(self.horizontalLayout_16, 0, 0, 1, 1)
+
+
+        self.gridLayout_9.addWidget(self.groupBox_4, 0, 1, 1, 1)
+
+        self.groupBox_2 = QGroupBox(self.tab_4)
+        self.groupBox_2.setObjectName(u"groupBox_2")
+        self.gridLayout_7 = QGridLayout(self.groupBox_2)
+        self.gridLayout_7.setObjectName(u"gridLayout_7")
+        self.verticalLayout_8 = QVBoxLayout()
+        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
+        self.horizontalLayout_17 = QHBoxLayout()
+        self.horizontalLayout_17.setObjectName(u"horizontalLayout_17")
+        self.Delete_CB = QComboBox(self.groupBox_2)
+        self.Delete_CB.setObjectName(u"Delete_CB")
+
+        self.horizontalLayout_17.addWidget(self.Delete_CB)
+
+        self.Add_delete_PB = QPushButton(self.groupBox_2)
+        self.Add_delete_PB.setObjectName(u"Add_delete_PB")
+
+        self.horizontalLayout_17.addWidget(self.Add_delete_PB)
+
+        self.Restore_delete_PB = QPushButton(self.groupBox_2)
+        self.Restore_delete_PB.setObjectName(u"Restore_delete_PB")
+
+        self.horizontalLayout_17.addWidget(self.Restore_delete_PB)
+
+
+        self.verticalLayout_8.addLayout(self.horizontalLayout_17)
+
+        self.delete_TW = QTableWidget(self.groupBox_2)
+        self.delete_TW.setObjectName(u"delete_TW")
+
+        self.verticalLayout_8.addWidget(self.delete_TW)
+
+
+        self.gridLayout_7.addLayout(self.verticalLayout_8, 0, 0, 1, 1)
+
+
+        self.gridLayout_9.addWidget(self.groupBox_2, 1, 0, 1, 1)
+
+        self.groupBox_3 = QGroupBox(self.tab_4)
+        self.groupBox_3.setObjectName(u"groupBox_3")
+        self.gridLayout_8 = QGridLayout(self.groupBox_3)
+        self.gridLayout_8.setObjectName(u"gridLayout_8")
+        self.verticalLayout_9 = QVBoxLayout()
+        self.verticalLayout_9.setObjectName(u"verticalLayout_9")
+        self.horizontalLayout_18 = QHBoxLayout()
+        self.horizontalLayout_18.setObjectName(u"horizontalLayout_18")
+        self.component_CB = QComboBox(self.groupBox_3)
+        self.component_CB.setObjectName(u"component_CB")
+
+        self.horizontalLayout_18.addWidget(self.component_CB)
+
+        self.Add_component_PB = QPushButton(self.groupBox_3)
+        self.Add_component_PB.setObjectName(u"Add_component_PB")
+
+        self.horizontalLayout_18.addWidget(self.Add_component_PB)
+
+        self.Restore_component_PB = QPushButton(self.groupBox_3)
+        self.Restore_component_PB.setObjectName(u"Restore_component_PB")
+
+        self.horizontalLayout_18.addWidget(self.Restore_component_PB)
+
+
+        self.verticalLayout_9.addLayout(self.horizontalLayout_18)
+
+        self.component_TW = QTableWidget(self.groupBox_3)
+        self.component_TW.setObjectName(u"component_TW")
+
+        self.verticalLayout_9.addWidget(self.component_TW)
+
+
+        self.gridLayout_8.addLayout(self.verticalLayout_9, 0, 0, 1, 1)
+
+
+        self.gridLayout_9.addWidget(self.groupBox_3, 1, 1, 1, 1)
+
+        self.horizontalLayout_15 = QHBoxLayout()
+        self.horizontalLayout_15.setObjectName(u"horizontalLayout_15")
+        self.horizontalSpacer_6 = QSpacerItem(438, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+
+        self.horizontalLayout_15.addItem(self.horizontalSpacer_6)
+
+        self.return_ad_PB = QPushButton(self.tab_4)
+        self.return_ad_PB.setObjectName(u"return_ad_PB")
+
+        self.horizontalLayout_15.addWidget(self.return_ad_PB)
+
+        self.save_ad_PB = QPushButton(self.tab_4)
+        self.save_ad_PB.setObjectName(u"save_ad_PB")
+
+        self.horizontalLayout_15.addWidget(self.save_ad_PB)
+
+
+        self.gridLayout_9.addLayout(self.horizontalLayout_15, 2, 0, 1, 2)
+
+        self.tabWidget.addTab(self.tab_4, "")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
@@ -256,7 +521,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(3)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
@@ -265,7 +530,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
 #if QT_CONFIG(whatsthis)
-        self.tabWidget.setWhatsThis(QCoreApplication.translate("MainWindow", u"fsdfsfsdfsf", None))
+        self.tabWidget.setWhatsThis("")
 #endif // QT_CONFIG(whatsthis)
         self.label.setText(QCoreApplication.translate("MainWindow", u"Training annotations", None))
 #if QT_CONFIG(tooltip)
@@ -299,16 +564,44 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.Save_FL_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"File Location", None))
-        self.label_5.setText(QCoreApplication.translate("MainWindow", u"Tissue/Whitespace removal options:", None))
-        self.pushButton_4.setText(QCoreApplication.translate("MainWindow", u"Apply", None))
-        self.pushButton_5.setText(QCoreApplication.translate("MainWindow", u"Apply to all", None))
+        self.changecolor_PB.setText(QCoreApplication.translate("MainWindow", u"Change Color", None))
         self.label_6.setText(QCoreApplication.translate("MainWindow", u"Add Whitespace to:", None))
+        self.addws_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
+
         self.label_7.setText(QCoreApplication.translate("MainWindow", u"Add Non-whitespace to:", None))
-        self.pushButton_8.setText(QCoreApplication.translate("MainWindow", u"Return", None))
-        self.pushButton_6.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
+        self.addnonws_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
+
+        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class whitespace sesttings", None))
+        self.wsoptions_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
+        self.wsoptions_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"Remove whitespace", None))
+        self.wsoptions_CB.setItemText(2, QCoreApplication.translate("MainWindow", u"Keep only whitespace", None))
+        self.wsoptions_CB.setItemText(3, QCoreApplication.translate("MainWindow", u"Keep tissue and whitespace", None))
+
+        self.apply_PB.setText(QCoreApplication.translate("MainWindow", u"Apply", None))
+        self.applyall_PB.setText(QCoreApplication.translate("MainWindow", u"Apply to all", None))
+        self.return_ts_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
+        self.save_ts_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Tissue Segmentation", None))
-        self.pushButton_7.setText(QCoreApplication.translate("MainWindow", u"Move up", None))
-        self.pushButton_9.setText(QCoreApplication.translate("MainWindow", u"Move Down", None))
+        self.moveup_PB.setText(QCoreApplication.translate("MainWindow", u"Move up", None))
+        self.Movedown_PB.setText(QCoreApplication.translate("MainWindow", u"Move Down", None))
+        self.return_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
+        self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Nesting", None))
+        self.label_5.setText(QCoreApplication.translate("MainWindow", u"Training tile size:", None))
+        self.label_10.setText(QCoreApplication.translate("MainWindow", u"Training tiles number:", None))
+        self.label_11.setText(QCoreApplication.translate("MainWindow", u"Validation tiles number:", None))
+        self.label_12.setText(QCoreApplication.translate("MainWindow", u"TA average count:", None))
+        self.groupBox_4.setTitle(QCoreApplication.translate("MainWindow", u"Combine classes:", None))
+        self.addcombo_PB.setText(QCoreApplication.translate("MainWindow", u"Add Combo ", None))
+        self.removecombo_PB.setText(QCoreApplication.translate("MainWindow", u"Remove Combo", None))
+        self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"Delete classes:", None))
+        self.Add_delete_PB.setText(QCoreApplication.translate("MainWindow", u"Add", None))
+        self.Restore_delete_PB.setText(QCoreApplication.translate("MainWindow", u"Restore", None))
+        self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
+        self.Add_component_PB.setText(QCoreApplication.translate("MainWindow", u"Add", None))
+        self.Restore_component_PB.setText(QCoreApplication.translate("MainWindow", u"Restore", None))
+        self.return_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
+        self.save_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Advanced Settings", None))
     # retranslateUi
 
