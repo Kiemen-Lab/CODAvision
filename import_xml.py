@@ -5,6 +5,8 @@ Date: April 15, 2024
 from load_annotations import load_annotations
 import os
 import pickle
+import time
+import numpy as np
 
 
 def import_xml(annotations_file, xmlfile, dm=None, ra=None):
@@ -22,15 +24,16 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
    xyout_df (pandas.DataFrame): A DataFrame containing the annotation labels and coordinates.
    reduced_annotations (float): The value of 'MicronsPerPixel' under 'Annotations' if present, otherwise None.
    """
-
     if ra is None:
         ra = 0
     if dm is None:
         dm = []
 
     print(' 1. of 4. Importing annotation data from xml file')
-
+    load_start = time.time()
     reduced_annotations, xyout_df = load_annotations(xmlfile)
+    elapsed_time = time.time() - load_start
+    print(f'Loading annotation took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
     reduced_annotations = float(reduced_annotations)
     if not xyout_df.empty:
 
@@ -59,7 +62,6 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             print(' Creating file...')
             with open(annotations_file, 'wb') as f:
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
-
     return xyout_df, reduced_annotations
 
 

@@ -4,6 +4,8 @@ Date: April 18, 2024
 """
 import pickle
 import os
+import time
+import numpy as np
 
 def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim):
     """
@@ -22,7 +24,6 @@ def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim):
            - 1: Reload is needed due to missing or changed parameters.
            - Nothing: An error occurred during the process.
     """
-
     try:
         # Initialize the variable to indicate if XML reload is needed
         reload_xml = 0
@@ -53,7 +54,6 @@ def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim):
                 if data['pthim'] != pthim:
                     print('Reload annotation data with updated pthim.')
                     reload_xml = 1
-
         return reload_xml
 
     except Exception as e:

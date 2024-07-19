@@ -1,5 +1,6 @@
 import xmltodict
 import pandas as pd
+import numpy as np
 
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
