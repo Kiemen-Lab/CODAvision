@@ -478,22 +478,40 @@
            </widget>
           </item>
           <item>
-           <widget class="QSpinBox" name="tts_SB">
-            <property name="minimum">
-             <number>1</number>
+           <widget class="QComboBox" name="tts_CB">
+            <property name="currentText">
+             <string>1024</string>
             </property>
-            <property name="maximum">
-             <number>2048</number>
-            </property>
-            <property name="singleStep">
-             <number>1</number>
-            </property>
-            <property name="value">
-             <number>1024</number>
-            </property>
-            <property name="displayIntegerBase">
-             <number>10</number>
-            </property>
+            <item>
+             <property name="text">
+              <string>64</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>128</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>256</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>512</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>1024</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>2048</string>
+             </property>
+            </item>
            </widget>
           </item>
          </layout>
@@ -627,43 +645,6 @@
         </layout>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QGroupBox" name="groupBox_2">
-        <property name="title">
-         <string>Delete classes:</string>
-        </property>
-        <layout class="QGridLayout" name="gridLayout_7">
-         <item row="0" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout_8">
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_17">
-             <item>
-              <widget class="QComboBox" name="Delete_CB"/>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Add_delete_PB">
-               <property name="text">
-                <string>Add</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Restore_delete_PB">
-               <property name="text">
-                <string>Restore</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <widget class="QTableWidget" name="delete_TW"/>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </widget>
-      </item>
       <item row="1" column="1">
        <widget class="QGroupBox" name="groupBox_3">
         <property name="title">
@@ -672,27 +653,6 @@
         <layout class="QGridLayout" name="gridLayout_8">
          <item row="0" column="0">
           <layout class="QVBoxLayout" name="verticalLayout_9">
-           <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_18">
-             <item>
-              <widget class="QComboBox" name="component_CB"/>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Add_component_PB">
-               <property name="text">
-                <string>Add</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="Restore_component_PB">
-               <property name="text">
-                <string>Restore</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
            <item>
             <widget class="QTableWidget" name="component_TW"/>
            </item>
@@ -731,6 +691,22 @@
          </widget>
         </item>
        </layout>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="title">
+         <string>Delete classes:</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_7">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_8">
+           <item>
+            <widget class="QTableWidget" name="delete_TW"/>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
       </item>
      </layout>
     </widget>

@@ -1,11 +1,13 @@
+
 from PySide2 import QtWidgets, QtCore
 from CODA import Ui_MainWindow
 import os
 from datetime import datetime
 import xmltodict
 import pandas as pd
-from PySide2.QtGui import QColor
-from PySide2.QtWidgets import QColorDialog
+from PySide2.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
+from PySide2.QtWidgets import QColorDialog, QHeaderView, QTableWidgetItem
+from PySide2.QtCore import Qt
 
 
 class CustomDialog(QtWidgets.QDialog):
@@ -90,10 +92,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.trainin_PB.clicked.connect(lambda: self.select_imagedir('training'))
         self.ui.testing_PB.clicked.connect(lambda: self.select_imagedir('testing'))
         self.ui.changecolor_PB.clicked.connect(self.change_color)
-        self.ui.apply_PB.clicked.connect(self.apply_whitespace_setting)  # Connect apply button
-        self.ui.applyall_PB.clicked.connect(self.apply_all_whitespace_setting)  # Connect apply all button
-        self.ui.save_ts_PB.clicked.connect(self.save_and_continue_from_tab_2)  # Connect Save and Continue button
-        self.ui.return_ts_PB.clicked.connect(self.return_to_first_tab)
+        self.ui.apply_PB.clicked.connect(self.apply_whitespace_setting)
+        self.ui.applyall_PB.clicked.connect(self.apply_all_whitespace_setting)
+        self.ui.save_ts_PB.clicked.connect(self.save_and_continue_from_tab_2)
+        self.ui.return_ts_PB.clicked.connect(lambda: self.return_to_previous_tab(return_to_first=True))
+        self.ui.moveup_PB.clicked.connect(self.move_row_up)
+        self.ui.Movedown_PB.clicked.connect(self.move_row_down)
+        self.ui.return_nesting_PB.clicked.connect(lambda: self.return_to_previous_tab(return_to_first=False))
+        self.ui.save_nesting_PB.clicked.connect(self.save_nesting_and_continue)
+        self.ui.addcombo_PB.clicked.connect(self.add_combo)
+        self.ui.removecombo_PB.clicked.connect(self.remove_combo)
+        self.ui.save_ad_PB.clicked.connect(self.save_advanced_settings_and_close)
+        self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
+        self.ui.Combine_TW_1.verticalHeader().setVisible(False)
+        self.ui.Combine_TW_2.verticalHeader().setVisible(False)
 
         self.set_initial_model_name()
         self.ui.tabWidget.setCurrentIndex(0)  # Initialize the first tab
@@ -137,8 +149,16 @@ class MainWindow(QtWidgets.QMainWindow):
                                                            'to:" dropdown box.')
             return
 
+        if any(self.df['Whitespace Settings'].isna()):
+            QtWidgets.QMessageBox.warning(self, 'Warning',
+                                          'Please assign a whitespace settings option to all annotation layers.')
+            return
+
         add_ws_to = self.ui.addws_CB.currentIndex()
         add_nonws_to = self.ui.addnonws_CB.currentIndex()
+
+        self.initialize_nesting_table()
+
 
         #TINA _________________________delete all these prints when final version_________________
         print(f'Add whitespace to: {add_ws_to}')
@@ -153,11 +173,58 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.tabWidget.setTabEnabled(next_tab_index, True)
         self.switch_to_next_tab()
 
-    def return_to_first_tab(self):
-        # Enable only the first tab
-        self.ui.tabWidget.setTabEnabled(0, True)
-        self.ui.tabWidget.setCurrentIndex(0)
-        for i in range(1, self.ui.tabWidget.count()):
+    def initialize_nesting_table(self):
+        model = QStandardItemModel()
+        model.setColumnCount(1)
+        model.setHorizontalHeaderLabels(["Layer Name"])
+
+        for index, row in self.df.iterrows():
+            item = QStandardItem(row['Layer Name'])
+            item.setBackground(QColor(*row['Color']))
+            item.setEditable(False)
+            model.appendRow(item)
+
+        self.ui.nesting_TW.setModel(model)
+        self.ui.nesting_TW.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    def move_row_up(self):
+        model = self.ui.nesting_TW.model()
+        current_index = self.ui.nesting_TW.currentIndex()
+        if current_index.isValid() and current_index.row() > 0:
+            current_item = model.takeItem(current_index.row())
+            above_item = model.takeItem(current_index.row() - 1)
+
+            model.setItem(current_index.row() - 1, current_item)
+            model.setItem(current_index.row(), above_item)
+
+            self.ui.nesting_TW.setCurrentIndex(model.index(current_index.row() - 1, 0))
+
+    def move_row_down(self):
+        model = self.ui.nesting_TW.model()
+        current_index = self.ui.nesting_TW.currentIndex()
+        if current_index.isValid() and current_index.row() < model.rowCount() - 1:
+            current_item = model.takeItem(current_index.row())
+            below_item = model.takeItem(current_index.row() + 1)
+
+            model.setItem(current_index.row(), below_item)
+            model.setItem(current_index.row() + 1, current_item)
+
+            self.ui.nesting_TW.setCurrentIndex(model.index(current_index.row() + 1, 0))
+
+    def return_to_previous_tab(self, return_to_first=False):
+        current_index = self.ui.tabWidget.currentIndex()
+
+        if return_to_first:
+            target_index = 0
+        else:
+            target_index = current_index - 1
+
+        # Enable the target tab
+        self.ui.tabWidget.setTabEnabled(target_index, True)
+        self.ui.tabWidget.setCurrentIndex(target_index)
+
+        # Disable all tabs after the target tab
+        for i in range(target_index + 1, self.ui.tabWidget.count()):
             self.ui.tabWidget.setTabEnabled(i, False)
 
         QtCore.QCoreApplication.processEvents()
@@ -175,6 +242,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Force update
         QtCore.QCoreApplication.processEvents()
+
+    def save_nesting_and_continue(self):
+        model = self.ui.nesting_TW.model()
+        nesting_order = [model.item(row).text() for row in range(model.rowCount())]
+
+        # Create a mapping of layer names to their original indices
+        original_indices = {name: index for index, name in enumerate(self.df['Layer Name'])}
+
+        # Create the Nesting column
+        self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order]
+
+        print("Updated DataFrame:")
+        print(self.df)
+
+        current_tab_index = self.ui.tabWidget.currentIndex()
+        next_tab_index = current_tab_index + 1
+
+        if next_tab_index < self.ui.tabWidget.count():
+            self.ui.tabWidget.setTabEnabled(current_tab_index, False)  # Disable current tab
+            self.ui.tabWidget.setTabEnabled(next_tab_index, True)  # Enable next tab
+            self.ui.tabWidget.setCurrentIndex(next_tab_index)  # Switch to next tab
+
+        self.initialize_advanced_settings()
 
     def fill_form(self):
         """Process data"""
@@ -341,6 +431,197 @@ class MainWindow(QtWidgets.QMainWindow):
 
             layer_name = self.df.iloc[selected_row]['Layer Name']
             print(f"Color changed for {layer_name} to {new_rgb}")
+
+
+
+    def initialize_advanced_settings(self):
+        layer_names = self.df['Layer Name'].tolist()
+
+        # Configure component_TW
+        self.ui.component_TW.setColumnCount(1)
+        self.ui.component_TW.setHorizontalHeaderLabels(["Annotation layers"])
+        self.ui.component_TW.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) #data matches the table width
+
+        for row, layer_name in enumerate(layer_names):
+            self.ui.component_TW.insertRow(row)
+            item = QtWidgets.QTableWidgetItem(layer_name)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Unchecked)
+            self.ui.component_TW.setItem(row, 0, item)
+
+        # Connect itemChanged signal to slot (value gets gray after being checked)
+        self.ui.component_TW.itemChanged.connect(self.on_delete_item_changed)
+
+
+        # Configure delete_TW
+        self.ui.delete_TW.setColumnCount(1)
+        self.ui.delete_TW.setHorizontalHeaderLabels(["Annotation layers"])
+        self.ui.delete_TW.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) #data matches the table width
+
+
+        for row, layer_name in enumerate(layer_names):
+            self.ui.delete_TW.insertRow(row)
+            item = QtWidgets.QTableWidgetItem(layer_name)
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+            item.setCheckState(Qt.Unchecked)
+            self.ui.delete_TW.setItem(row, 0, item)
+
+        # Connect itemChanged signal to the slot
+        self.ui.delete_TW.itemChanged.connect(self.on_delete_item_changed)
+
+
+        # Configure Combine_TW_1
+        self.ui.Combine_TW_1.setColumnCount(1)
+        self.ui.Combine_TW_1.setHorizontalHeaderLabels(["Layer Name"])
+        for name in layer_names:
+            row_position = self.ui.Combine_TW_1.rowCount()
+            self.ui.Combine_TW_1.insertRow(row_position)
+            item = QtWidgets.QTableWidgetItem(name)
+            item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)  # Make item non-editable
+            self.ui.Combine_TW_1.setItem(row_position, 0, item)
+
+        # Configure Combine_TW_2
+        self.ui.Combine_TW_2.setColumnCount(0)
+
+        # Hide vertical headers and add horizontal header line for both tables
+        for table in [self.ui.Combine_TW_1, self.ui.Combine_TW_2]:
+            table.verticalHeader().setVisible(False)
+            table.horizontalHeader().setVisible(True)
+            table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+            table.setShowGrid(True)
+            table.setStyleSheet("QHeaderView::section { background-color: #f0f0f0; }")
+
+    def on_delete_item_changed(self, item):
+        if item.checkState() == Qt.Checked:
+            item.setBackground(QColor(200, 200, 200))  # Light gray
+        else:
+            item.setBackground(QColor(255, 255, 255))  # White
+
+    def add_combo(self):
+        selected_items = self.ui.Combine_TW_1.selectedItems()
+        if selected_items:
+            while True:
+                combo_name, ok = QtWidgets.QInputDialog.getText(self, "Combo Name",
+                                                                "Please type combo name (letters only):")
+                if not ok:
+                    return
+                if combo_name and combo_name.isalpha():
+                    break
+                QtWidgets.QMessageBox.warning(self, 'Invalid Name', 'Please use only letters for the combo name.')
+
+            new_column = self.ui.Combine_TW_2.columnCount()
+            self.ui.Combine_TW_2.insertColumn(new_column)
+            self.ui.Combine_TW_2.setHorizontalHeaderItem(new_column, QtWidgets.QTableWidgetItem(combo_name))
+
+            for i, item in enumerate(selected_items):
+                if self.ui.Combine_TW_2.rowCount() <= i:
+                    self.ui.Combine_TW_2.insertRow(i)
+                new_item = QtWidgets.QTableWidgetItem(item.text())
+                new_item.setFlags(new_item.flags() & ~QtCore.Qt.ItemIsEditable)  # Make item non-editable
+                self.ui.Combine_TW_2.setItem(i, new_column, new_item)
+
+                # Find and remove the item from Combine_TW_1
+                for row in range(self.ui.Combine_TW_1.rowCount()):
+                    if self.ui.Combine_TW_1.item(row, 0).text() == item.text():
+                        self.ui.Combine_TW_1.removeRow(row)
+                        break
+
+        # Ensure the horizontal header is visible and styled
+        self.ui.Combine_TW_2.horizontalHeader().setVisible(True)
+        self.ui.Combine_TW_2.setStyleSheet("QHeaderView::section { background-color: #f0f0f0; }")
+
+    def remove_combo(self):
+        selected_columns = set(index.column() for index in self.ui.Combine_TW_2.selectedIndexes())
+        for column in sorted(selected_columns, reverse=True):
+            for row in range(self.ui.Combine_TW_2.rowCount()):
+                item = self.ui.Combine_TW_2.item(row, column)
+                if item:
+                    self.ui.Combine_TW_1.insertRow(self.ui.Combine_TW_1.rowCount())
+                    self.ui.Combine_TW_1.setItem(self.ui.Combine_TW_1.rowCount() - 1, 0,
+                                                 QtWidgets.QTableWidgetItem(item.text()))
+            self.ui.Combine_TW_2.removeColumn(column)
+
+
+    # Add or update these methods in the MainWindow class:
+    def save_advanced_settings_and_close(self):
+        # Delete layers
+        delete_layers = {}
+        for row in range(self.ui.delete_TW.rowCount()):
+            item = self.ui.delete_TW.item(row, 0)
+            if item:
+                layer_name = item.text()
+                is_checked = item.checkState() == Qt.Checked
+                delete_layers[layer_name] = not is_checked  # Save True for non-checked items
+
+        self.df['Delete layer'] = self.df['Layer Name'].map(delete_layers)
+
+        # Component analysis
+        component_layers = {}
+        for row in range(self.ui.component_TW.rowCount()):
+            item = self.ui.component_TW.item(row, 0)
+            if item:
+                layer_name = item.text()
+                is_checked = item.checkState() == Qt.Checked
+                component_layers[layer_name] = is_checked  # Save True for checked items
+
+        self.df['Component analysis'] = self.df['Layer Name'].map(component_layers)
+
+        # Combined layers
+        combo_updates = {}
+        original_indices = {name: index for index, name in enumerate(self.df['Layer Name'])}
+
+        for col in range(self.ui.Combine_TW_2.columnCount()):
+            combo_name = self.ui.Combine_TW_2.horizontalHeaderItem(col).text()
+            layers = [self.ui.Combine_TW_2.item(row, col).text() for row in range(self.ui.Combine_TW_2.rowCount())
+                      if self.ui.Combine_TW_2.item(row, col)]
+            if layers:
+                combo_indexes = [original_indices[layer] + 1 for layer in layers]  # Add 1 to make it 1-indexed
+                combo_updates[combo_name] = combo_indexes
+
+        # Function to generate the combined layers based on the updates
+        def combine_layers(layers_indexes, layer_names, combo_updates):
+            new_indexes = layers_indexes.copy()
+            new_names = layer_names.copy()
+
+            sorted_updates = sorted(combo_updates.items(), key=lambda x: max(x[1]), reverse=True)
+
+            for combo_name, indexes in sorted_updates:
+                min_index = min(indexes)
+                max_index = max(indexes)
+
+                for i in range(len(new_indexes)):
+                    if new_indexes[i] == max_index:
+                        new_indexes[i] = min_index
+                    elif new_indexes[i] > max_index:
+                        new_indexes[i] -= 1
+
+                new_names[min_index - 1] = combo_name
+                new_names.pop(max_index - 1)
+                # new_names.insert(max_index - 2, new_names.pop(min_index - 1))
+
+            return new_indexes, new_names
+
+        # Get the original layer indexes and names
+        original_indexes = list(range(1, len(self.df) + 1))
+        original_names = self.df['Layer Name'].tolist()
+
+        combined_idxes, combined_names = combine_layers(original_indexes, original_names, combo_updates)
+
+        # Create the Combined layers column
+        self.df['Combined layers'] = combined_idxes
+
+        # Create new dataframe for combined layers info
+        combined_df = pd.DataFrame({
+            'Combined names': combined_names,
+            'Combined colors': [''] * len(combined_names)  # Placeholder for colors
+        })
+
+        print("Original DataFrame:")
+        print(self.df)
+        print("\nCombined Layers DataFrame:")
+        print(combined_df)
+
+        self.close()
 
 
 if __name__ == '__main__':

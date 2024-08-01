@@ -304,15 +304,16 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_11.addWidget(self.label_5)
 
-        self.tts_SB = QSpinBox(self.tab_4)
-        self.tts_SB.setObjectName(u"tts_SB")
-        self.tts_SB.setMinimum(1)
-        self.tts_SB.setMaximum(2048)
-        self.tts_SB.setSingleStep(1)
-        self.tts_SB.setValue(1024)
-        self.tts_SB.setDisplayIntegerBase(10)
+        self.tts_CB = QComboBox(self.tab_4)
+        self.tts_CB.addItem("")
+        self.tts_CB.addItem("")
+        self.tts_CB.addItem("")
+        self.tts_CB.addItem("")
+        self.tts_CB.addItem("")
+        self.tts_CB.addItem("")
+        self.tts_CB.setObjectName(u"tts_CB")
 
-        self.horizontalLayout_11.addWidget(self.tts_SB)
+        self.horizontalLayout_11.addWidget(self.tts_CB)
 
 
         self.verticalLayout_10.addLayout(self.horizontalLayout_11)
@@ -420,69 +421,12 @@ class Ui_MainWindow(object):
 
         self.gridLayout_9.addWidget(self.groupBox_4, 0, 1, 1, 1)
 
-        self.groupBox_2 = QGroupBox(self.tab_4)
-        self.groupBox_2.setObjectName(u"groupBox_2")
-        self.gridLayout_7 = QGridLayout(self.groupBox_2)
-        self.gridLayout_7.setObjectName(u"gridLayout_7")
-        self.verticalLayout_8 = QVBoxLayout()
-        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
-        self.horizontalLayout_17 = QHBoxLayout()
-        self.horizontalLayout_17.setObjectName(u"horizontalLayout_17")
-        self.Delete_CB = QComboBox(self.groupBox_2)
-        self.Delete_CB.setObjectName(u"Delete_CB")
-
-        self.horizontalLayout_17.addWidget(self.Delete_CB)
-
-        self.Add_delete_PB = QPushButton(self.groupBox_2)
-        self.Add_delete_PB.setObjectName(u"Add_delete_PB")
-
-        self.horizontalLayout_17.addWidget(self.Add_delete_PB)
-
-        self.Restore_delete_PB = QPushButton(self.groupBox_2)
-        self.Restore_delete_PB.setObjectName(u"Restore_delete_PB")
-
-        self.horizontalLayout_17.addWidget(self.Restore_delete_PB)
-
-
-        self.verticalLayout_8.addLayout(self.horizontalLayout_17)
-
-        self.delete_TW = QTableWidget(self.groupBox_2)
-        self.delete_TW.setObjectName(u"delete_TW")
-
-        self.verticalLayout_8.addWidget(self.delete_TW)
-
-
-        self.gridLayout_7.addLayout(self.verticalLayout_8, 0, 0, 1, 1)
-
-
-        self.gridLayout_9.addWidget(self.groupBox_2, 1, 0, 1, 1)
-
         self.groupBox_3 = QGroupBox(self.tab_4)
         self.groupBox_3.setObjectName(u"groupBox_3")
         self.gridLayout_8 = QGridLayout(self.groupBox_3)
         self.gridLayout_8.setObjectName(u"gridLayout_8")
         self.verticalLayout_9 = QVBoxLayout()
         self.verticalLayout_9.setObjectName(u"verticalLayout_9")
-        self.horizontalLayout_18 = QHBoxLayout()
-        self.horizontalLayout_18.setObjectName(u"horizontalLayout_18")
-        self.component_CB = QComboBox(self.groupBox_3)
-        self.component_CB.setObjectName(u"component_CB")
-
-        self.horizontalLayout_18.addWidget(self.component_CB)
-
-        self.Add_component_PB = QPushButton(self.groupBox_3)
-        self.Add_component_PB.setObjectName(u"Add_component_PB")
-
-        self.horizontalLayout_18.addWidget(self.Add_component_PB)
-
-        self.Restore_component_PB = QPushButton(self.groupBox_3)
-        self.Restore_component_PB.setObjectName(u"Restore_component_PB")
-
-        self.horizontalLayout_18.addWidget(self.Restore_component_PB)
-
-
-        self.verticalLayout_9.addLayout(self.horizontalLayout_18)
-
         self.component_TW = QTableWidget(self.groupBox_3)
         self.component_TW.setObjectName(u"component_TW")
 
@@ -512,6 +456,23 @@ class Ui_MainWindow(object):
 
 
         self.gridLayout_9.addLayout(self.horizontalLayout_15, 2, 0, 1, 2)
+
+        self.groupBox_2 = QGroupBox(self.tab_4)
+        self.groupBox_2.setObjectName(u"groupBox_2")
+        self.gridLayout_7 = QGridLayout(self.groupBox_2)
+        self.gridLayout_7.setObjectName(u"gridLayout_7")
+        self.verticalLayout_8 = QVBoxLayout()
+        self.verticalLayout_8.setObjectName(u"verticalLayout_8")
+        self.delete_TW = QTableWidget(self.groupBox_2)
+        self.delete_TW.setObjectName(u"delete_TW")
+
+        self.verticalLayout_8.addWidget(self.delete_TW)
+
+
+        self.gridLayout_7.addLayout(self.verticalLayout_8, 0, 0, 1, 1)
+
+
+        self.gridLayout_9.addWidget(self.groupBox_2, 1, 0, 1, 1)
 
         self.tabWidget.addTab(self.tab_4, "")
         MainWindow.setCentralWidget(self.centralwidget)
@@ -588,20 +549,24 @@ class Ui_MainWindow(object):
         self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Nesting", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Training tile size:", None))
+        self.tts_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"64", None))
+        self.tts_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"128", None))
+        self.tts_CB.setItemText(2, QCoreApplication.translate("MainWindow", u"256", None))
+        self.tts_CB.setItemText(3, QCoreApplication.translate("MainWindow", u"512", None))
+        self.tts_CB.setItemText(4, QCoreApplication.translate("MainWindow", u"1024", None))
+        self.tts_CB.setItemText(5, QCoreApplication.translate("MainWindow", u"2048", None))
+
+        self.tts_CB.setCurrentText(QCoreApplication.translate("MainWindow", u"1024", None))
         self.label_10.setText(QCoreApplication.translate("MainWindow", u"Training tiles number:", None))
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Validation tiles number:", None))
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"TA average count:", None))
         self.groupBox_4.setTitle(QCoreApplication.translate("MainWindow", u"Combine classes:", None))
         self.addcombo_PB.setText(QCoreApplication.translate("MainWindow", u"Add Combo ", None))
         self.removecombo_PB.setText(QCoreApplication.translate("MainWindow", u"Remove Combo", None))
-        self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"Delete classes:", None))
-        self.Add_delete_PB.setText(QCoreApplication.translate("MainWindow", u"Add", None))
-        self.Restore_delete_PB.setText(QCoreApplication.translate("MainWindow", u"Restore", None))
         self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
-        self.Add_component_PB.setText(QCoreApplication.translate("MainWindow", u"Add", None))
-        self.Restore_component_PB.setText(QCoreApplication.translate("MainWindow", u"Restore", None))
         self.return_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
         self.save_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
+        self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"Delete classes:", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Advanced Settings", None))
     # retranslateUi
 
