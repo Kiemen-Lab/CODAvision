@@ -119,14 +119,18 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
     return imh, imlabel
 
 # Example usage
-# if __name__ == "__main__":
+#if __name__ == "__main__":
 #     import os
 #     from skimage import io
-#     imnm = '00004.tif'
-#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\04_03_2024\training'
+#     import time
+#     start_time = time.time()
+#     imnm = '00226.tif'
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\Optimize\data py\SG_014_0016\optimization_06_28_2024_boundbox'
 #     imh0 = io.imread(os.path.join(os.path.join(pth, 'im'),imnm))
 #     imlabel0 = io.imread(os.path.join(os.path.join(pth, 'label'),imnm))
-#     outpth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\04_03_2024\augment_test'
+#     outpth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\Optimize\data py\SG_014_0016\optimization_06_28_2024_boundbox\test'
 #     [im,imlabel] = augment_annotation(imh0, imlabel0,True,True,True,False,False)
 #     cv2.imwrite(os.path.join(os.path.join(outpth,'im'), imnm), im.astype(np.uint8))
 #     cv2.imwrite(os.path.join(os.path.join(outpth, 'label'), imnm), imlabel.astype(np.uint8))
+#     elapsed_time = time.time() - start_time
+#     print(f'Elapsed Time: {elapsed_time//60} min and {elapsed_time} sec')

@@ -15,6 +15,7 @@ import numpy as np
 from skimage import io
 import time
 import warnings
+import cv2
 
 def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     """
@@ -61,20 +62,25 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         imnm = imnm[:-4]
         tif_file = os.path.join(pthim, f'{imnm}.tif')
         jpg_file = os.path.join(pthim, f'{imnm}.jpg')
-        if not os.path.isfile(tif_file) and not os.path.isfile(jpg_file):
-            raise FileNotFoundError(f'Cannot find a tif or jpg file for xml file: {imnm}.xml')
+        png_file = os.path.join(pth, f'{imnm}.png')
+        if not os.path.isfile(tif_file) and not os.path.isfile(jpg_file) and not os.path.isfile(png_file):
+            raise FileNotFoundError(f'Cannot find a tif, png or jpg file for xml file: {imnm}.xml')
 
     # for each annotation file
-    start_time = time.time()  # Capture the start time before the loop
+      # Capture the start time before the loop
 
     for idx, imnm in enumerate(imlist, start=1):
+        image_time = time.time()
         print(f'Image {idx} of {len(imlist)}: {imnm[:-4]}')
         imnm = imnm[:-4]
         outpth = os.path.join(pth, 'data py', imnm)
         annotations_file = os.path.join(outpth, 'annotations.pkl')
 
         # check if model parameters have changed
+        check_start = time.time()
         reload_xml = check_if_model_parameters_changed(annotations_file, WS, umpix, nwhite, pthim)
+        elapsed_time = time.time() - check_start
+        print(f'Checking parameters took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
 
         # skip if file hasn't been updated since last load
         if os.path.isfile(annotations_file):
@@ -105,7 +111,10 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         os.makedirs(outpth)
 
         # 1 read xml annotation files and save as pkl files
+        import_start = time.time()
         import_xml(annotations_file, os.path.join(pth, f'{imnm}.xml'), date_modified)
+        elapsed_time = time.time() - import_start
+        print(f'Import xml took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
         with open(annotations_file, 'rb') as f:  #
             data = pickle.load(f)  #
             data['WS'] = WS
@@ -119,9 +128,16 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         # 2 fill annotation outlines and delete unwanted pixels
         with open(annotations_file, 'rb') as f:  #
             data = pickle.load(f)  #
+        calculate_mask_start = time.time()
         I0, TA, _ = calculate_tissue_mask(pthim, imnm)
+        elapsed_time = time.time() - calculate_mask_start
+        print(f'Calculating tissue mask took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
+        save_mask_start = time.time()
         J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
-        io.imsave(os.path.join(outpth, 'view_annotations.tif'), J0.astype(np.uint8))
+        elapsed_time = time.time() - save_mask_start
+        print(f'Saving annotation mask took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
+        #io.imsave(os.path.join(outpth, 'view_annotations.tif'), J0.astype(np.uint8))
+        io.imsave(os.path.join(outpth, 'view_annotations.png'), J0.astype(np.uint8))
 
         # show mask in color
         I = I0[::2, ::2, :].astype(np.float64) / 255
@@ -134,10 +150,13 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         J3 = J3.reshape(J.shape)
         mask = np.dstack((J1, J2, J3))
         I = (I * 0.5) + (mask * 0.5)
-        io.imsave(os.path.join(outim, f'{imnm}.jpg'), (I * 255).astype(np.uint8))
+        io.imsave(os.path.join(outim, f'{imnm}.tif'), (I * 255).astype(np.uint8))
 
         # create annotation bounding boxes and update data to annotation.pkl file
+        bound_start = time.time()
         numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
+        elapsed_time = time.time() - bound_start
+        print(f'Bounding boxes took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
         numann0.extend(numann)
         # ctlist0.extend(ctlist)
 
@@ -145,15 +164,16 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         ctlist0['tile_name'].extend(ctlist['tile_name'])
         ctlist0['tile_pth'].extend(ctlist['tile_pth'])
 
-        print(f' Finished image in {round(time.time() - start_time)} seconds.')
+        print(f' Finished image in {round(time.time() - image_time)} seconds.')
     return ctlist0, numann0
 
-#if __name__ == "__main__":
+# if __name__ == "__main__":
 #     # Example usage
+#
 #     # Inputs
 #     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime'
 #     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\04_19_2024'
 #     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\5x'
 #     classcheck = 0
-
+#
 #     load_annotation_data(pthDL, pth, pthim,classcheck)

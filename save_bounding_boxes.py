@@ -5,15 +5,16 @@ Date: April 30, 2024
 
 import pickle
 from PIL import Image
-
 # Disable the maximum image pixel check
 Image.MAX_IMAGE_PIXELS = None
 import os
 from PIL import Image
 import numpy as np
 from skimage import morphology
-from scipy import ndimage
 from skimage.measure import label
+import time
+import cv2
+from concurrent.futures import ThreadPoolExecutor
 
 
 def save_bounding_boxes(I0, outpth, model_name, numclass):
@@ -32,10 +33,11 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 
     """
     print(' 4. of 4. Creating bounding box tiles of all annotations')
+    open_start = time.time()
     try:
-        imlabel = np.array(Image.open(os.path.join(outpth, 'view_annotations.tif')))
+        imlabel = np.array(Image.open(os.path.join(outpth, 'view_annotations.png')))
     except:
-        imlabel = np.array(Image.open(os.path.join(outpth, 'view_annotations_raw.tif')))
+        imlabel = np.array(Image.open(os.path.join(outpth, 'view_annotations_raw.png')))
 
     # Create directories:
     pthbb = os.path.join(outpth, model_name + '_boundbox')
@@ -49,22 +51,33 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 
     os.makedirs(pthim)
     os.makedirs(pthlabel)
-
+    #elapsed_time = time.time() - open_start
+    #print(f'Open image and create directories took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
     # Image Processing
+    processing_time = time.time()
     # Perform morphological closing
-    tmp = ndimage.binary_closing(imlabel > 0, structure=morphology.disk(10))
+    tmp = imlabel > 0
+    tmp = tmp.astype(np.uint8)
+    kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (21, 21))  # Larger kernel for closing
+    tmp = cv2.morphologyEx(tmp, cv2.MORPH_CLOSE, kernel_large)
     # Fill holes in the binary image
-    tmp = ndimage.binary_fill_holes(tmp)
+    kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    tmp = cv2.morphologyEx(tmp, cv2.MORPH_OPEN, kernel_small)
+    contours, _ = cv2.findContours(tmp, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(tmp, contours, -1, 255, thickness=cv2.FILLED)
     # Remove small objects with less than 300 pixels
-    tmp = morphology.remove_small_objects(tmp, min_size=300)
+    tmp = morphology.remove_small_objects(tmp.astype(bool), min_size=300)
 
+    elapsed_time = time.time() - processing_time
+    #print(f'Image processing took {np.floor(elapsed_time / 60)} minutes and {elapsed_time - 60 * np.floor(elapsed_time / 60)} seconds')
     L = label(tmp)
-    numann = np.zeros((np.max(L), numclass))
 
-    for pk in range(1, np.max(L)+1):
+    mask_start = time.time()
+    numann = np.zeros((np.max(L), numclass), dtype=np.uint32)
 
+    def create_bounding_box(pk):
         # Create a binary mask for the current component
-        tmp = (L == pk).astype(float)
+        tmp = (L == pk)
         a = np.sum(tmp, axis=1)
         b = np.sum(tmp, axis=0)
         rect = [np.nonzero(b)[0][0], np.nonzero(b)[0][-1], np.nonzero(a)[0][0], np.nonzero(a)[0][-1]]
@@ -77,23 +90,41 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         tmpim = I0[rect[2]:rect[3], rect[0]:rect[1], :]
 
         nm = str(pk).zfill(5)
-        Image.fromarray(tmpim.astype(np.uint8)).save(os.path.join(pthim, f'{nm}.tif'))
-        Image.fromarray(tmplabel.astype(np.uint8)).save(os.path.join(pthlabel, f'{nm}.tif'))
+        # Collect images and labels for batch processing
+        return nm, tmpim, tmplabel
 
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(create_bounding_box, pk) for pk in range(1, np.max(L) + 1)]
+
+    count = 0
+
+
+    for future in futures:
+        nm, tmpim, tmplabel = future.result()
+        # Save images and labels in batch if needed
+        #Image.fromarray(tmpim.astype(np.uint8)).save(os.path.join(pthim, f'{nm}.tif'))
+        Image.fromarray(tmpim.astype(np.uint8)).save(os.path.join(pthim, f'{nm}.png'))
+        #Image.fromarray(tmplabel.astype(np.uint8)).save(os.path.join(pthlabel, f'{nm}.tif'))
+        Image.fromarray(tmplabel.astype(np.uint8)).save(os.path.join(pthlabel, f'{nm}.png'))
         for anns in range(numclass):
-            numann[pk-1, anns] = np.sum(tmplabel == anns+1)
+            numann[count, anns] = np.sum(tmplabel == anns + 1)
+        count += 1
+    elapsed_time = time.time() - mask_start
+    #print(f'Mask creation took {np.floor(elapsed_time / 60)} minutes and {elapsed_time - 60 * np.floor(elapsed_time / 60)} seconds')
 
     # ctlist = [f for f in os.listdir(pthim) if f.endswith('.tif')]
 
+    #ct_time = time.time()
     ctlist = {
-        'tile_name': [f for f in os.listdir(pthim) if f.endswith('.tif')],
-        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in os.listdir(pthim) if f.endswith('.tif')]
+        'tile_name': [f for f in os.listdir(pthim) if f.endswith('.png')],
+        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in os.listdir(pthim) if f.endswith('.png')]
     }
-
+    #elapsed_time = time.time() - ct_time
+    #print(f'Ct creation took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
     bb = 1  # indicate that xml file is fully analyzed
 
     annotations_file = os.path.join(outpth, 'annotations.pkl')
-
+    data_time = time.time()
     # Save data on .pkl file
     if os.path.join(outpth, 'annotations.pkl'):
         with open(annotations_file, 'rb') as f:
@@ -109,6 +140,8 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         with open(annotations_file, 'wb') as f:  # save data to new file 'write binary mode'
             pickle.dump(data, f)
             f.close()
+    elapsed_time = time.time() - data_time
+    #print(f'Data save took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
     return numann, ctlist
 
 

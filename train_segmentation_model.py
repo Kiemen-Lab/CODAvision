@@ -8,9 +8,9 @@ import time
 import pickle
 import keras
 from keras import layers
-from keras import ops
 import tensorflow as tf
 import os
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -20,9 +20,26 @@ from glob import glob
 from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
 
 
 def train_segmentation_model(pthDL):
+    # Ensure TensorFlow is set to use the GPU
+    physical_devices = tf.config.list_physical_devices('GPU')
+    if physical_devices:
+        try:
+            # Set memory growth to avoid using all GPU memory
+            for device in physical_devices:
+                tf.config.experimental.set_memory_growth(device, True)
+            tf.config.set_visible_devices(physical_devices[0], 'GPU')
+            logical_devices = tf.config.list_logical_devices('GPU')
+            print(f"TensorFlow is using the following GPU: {logical_devices[0]}")
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
+    else:
+        print("No GPU available. Ensure that the NVIDIA GPU and CUDA are correctly installed.")
+
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         classNames = data['classNames']
@@ -91,7 +108,7 @@ def train_segmentation_model(pthDL):
             kernel_initializer=keras.initializers.HeNormal(),
         )(block_input)
         x = layers.BatchNormalization()(x)
-        return ops.nn.relu(x)
+        return tf.nn.relu(x)
 
     def DilatedSpatialPyramidPooling(dspp_input):
         dims = dspp_input.shape
@@ -113,8 +130,8 @@ def train_segmentation_model(pthDL):
 
     def DeeplabV3Plus(image_size, num_classes):
         model_input = keras.Input(shape=(image_size, image_size, 3))
-        preprocessed = keras.applications.resnet50.preprocess_input(model_input)
-        resnet50 = keras.applications.ResNet50(
+        preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
+        resnet50 = tf.keras.applications.ResNet50(
             weights="imagenet", include_top=False, input_tensor=preprocessed
         )
         x = resnet50.get_layer("conv4_block6_2_relu").output
@@ -137,24 +154,123 @@ def train_segmentation_model(pthDL):
         model_output = layers.Conv2D(num_classes, kernel_size=(1, 1), padding="same")(x)
         return keras.Model(inputs=model_input, outputs=model_output)
 
+    class BatchAccCall(keras.callbacks.Callback):
+        def __init__(self, val_data, num_validations=3):
+            super(BatchAccCall, self).__init__()
+            self.batch_accuracies = []
+            self.batch_numbers = []
+            self.epoch_indices = []
+            self.epoch_numbers = []
+            self.current_epoch = 0
+            self.val_data = val_data
+            self.num_validations = num_validations
+            self.batch_accuracies = []
+            self.batch_numbers = []
+            self.validation_losses = []
+            self.validation_accuracies = []
+            self.batch_count = 0
+            self.val_indices = []
+
+        def on_epoch_begin(self, epoch, logs=None):
+            self.current_epoch = epoch
+            self.epoch_indices.append(self.current_epoch)
+            self.validation_steps = np.linspace(0, self.params['steps'], self.num_validations + 1, dtype=int)[1:]
+            self.validation_counter = 0
+            self.current_step = 0
+
+        def on_batch_end(self, batch, logs=None):
+            logs = logs or {}
+            self.current_step += 1
+            self.batch_count += 1
+            if self.current_step in self.validation_steps:
+                self.run_validation()
+                self.val_indices.append(self.current_step+self.params['steps']*(self.current_epoch+1))
+            accuracy = logs.get('accuracy')  # Use the metric name you specified
+            if accuracy is not None:
+                self.batch_accuracies.append(accuracy)
+                self.batch_numbers.append(self.params['steps'] * self.current_epoch + batch + 1)
+
+        def run_validation(self):
+            val_loss_total = 0
+            val_accuracy_total = 0
+            num_batches = 0
+
+            for x_val, y_val in self.val_data:
+                y_val = tf.cast(y_val, dtype=tf.int32)
+                val_logits = self.model(x_val, training=False)
+                num_classes = val_logits.shape[-1]
+                val_logits_flat = tf.reshape(val_logits, [-1, num_classes])
+                y_val_flat = tf.reshape(y_val, [-1])
+                predictions = tf.argmax(val_logits_flat, axis=1)
+                predictions = tf.cast(predictions, dtype=tf.int32)
+                val_loss = tf.keras.losses.sparse_categorical_crossentropy(y_val_flat, val_logits_flat, from_logits=True)
+                val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
+
+                val_loss_total += tf.reduce_mean(val_loss).numpy()
+                val_accuracy_total += val_accuracy.numpy()
+                num_batches += 1
+
+            val_loss_avg = val_loss_total / num_batches
+            val_accuracy_avg = val_accuracy_total / num_batches
+
+            self.validation_losses.append(val_loss_avg)
+            self.validation_accuracies.append(val_accuracy_avg)
+
+            print('')
+            print(f"Validation at step {self.current_step}: loss = {val_loss_avg}, accuracy = {val_accuracy_avg}")
+
+        def on_train_end(self, logs=None):
+            # Plot after training ends
+            plt.figure(figsize=(12, 6))
+            plt.plot(self.batch_numbers[50:], self.batch_accuracies[50:],color='blue', label='Training Accuracy', linestyle='-')
+            plt.plot(self.val_indices,self.validation_accuracies, color='red', label='Validation Accuracy', linestyle='-')
+            for epoch in self.epoch_indices:
+                plt.axvline(x=(epoch+1) * self.params['steps'], color='grey', linestyle='--', linewidth=1)
+                plt.text(
+                    (epoch + 0.5) * self.params['steps'],
+                    plt.ylim()[1] * 0.95,
+                    f'Epoch {epoch}',
+                    color='grey',
+                    rotation=90,
+                    verticalalignment='top',
+                    horizontalalignment='right'
+                )
+            plt.title('Batch-wise Accuracy Over All Epochs')
+            plt.xlabel('Batch Number')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.grid(True)
+            plt.show()
+
+            if self.validation_losses:
+                plt.figure(figsize=(12, 6))
+                plt.plot(
+                    range(1, len(self.validation_losses) + 1),
+                    self.validation_losses,
+                    linestyle='-',
+                    color='red',
+                    label='Validation Loss'
+                )
+                for epoch in self.epoch_indices:
+                    plt.axvline(x=(epoch+1) * self.num_validations, color='grey', linestyle='--', linewidth=1)
+                    plt.text(
+                        (epoch + 0.5) *  self.num_validations,
+                        plt.ylim()[1] * 0.95,
+                        f'Epoch {epoch}',
+                        color='grey',
+                        rotation=90,
+                        verticalalignment='top',
+                        horizontalalignment='right'
+                    )
+                plt.title('Validation Loss Over Epochs')
+                plt.xlabel('Validation Step')
+                plt.ylabel('Loss')
+                plt.legend()
+                plt.grid(True)
+                plt.show()
+
     model = DeeplabV3Plus(image_size=IMAGE_SIZE, num_classes=NUM_CLASSES)
     # model.summary()
-
-    # Ensure TensorFlow is set to use the GPU
-    physical_devices = tf.config.list_physical_devices('GPU')
-    if physical_devices:
-        try:
-            # Set memory growth to avoid using all GPU memory
-            for device in physical_devices:
-                tf.config.experimental.set_memory_growth(device, True)
-            tf.config.set_visible_devices(physical_devices[0], 'GPU')
-            logical_devices = tf.config.list_logical_devices('GPU')
-            print(f"TensorFlow is using the following GPU: {logical_devices[0]}")
-        except RuntimeError as e:
-            # Memory growth must be set before GPUs have been initialized
-            print(e)
-    else:
-        print("No GPU available. Ensure that the NVIDIA GPU and CUDA are correctly installed.")
 
     # Training
     print('Starting model training...')
@@ -165,8 +281,23 @@ def train_segmentation_model(pthDL):
         loss=loss,
         metrics=["accuracy"],
     )
+    num_validations = 3
+
+    plotcall = BatchAccCall(val_data=val_dataset, num_validations=num_validations)
+    checkpoint = ModelCheckpoint(
+        filepath= os.path.join(pthDL, 'best_val_net'),  # Path to save the model
+        monitor='val_accuracy',  # Metric to monitor
+        save_best_only=True,  # Save only the best model
+        mode='max',  # 'max' for validation accuracy
+        verbose=1  # Print messages when saving
+    )
+    early_stopping = EarlyStopping(monitor='val_accuracy',
+                                    patience=2,
+                                    mode='max',
+                                    verbose=1)
+
     start = time.time()
-    history = model.fit(train_dataset, validation_data=val_dataset, epochs=8)
+    history = model.fit(train_dataset, validation_data=val_dataset, callbacks=[plotcall,early_stopping], verbose=1, epochs=8)
 
     training_time = time.time() - start
     hours, rem = divmod(training_time, 3600)
@@ -175,7 +306,8 @@ def train_segmentation_model(pthDL):
 
     # Save model
     print('Saving model...')
-    data['model'] = model
+    model.save(os.path.join(pthDL, 'net'))
+    #data['model'] = model
     data['history'] = history.history  # Get the model history
     with open(os.path.join(pthDL, 'net.pkl'), 'wb') as f:
         pickle.dump(data, f)
@@ -183,35 +315,40 @@ def train_segmentation_model(pthDL):
     #_______________________PLotting____________________________
 
     # Plot Accuracy (Training and Validation)
-    sns.set_palette("colorblind")
+    #sns.set_palette("colorblind")
 
     # Plot loss and accuracy in a single figure
-    plt.figure(figsize=(12, 6))
+    #plt.figure(figsize=(12, 6))
 
     # Plot loss
-    plt.subplot(1, 2, 1)
-    sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='loss', label='Training Loss')
-    sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='val_loss', label='Validation Loss')
-    plt.title('Training and Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.grid(True)
+    #plt.subplot(1, 2, 1)
+    #sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='loss', label='Training Loss')
+    #sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='val_loss', label='Validation Loss')
+    #plt.title('Training and Validation Loss')
+    #plt.xlabel('Epochs')
+    #plt.ylabel('Loss')
+    #plt.grid(True)
 
     # Plot accuracy
-    plt.subplot(1, 2, 2)
-    sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='accuracy', label='Training Accuracy')
-    sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='val_accuracy',
-                 label='Validation Accuracy')
-    plt.title('Training and Validation Accuracy')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.grid(True)
+    #plt.subplot(1, 2, 2)
+    #sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='accuracy', label='Training Accuracy')
+    #sns.lineplot(data=history.history, x=range(1, len(history.epoch) + 1), y='val_accuracy',
+    #             label='Validation Accuracy')
+    #plt.title('Training and Validation Accuracy')
+    #plt.xlabel('Epochs')
+    #plt.ylabel('Accuracy')
+    #plt.grid(True)
 
-    plt.tight_layout()
-    plt.show()
+    #plt.plot(history.history['accuracy'])
+    #plt.plot(history.history['val_accuracy'])
+    #plt.title('Model accuracy')
+    #plt.xlabel('Epoch')
+    #plt.ylabel('Accuracy')
+    #plt.legend(['Train', 'Validation'], loc='upper left')
+
+    #plt.tight_layout()
+    #plt.show()
+
 
     return
 
-if __name__ == '__main__':
-    pthDL = r'C:\\Users\\Valentina\\OneDrive - Johns Hopkins\\Desktop\\python model 2\\06_26_2024_raw_mattiles'
-    train_segmentation_model(pthDL)

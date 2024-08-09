@@ -7,6 +7,8 @@ import os
 import matplotlib.pyplot as plt
 import plot_cmap_legend
 import pickle
+import time
+import numpy as np
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
     """
@@ -32,7 +34,7 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
       It also creates a color map legend plot based on the provided color map and class names, and saves
       the plot as 'model_color_legend.png' in the same directory as the model metadata.
       """
-
+    metadata_start = time.time()
     if not os.path.isdir(pthDL):
         os.mkdir(pthDL)
 
@@ -57,7 +59,7 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
                 ncombine = [n - 1 if n > oldnum else n for n in ncombine]
                 nload = [n for n in nload if n != b]
 
-                if len(classNames) + 1 == max(WS[2]):
+                if len(classNames) == max(WS[2]):
                     zz = [i for i in range(len(classNames)) if i + 1 not in [b, oldnum]]
                     classNames = [classNames[i] for i in zz]
                     cmap = cmap[zz]
@@ -116,6 +118,8 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
     # plot color legend
     plot_cmap_legend.plot_cmap_legend(cmap, classNames)
     plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
+    elapsed_time = time.time() - metadata_start
+    print(f'Saving metadata took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
 
 # # Example usage
 # if __name__ == "__main__":

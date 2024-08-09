@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 def plot_cmap_legend(cmap, titles):
     """
                Plots the model colormap with the classnames in a figure .
@@ -11,6 +12,7 @@ def plot_cmap_legend(cmap, titles):
                Returns:
                The figure displaying the model colormap.
         """
+    cmap_start = time.time()
     im = np.zeros((50, 50 * len(cmap), 3), dtype=np.uint8)
     for k in range(len(cmap)):
         tmp = cmap[k].reshape(1, 1, 3)
@@ -36,6 +38,9 @@ def plot_cmap_legend(cmap, titles):
     else:
         plt.figure()
         plt.imshow(im)
+
+    elapsed_time = time.time() - cmap_start
+    print(f'Plotting cmap took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
 
 # Example usage:
 # if __name__ == "__main__":
