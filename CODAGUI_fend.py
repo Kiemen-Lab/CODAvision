@@ -106,6 +106,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
         self.ui.Combine_TW_1.verticalHeader().setVisible(False)
         self.ui.Combine_TW_2.verticalHeader().setVisible(False)
+        self.combo_colors = {}
 
         self.set_initial_model_name()
         self.ui.tabWidget.setCurrentIndex(0)  # Initialize the first tab
@@ -509,26 +510,41 @@ class MainWindow(QtWidgets.QMainWindow):
                     break
                 QtWidgets.QMessageBox.warning(self, 'Invalid Name', 'Please use only letters for the combo name.')
 
-            new_column = self.ui.Combine_TW_2.columnCount()
-            self.ui.Combine_TW_2.insertColumn(new_column)
-            self.ui.Combine_TW_2.setHorizontalHeaderItem(new_column, QtWidgets.QTableWidgetItem(combo_name))
+            #show info about color selection
+            QtWidgets.QMessageBox.information(self, 'Select Color',
+                                              'Please select the color for the created combination of annotation classes.')
 
-            for i, item in enumerate(selected_items):
-                if self.ui.Combine_TW_2.rowCount() <= i:
-                    self.ui.Combine_TW_2.insertRow(i)
-                new_item = QtWidgets.QTableWidgetItem(item.text())
-                new_item.setFlags(new_item.flags() & ~QtCore.Qt.ItemIsEditable)  # Make item non-editable
-                self.ui.Combine_TW_2.setItem(i, new_column, new_item)
+            # Display the color picker dialog
+            color_dialog = QColorDialog(self)
+            color_dialog.setWindowTitle("Select Combo Color")
 
-                # Find and remove the item from Combine_TW_1
-                for row in range(self.ui.Combine_TW_1.rowCount()):
-                    if self.ui.Combine_TW_1.item(row, 0).text() == item.text():
-                        self.ui.Combine_TW_1.removeRow(row)
-                        break
+            if color_dialog.exec_():
+                selected_color = color_dialog.currentColor()
+                rgb_color = (selected_color.red(), selected_color.green(), selected_color.blue())
 
-        # Ensure the horizontal header is visible and styled
-        self.ui.Combine_TW_2.horizontalHeader().setVisible(True)
-        self.ui.Combine_TW_2.setStyleSheet("QHeaderView::section { background-color: #f0f0f0; }")
+                # Save the combo name and RGB color
+                self.combo_colors[combo_name] = rgb_color
+
+                new_column = self.ui.Combine_TW_2.columnCount()
+                self.ui.Combine_TW_2.insertColumn(new_column)
+                self.ui.Combine_TW_2.setHorizontalHeaderItem(new_column, QtWidgets.QTableWidgetItem(combo_name))
+
+                for i, item in enumerate(selected_items):
+                    if self.ui.Combine_TW_2.rowCount() <= i:
+                        self.ui.Combine_TW_2.insertRow(i)
+                    new_item = QtWidgets.QTableWidgetItem(item.text())
+                    new_item.setFlags(new_item.flags() & ~QtCore.Qt.ItemIsEditable)  # Make item non-editable
+                    self.ui.Combine_TW_2.setItem(i, new_column, new_item)
+
+                    # Find and remove the item from Combine_TW_1
+                    for row in range(self.ui.Combine_TW_1.rowCount()):
+                        if self.ui.Combine_TW_1.item(row, 0).text() == item.text():
+                            self.ui.Combine_TW_1.removeRow(row)
+                            break
+
+                # Ensure the horizontal header is visible and styled
+            self.ui.Combine_TW_2.horizontalHeader().setVisible(True)
+            self.ui.Combine_TW_2.setStyleSheet("QHeaderView::section { background-color: #f0f0f0; }")
 
     def remove_combo(self):
         selected_columns = set(index.column() for index in self.ui.Combine_TW_2.selectedIndexes())
@@ -613,11 +629,20 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create new dataframe for combined layers info
         combined_df = pd.DataFrame({
             'Combined names': combined_names,
-            'Combined colors': [''] * len(combined_names)  # Placeholder for colors
         })
 
+        # Initialize Combined colors with colors from self.combo_colors
+        combined_df['Combined colors'] = [self.combo_colors.get(name, '') for name in combined_names]
+
+        # Map colors from self.df to combined_df based on 'Combined names' if self.combo_colors does not have a color
+        combined_df['Combined colors'] = combined_df.apply(
+            lambda row: self.df.set_index('Layer Name')['Color'].get(row['Combined names'], row['Combined colors']),
+            axis=1
+        )
+
+        df = self.df
         print("Original DataFrame:")
-        print(self.df)
+        print(df)
         print("\nCombined Layers DataFrame:")
         print(combined_df)
 
