@@ -4,8 +4,7 @@
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: June 11, 2024
 """
-from tensorflow import image as tf_image
-from tensorflow import io as tf_io
+
 import numpy as np
 import tensorflow as tf
 
