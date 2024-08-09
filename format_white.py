@@ -41,7 +41,8 @@ def format_white(J0, Ig, WS, szz):
         if any(np.isin(wsdelete, k)):
             continue  # delete unwanted annotation layers
         try:
-            ii = J0[k-1]
+            py_index = k - 1
+            ii = J0[:,:,py_index]
         except IndexError:
             continue
         #part1 = time.time()

@@ -57,13 +57,10 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     sf = np.sum(ct) / nL  # how full is the big tile
 
     count = 1
-    tcount = 0  # is not one because of python indexing starts at 0
+    tcount = 1  # is not one because of python indexing starts at 0
     cutoff = 0.55  # Cut off for how full the big tile is (55% full)
     rsf = 5
     type0 = 0
-    h = np.ones((51, 51))
-    h[25, 25] = 0
-    h = distance_transform_edt(h) < 26
 
     # Here comes the fun part, tiles are going to be added to the big black tile until the cutoff is achieved ~55%
     iteration = 1
@@ -77,21 +74,19 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         #print(f' Bigtile occupancy rate: {sf*100:.2e} %') # Were only changing sf every other iteration, so why not print it every other iteration
         # choose one of each class in order in a loop
         if count % 10 == 1:
-            type_ = tcount
-            tcount = (tcount % num_classes)
+            type_ = tcount-1
+            tcount = (tcount % num_classes)+1 #Was one pf reasons of tile composition
         # choose a tile containing the least prevalent class
         else:
             tmp = ct.copy()
             tmp[type0] = np.max(tmp)
             type_ = np.argmin(tmp)
 
-        #print(f" type_: {type_}")
         num = np.where(numann[:, type_] > 0)[0]
 
         if len(num) == 0:
             numann[:, type_] = numann0[:, type_]
             num = np.where(numann[:, type_] > 0)[0]
-
         num = np.random.choice(num, size=1, replace=False)
         # chosen random tile to be processed
         tile_name = imlist['tile_name'][num[0]]
@@ -110,9 +105,9 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             doaug = 0
 
         im, TA, kp = edit_annotations_tiles(im, TA, doaug, type_, ct, imT.shape[0], kpall)
-        numann[num, kp - 1] = 0  # kp-1 due to layer index starting in 1 and python index starting in 0
-        percann[num, kp - 1, 0] += 1
-        percann[num, kp - 1, 1] = 2
+        numann[num[0], kp - 1] = 0  # kp-1 due to layer index starting in 1 and python index starting in 0
+        percann[num[0], kp - 1, 0] += 1
+        percann[num[0], kp - 1, 1] = 2
         fx = (TA != 0)  # linear idx of tissue pixels in the mask bb
         if np.sum(fx) < 30:
             print('skipped')
@@ -120,10 +115,6 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         # find low density location in large tile to add annotation
         tmp2 = imT[::rsf, ::rsf] > 0
         dist = cv2.distanceTransform((tmp2 == 0).astype(np.uint8), cv2.DIST_L2, 3)
-
-
-
-
 
         dist[:20, :] = 0  # Sets the first 20 rows to 0
         dist[:, :20] = 0  # Sets the first 20 columns to 0
@@ -181,8 +172,6 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     # End of while loop timer
     end_time = time.time()
     total_time_while = end_time - iter_start_time
-    print(f'Total time elapsed for the while loop: {total_time_while}')
-
 
     # cut edges off tile
     imH = imH[100:-100, 100:-100, :].astype(np.uint8)
@@ -220,6 +209,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.png"))
     # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
     # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
+
 
     return numann, percann
 

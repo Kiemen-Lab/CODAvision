@@ -11,7 +11,6 @@ import os
 from PIL import Image
 import numpy as np
 from skimage import morphology
-from scipy import ndimage
 from skimage.measure import label
 import time
 import cv2
@@ -78,7 +77,7 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
 
     def create_bounding_box(pk):
         # Create a binary mask for the current component
-        tmp = (L == pk).astype(float)
+        tmp = (L == pk)
         a = np.sum(tmp, axis=1)
         b = np.sum(tmp, axis=0)
         rect = [np.nonzero(b)[0][0], np.nonzero(b)[0][-1], np.nonzero(a)[0][0], np.nonzero(a)[0][-1]]
@@ -98,6 +97,8 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
         futures = [executor.submit(create_bounding_box, pk) for pk in range(1, np.max(L) + 1)]
 
     count = 0
+
+
     for future in futures:
         nm, tmpim, tmplabel = future.result()
         # Save images and labels in batch if needed

@@ -3,7 +3,7 @@ Author: Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: April 24, 2024
 """
 
-import format_white
+from format_white import format_white
 import os
 import numpy as np
 from scipy.ndimage import label, binary_fill_holes
@@ -34,6 +34,11 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
         umpix = 4
     print(' 2. of 4. Interpolating annotated regions and saving mask image')
     num = len(WS[0])
+
+    maxsize = 0
+    minsize = 10000000
+    avgsize = 0
+
     try:    # Try to load 'xyout' from 'annotations.pkl' if the pkl file exists
         with open(os.path.join(outpth, 'annotations.pkl'), 'rb') as f:
             data = pickle.load(f)
@@ -60,7 +65,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
             Ig = TA>0
             szz = TA.shape  # Get the size of the binary image
             #J1 = [[] for _ in range(num)] # Create a list with as many entries as there are tissues
-            J =[]
+            J =np.zeros((szz[0],szz[1],len(WS[0])),dtype=int)
 
             # interpolate annotation points to make closed objects
             loop_start = time.time()
@@ -105,14 +110,15 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
                     Jtmp[-401:, :] = 0
                     Jtmp[:, -401:] = 0
                 #J1[int(k) - 1] = np.flatnonzero(Jtmp == k)
-                J.append(Jtmp == k)#Store the annotation vertices indexes in the entry of J with their position in WS[0]
+                py_index = k-1
+                J[:,:,py_index.astype(int)] = Jtmp == k#Store the annotation vertices indexes in the entry of J with their position in WS[0]
 
             #elapsed_time = time.time() - loop_start
             #print(f'Loop took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
-            del bwtypek, Jtmp, xyz # Claer the temporary variables at the end of the iteration
+            del bwtypek, Jtmp, xyz # Clear the temporary variables at the end of the iteration
             # format annotations to keep or remove whitespace
             format_start = time.time()
-            J, ind = format_white.format_white(J, Ig, WS, szz)
+            J, ind = format_white(J, Ig, WS, szz)
             elapsed_time = time.time() - format_start
             print(f'Format white took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
             #image_start = time.time()

@@ -59,7 +59,7 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
                 ncombine = [n - 1 if n > oldnum else n for n in ncombine]
                 nload = [n for n in nload if n != b]
 
-                if len(classNames) + 1 == max(WS[2]):
+                if len(classNames) == max(WS[2]):
                     zz = [i for i in range(len(classNames)) if i + 1 not in [b, oldnum]]
                     classNames = [classNames[i] for i in zz]
                     cmap = cmap[zz]
