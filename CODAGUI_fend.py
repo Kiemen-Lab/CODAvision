@@ -1,13 +1,23 @@
 
-from PySide2 import QtWidgets, QtCore
+# from PySide2 import QtWidgets, QtCore
+# from CODA import Ui_MainWindow
+# import os
+# from datetime import datetime
+# import xmltodict
+# import pandas as pd
+# from PySide2.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
+# from PySide2.QtWidgets import QColorDialog, QHeaderView, QTableWidgetItem
+# from PySide2.QtCore import Qt
+
+from PySide6 import QtWidgets, QtCore
 from CODA import Ui_MainWindow
 import os
 from datetime import datetime
 import xmltodict
 import pandas as pd
-from PySide2.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
-from PySide2.QtWidgets import QColorDialog, QHeaderView, QTableWidgetItem
-from PySide2.QtCore import Qt
+from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
+from PySide6.QtWidgets import QColorDialog, QHeaderView, QTableWidgetItem
+from PySide6.QtCore import Qt
 
 
 class CustomDialog(QtWidgets.QDialog):
@@ -313,7 +323,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def show_custom_dialog(self):
         training_folder = self.ui.trianing_LE.text()
         dialog = CustomDialog(training_folder, self)
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+        if dialog.exec() == QtWidgets.QDialog.Accepted:
             self.df = dialog.get_dataframe()
             if self.df is not None:
                 self.populate_table_widget()
@@ -653,4 +663,4 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication([])
     window = MainWindow()
     window.show()
-    app.exec_()
+    app.exec()
