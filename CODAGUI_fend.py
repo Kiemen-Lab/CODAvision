@@ -25,6 +25,9 @@ class CustomDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.training_folder = training_folder
         self.df = None
+        self.combined_df = None
+        self.add_ws_to = None
+        self.add_nonws_to = None
         self.setWindowTitle("Load Data")
         self.layout = QtWidgets.QVBoxLayout()
 
@@ -165,18 +168,10 @@ class MainWindow(QtWidgets.QMainWindow):
                                           'Please assign a whitespace settings option to all annotation layers.')
             return
 
-        add_ws_to = self.ui.addws_CB.currentIndex()
-        add_nonws_to = self.ui.addnonws_CB.currentIndex()
+        self.add_ws_to = self.ui.addws_CB.currentIndex()
+        self.add_nonws_to = self.ui.addnonws_CB.currentIndex()
 
         self.initialize_nesting_table()
-
-
-        #TINA _________________________delete all these prints when final version_________________
-        print(f'Add whitespace to: {add_ws_to}')
-        print(f'Add whitespace to: {add_nonws_to}')
-        print('Dataframe:')
-        print(self.df)
-        #TINA _________________________delete all these prints when final version_________________
 
 
         next_tab_index = self.ui.tabWidget.currentIndex() + 1
@@ -637,15 +632,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.df['Combined layers'] = combined_idxes
 
         # Create new dataframe for combined layers info
-        combined_df = pd.DataFrame({
+        self.combined_df = pd.DataFrame({
             'Combined names': combined_names,
         })
 
         # Initialize Combined colors with colors from self.combo_colors
-        combined_df['Combined colors'] = [self.combo_colors.get(name, '') for name in combined_names]
+        self.combined_df['Combined colors'] = [self.combo_colors.get(name, '') for name in combined_names]
 
         # Map colors from self.df to combined_df based on 'Combined names' if self.combo_colors does not have a color
-        combined_df['Combined colors'] = combined_df.apply(
+        self.combined_df['Combined colors'] = self.combined_df.apply(
             lambda row: self.df.set_index('Layer Name')['Color'].get(row['Combined names'], row['Combined colors']),
             axis=1
         )
@@ -656,6 +651,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.TA = self.ui.TA_SB.value()
 
         df = self.df
+        combined_df = self.combined_df
         print("Original DataFrame:")
         print(df)
         print("\nCombined Layers DataFrame:")
