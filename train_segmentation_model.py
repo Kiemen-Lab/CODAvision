@@ -306,8 +306,8 @@ def train_segmentation_model(pthDL):
 
     # Save model
     print('Saving model...')
-    model.save(os.path.join(pthDL, 'net'))
-    #data['model'] = model
+    # model.save(os.path.join(pthDL, 'net'))
+    data['model'] = model
     data['history'] = history.history  # Get the model history
     with open(os.path.join(pthDL, 'net.pkl'), 'wb') as f:
         pickle.dump(data, f)
