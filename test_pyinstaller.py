@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 from save_model_metadata import save_model_metadata
 from load_annotation_data import load_annotation_data
-from train_segmentation_model import train_segmentation_model
+from train_segmentation_model_VM_copy_08192024 import train_segmentation_model
 from create_training_tiles import create_training_tiles
 from test_segmentation_model import test_segmentation_model
 from classify_images import classify_images
