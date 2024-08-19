@@ -107,7 +107,7 @@ def create_training_tiles(pthDL, numann0, ctlist0):
             numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, ty, sxy)
             elapsed_time = time.time() - validation_start_time
             print(
-                f'{len(glob.glob(os.path.join(obg, "HE*.png")))} of {nvalidate} validation images completed in {int(elapsed_time / 60)} minutes')
+                f'{len(glob.glob(os.path.join(obg, "HE*.jpg")))} of {nvalidate} validation images completed in {int(elapsed_time / 60)} minutes')
 
             baseclass1 = np.sum(percann0[:, :, 0], axis=0)
             usedclass1 = np.sum(percann[:, :, 0], axis=0)
