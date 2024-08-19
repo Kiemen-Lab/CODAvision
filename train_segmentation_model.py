@@ -342,12 +342,12 @@ def train_segmentation_model(pthDL):
     plt.ylabel('Accuracy')
     plt.grid(True)
 
-    plt.plot(history.history['accuracy'])
-    plt.plot(history.history['val_accuracy'])
-    plt.title('Model accuracy')
-    plt.xlabel('Epoch')
-    plt.ylabel('Accuracy')
-    plt.legend(['Train', 'Validation'], loc='upper left')
+    # plt.plot(history.history['accuracy'])
+    # plt.plot(history.history['val_accuracy'])
+    # plt.title('Model accuracy')
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Accuracy')
+    # plt.legend(['Train', 'Validation'], loc='upper left')
 
     plt.tight_layout()
     plt.show()
