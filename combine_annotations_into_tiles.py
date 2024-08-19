@@ -13,7 +13,7 @@ import time
 import cv2
 
 
-def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pthDL, outpth, sxy, stile=10000, nbg=0):
+def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pthDL, outpth, sxy, stile=10240, nbg=0):
     """
         Combine annotations into large tiles to train the deep neural network
 
@@ -205,8 +205,8 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
     # save large tiles
     print('Saving big tiles')
-    Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.png"))
-    Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.png"))
+    Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
+    Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
     # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
     # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
 
