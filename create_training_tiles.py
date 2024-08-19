@@ -62,14 +62,14 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     obg = os.path.join(pthDL, ty, 'big_tiles\\')
     # Generate tiles until enough are made
     train_start = time.time()
-    if len(glob.glob(os.path.join(obg, 'HE*.png'))) >= ntrain:
+    if len(glob.glob(os.path.join(obg, 'HE*.jpg'))) >= ntrain:
         print('  Already done.')
     else:
-        while len(glob.glob(os.path.join(obg, 'HE*.png'))) < ntrain:
+        while len(glob.glob(os.path.join(obg, 'HE*.jpg'))) < ntrain:
             numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, ty, sxy)
             elapsed_time = time.time() - train_start
             print(
-                f'  {len(glob.glob(os.path.join(obg, "HE*.png")))} of {ntrain} training images completed in {int(elapsed_time / 60)} minutes')
+                f'  {len(glob.glob(os.path.join(obg, "HE*.jpg")))} of {ntrain} training images completed in {int(elapsed_time / 60)} minutes')
 
             baseclass1 = np.sum(percann0[:, :, 0], axis=0)
             usedclass1 = np.sum(percann[:, :, 0], axis=0)
@@ -100,10 +100,10 @@ def create_training_tiles(pthDL, numann0, ctlist0):
 
     print('')
     print('Building validation tiles...')
-    if len(glob.glob(os.path.join(obg, 'HE*.png'))) >= nvalidate:
+    if len(glob.glob(os.path.join(obg, 'HE*.jpg'))) >= nvalidate:
         print('Already done.')
     else:
-        while len(glob.glob(os.path.join(obg, 'HE*.png'))) < nvalidate:
+        while len(glob.glob(os.path.join(obg, 'HE*.jpg'))) < nvalidate:
             numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, ty, sxy)
             elapsed_time = time.time() - validation_start_time
             print(
