@@ -16,6 +16,14 @@ Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: June 22, 2024
 """
 
+def read_image_as_double(file_path):
+    try:
+        img = Image.open(file_path)
+        img = img.convert('L') # Convert image to grayscale (single-channel images)
+        return np.array(img).astype(np.double) # Convert to NumPy array and cast to double
+    except Exception as e:
+        raise RuntimeError(f"Error reading image file {file_path}: {e}")
+
 def test_segmentation_model(pthDL,pthtest, pthtestim):
 
     print("Testing segmentation model......")
@@ -29,7 +37,7 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
     pthtestdata = os.path.join(pthtest, 'data py')
     load_annotation_data(pthDL, pthtest, pthtestim)
 
-    pthclassifytest = classify_images(pthtestim, pthDL, color_overlay_HE=True, color_mask=False)
+    pthclassifytest = classify_images(pthtestim, pthDL, color_overlay_HE=False, color_mask=False)
 
     classNames = classNames[:-1]
     numClasses = nblack - 1
@@ -41,18 +49,23 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
 
     for folder in imlist:
         pth_annotation_data = os.path.join(pthtestdata, folder)
-        # print(pth_annotation_data)
-        # annotation_folder = os.path.join(pthDL,img_name)
-        if os.path.exists(os.path.join(pth_annotation_data, 'view_annotations.tif')) or os.path.exists(
-                os.path.join(pth_annotation_data, 'view_annotations_raw.tif')):
+        annotation_file_png = os.path.join(pth_annotation_data, 'view_annotations.png')
+        annotation_file_raw_png = os.path.join(pth_annotation_data, 'view_annotations_raw.png')
+
+        if os.path.exists(os.path.join(pth_annotation_data, 'view_annotations.png')) or os.path.exists(
+                os.path.join(pth_annotation_data, 'view_annotations_raw.png')):
             try:
                 # Read the image and convert to double
-                J0 = imread(os.path.join(pth_annotation_data, 'view_annotations.tif')).astype(np.double)
-            except:
-                J0 = imread(os.path.join(pth_annotation_data, 'view_annotations_raw.tif')).astype(np.double)
+                if os.path.exists(annotation_file_png):
+                    J0 = read_image_as_double(annotation_file_png)
+                else:
+                    J0 = read_image_as_double(annotation_file_raw_png)
+            except RuntimeError as e:
+                print(e)
+                continue
 
             # Read the imDL image
-            imDL = Image.open(os.path.join(pthclassifytest, folder + '.png'))
+            imDL = imread(os.path.join(pthclassifytest, folder + '.tif'))
             imDL_array = np.array(imDL)
 
             # Remove small pixels
@@ -136,11 +149,11 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
     return
 
 
-#Example:
-if __name__ == '__main__':
-    # Inputs:
-    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
-    pthtest = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images'
-    pthtestim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images\5x'
-
-    test_segmentation_model(pthDL, pthtest, pthtestim)
+# #Example:
+# if __name__ == '__main__':
+#     # Inputs:
+#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
+#     pthtest = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images'
+#     pthtestim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images\5x'
+#
+#     test_segmentation_model(pthDL, pthtest, pthtestim)

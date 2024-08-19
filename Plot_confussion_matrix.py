@@ -73,10 +73,10 @@ def plot_confusion_matrix(confusion_data, classNames, pthDL):
     plt.gca().xaxis.tick_top()
 
     plt.tight_layout()
-    plt.savefig(os.path.join(pthDL, 'confusion_matrix.png'))
+    plt.savefig(os.path.join(pthDL, 'confusion_matrix.jpg'))
     plt.show()
 
-    print(f"\nConfusion matrix saved to {os.path.join(pthDL, 'confusion_matrix.png')}")
+    print(f"\nConfusion matrix saved to {os.path.join(pthDL, 'confusion_matrix.jpg')}")
 
     print(f"\nOverall Accuracy: {accuracy}%")
 
