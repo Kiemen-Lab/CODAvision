@@ -25,7 +25,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     start_time = time.time()
 
     # Load the model weights and other relevant data
-    model = load_model(os.path.join(pthDL, 'net'))
+    model = load_model(os.path.join(pthDL, 'best_model_net.keras'))
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         classNames = data['classNames']
@@ -59,11 +59,12 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     print('   ')
 
     classification_st = time.time()
+    im_array = None
 
     for i, img_path in enumerate(imlist):
         img_name = os.path.basename(img_path)
         print(f'  Starting classification of image {i + 1} of {len(imlist)}: {img_name}')
-        if os.path.isfile(os.path.join(outpth, img_name[:-4] + ".png")):
+        if os.path.isfile(os.path.join(outpth, img_name[:-4] + ".tif")):
             print(f'  Image {img_name} already classified by this model')
             continue
         im = Image.open(os.path.join(pthim, img_name))
@@ -96,7 +97,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         for s1 in range(sxy, sz[0]-sxy, sxy - b * 2):
             for s2 in range(sxy, sz[1]-sxy, sxy - b * 2):
 
-                print(f'   Tile: {count} of {total_tiles}')
+                # print(f'   Tile: {count} of {total_tiles}')
 
                 tileHE = im_array[s1:s1 + sxy, s2:s2 + sxy, :]
                 #tileHE_image = Image.fromarray(tileHE)
@@ -105,7 +106,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
                 #tileHE_image.save(save_path_HE)
 
                 tileTA = TA[s1:s1 + sxy, s2:s2 + sxy]
-                print(f'   Tile: {count} of {total_tiles} at ({s1}, {s2}), size: {tileHE.shape}')
+                # print(f'   Tile: {count} of {total_tiles} at ({s1}, {s2}), size: {tileHE.shape}')
 
                 #if np.sum(tileTA) < 100:
                 #    tileclassify = np.zeros((sxy,sxy))
@@ -169,16 +170,17 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     minutes, seconds = divmod(rem, 60)
     print(f'  Total time for classification: {hours}h {minutes}m {seconds}s')
 
-    fig, axs = plt.subplots(1, 2)
-    axs[0].imshow(im_array)
-    axs[1].imshow(keras.utils.array_to_img(prediction_colormap))
+    # Only show images if im_array was actually assigned
+    if im_array is not None:
+        fig, axs = plt.subplots(1, 2)
+        axs[0].imshow(im_array)
+        axs[1].imshow(keras.utils.array_to_img(prediction_colormap))
+        for ax in axs:
+            ax.axis('off')
+        plt.subplots_adjust(wspace=0, hspace=0)
+        plt.show()
+        plt.pause(0.2)
 
-    for ax in axs:
-        ax.axis('off')
-
-    plt.subplots_adjust(wspace=0, hspace=0)
-    plt.show()
-    plt.pause(0.2)
     return outpth
 
 
