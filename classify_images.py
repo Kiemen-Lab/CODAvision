@@ -137,7 +137,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
 
         # Save Classified Image
         imclassify_PIL = Image.fromarray(imclassify)  # Convert NumPy array to PIL Image
-        imclassify_PIL.save(os.path.join(outpth, img_name[:-3] + 'tif'))  # Save as TIFF
+        imclassify_PIL.save(os.path.join(outpth, img_name[:-3] + 'tif'))  # Save as tif
 
 
         # Make color image overlay on H&E
