@@ -5,10 +5,8 @@ Date: May 20, 2024
 
 import os
 import numpy as np
-from scipy.ndimage import distance_transform_edt
 from edit_annotation_tiles import edit_annotations_tiles
 from PIL import Image
-import tifffile as tiff
 import time
 import cv2
 
@@ -61,6 +59,8 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     cutoff = 0.55  # Cut off for how full the big tile is (55% full)
     rsf = 5
     type0 = 0
+    numcount = np.zeros(len(imlist['tile_name']))
+    typecount = np.zeros(len(ct))
 
     # Here comes the fun part, tiles are going to be added to the big black tile until the cutoff is achieved ~55%
     iteration = 1
@@ -82,12 +82,15 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             tmp[type0] = np.max(tmp)
             type_ = np.argmin(tmp)
 
+        #print(f" type_: {type_}")
+        typecount[type_] += 1
         num = np.where(numann[:, type_] > 0)[0]
 
         if len(num) == 0:
             numann[:, type_] = numann0[:, type_]
             num = np.where(numann[:, type_] > 0)[0]
         num = np.random.choice(num, size=1, replace=False)
+        numcount[num[0]] += 1
         # chosen random tile to be processed
         tile_name = imlist['tile_name'][num[0]]
 
@@ -115,6 +118,10 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         # find low density location in large tile to add annotation
         tmp2 = imT[::rsf, ::rsf] > 0
         dist = cv2.distanceTransform((tmp2 == 0).astype(np.uint8), cv2.DIST_L2, 3)
+
+
+
+
 
         dist[:20, :] = 0  # Sets the first 20 rows to 0
         dist[:, :20] = 0  # Sets the first 20 columns to 0
@@ -172,6 +179,9 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     # End of while loop timer
     end_time = time.time()
     total_time_while = end_time - iter_start_time
+    print(f'Total time elapsed for the while loop: {total_time_while}')
+    #print(f'Max used: {np.max(numcount)}, Min used: {np.min(numcount)}, Total tiles: {np.sum(numcount)}')
+    print(f'Type count:{typecount}')
 
     # cut edges off tile
     imH = imH[100:-100, 100:-100, :].astype(np.uint8)
@@ -209,7 +219,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
     # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
     # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
-
+    print(numcount)
 
     return numann, percann
 
