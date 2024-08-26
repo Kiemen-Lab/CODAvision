@@ -481,7 +481,8 @@ def train_segmentation_model(pthDL, fine_tune=False):
         tuner.search(train_dataset,
                      epochs=8,
                      validation_data=val_dataset,
-                     )
+                     callbacks=[PrintTunerCallback()])
+
         # tuner.search(train_dataset,
         #              epochs=8,
         #              validation_data=val_dataset,
