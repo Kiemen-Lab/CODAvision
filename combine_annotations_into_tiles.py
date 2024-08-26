@@ -227,7 +227,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
     # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
     # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
-    print(numcount)
+    # print(numcount)
 
     return numann, percann
 
