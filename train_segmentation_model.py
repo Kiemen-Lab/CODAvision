@@ -1,8 +1,8 @@
+# https://keras.io/examples/vision/deeplabv3_plus/
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: August 26, 2024
 """
-# https://keras.io/examples/vision/deeplabv3_plus/
 
 import time
 import pickle
@@ -160,8 +160,11 @@ def train_segmentation_model(pthDL, fine_tune=False):
         model_output = layers.Conv2D(num_classes, kernel_size=(1, 1), padding="same")(x)
         return keras.Model(inputs=model_input, outputs=model_output)
 
-    def DeeplabV3PlusTuning(image_size, num_classes, hp):
+    def DeeplabV3PlusTuning(hp):
 
+        # Define image size and num of classes inside the model architecture to match keras tunes format
+        image_size = 1024
+        num_classes = 7  # CHANGE THIS!!! Fine tuning for lung model that has seven classes
         # Model architecture
         model_input = keras.Input(shape=(image_size, image_size, 3))
         preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
@@ -188,19 +191,17 @@ def train_segmentation_model(pthDL, fine_tune=False):
         model_output = layers.Conv2D(num_classes, kernel_size=(1, 1), padding="same")(x)
         model = keras.Model(inputs=model_input, outputs=model_output)
 
-
         # Define hyperparameters to tune
         learning_rate = hp.Float('learning_rate', min_value=1e-5, max_value=1e-2, sampling='log')
-        lr_patience = hp.Int('lr_patience', min_value=1, max_value=5, step=1)
-        lr_factor = hp.Float('lr_factor', min_value=0.1, max_value=0.9, step=0.1)
+        # lr_patience = hp.Int('lr_patience', min_value=1, max_value=5, step=1)
+        # lr_factor = hp.Float('lr_factor', min_value=0.1, max_value=0.9, step=0.1)
 
-        # Compile the model
+        # Compile the model with tunable learning rate
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
-            loss=loss,
+            loss=keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=["accuracy"],
         )
-
 
         return model
 
@@ -439,15 +440,17 @@ def train_segmentation_model(pthDL, fine_tune=False):
     else:
         import keras_tuner
         import logging
+        from keras.callbacks import Callback
+
         logging.basicConfig(level=logging.INFO)
         logger = logging.getLogger(__name__)
 
-        class PrintTunerCallback(keras_tuner.Callback):
-            def on_trial_begin(self, trial):
-                logger.info(f"Starting trial {trial.trial_id}")
+        class PrintTunerCallback(Callback):
+            def on_epoch_begin(self, epoch, logs=None):
+                logger.info(f"Starting epoch {epoch}")
 
-            def on_trial_end(self, trial):
-                logger.info(f"Trial {trial.trial_id} finished with val_accuracy: {trial.score}")
+            def on_epoch_end(self, epoch, logs=None):
+                logger.info(f"Epoch {epoch} finished with val_accuracy: {logs.get('val_accuracy', 'N/A')}")
 
         # Define the tuner
         tuner = keras_tuner.RandomSearch(
@@ -478,7 +481,11 @@ def train_segmentation_model(pthDL, fine_tune=False):
         tuner.search(train_dataset,
                      epochs=8,
                      validation_data=val_dataset,
-                     callbacks=[TunerCallback(val_dataset), PrintTunerCallback()])
+                     )
+        # tuner.search(train_dataset,
+        #              epochs=8,
+        #              validation_data=val_dataset,
+        #              callbacks=[TunerCallback(val_dataset), PrintTunerCallback()])
 
         # Get the best model
         best_model = tuner.get_best_models(num_models=1)[0]
@@ -487,8 +494,8 @@ def train_segmentation_model(pthDL, fine_tune=False):
         best_hp = tuner.get_best_hyperparameters()[0]
         logger.info("Best hyperparameters found:")
         logger.info(f"Learning rate: {best_hp.get('learning_rate')}")
-        logger.info(f"LR patience: {best_hp.get('lr_patience')}")
-        logger.info(f"LR factor: {best_hp.get('lr_factor')}")
+        # logger.info(f"LR patience: {best_hp.get('lr_patience')}")
+        # logger.info(f"LR factor: {best_hp.get('lr_factor')}")
 
         # Train the best model
         best_model.fit(train_dataset,
