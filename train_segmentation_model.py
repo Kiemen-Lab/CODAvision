@@ -1,8 +1,8 @@
-# https://keras.io/examples/vision/deeplabv3_plus/
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: June 17, 2024
+Date: August 26, 2024
 """
+# https://keras.io/examples/vision/deeplabv3_plus/
 
 import time
 import pickle
@@ -11,7 +11,6 @@ from keras import layers, models
 import tensorflow as tf
 import os
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
 
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
@@ -20,7 +19,9 @@ from glob import glob
 from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from keras.callbacks import ModelCheckpoint, EarlyStopping
+
+
 def train_segmentation_model(pthDL, fine_tune=False):
     # Ensure TensorFlow is set to use the GPU
     physical_devices = tf.config.list_physical_devices('GPU')
@@ -93,6 +94,10 @@ def train_segmentation_model(pthDL, fine_tune=False):
     val_dataset = data_generator(val_images, val_masks)
 
     #_____________________Build DeepLabV3+ model_____________________
+
+    # Define loss function
+    loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
     def convolution_block(
             block_input,
             num_filters=256,
@@ -155,7 +160,9 @@ def train_segmentation_model(pthDL, fine_tune=False):
         model_output = layers.Conv2D(num_classes, kernel_size=(1, 1), padding="same")(x)
         return keras.Model(inputs=model_input, outputs=model_output)
 
-    def DeeplabV3PlusTuning(image_size, num_classes,hp):
+    def DeeplabV3PlusTuning(image_size, num_classes, hp):
+
+        # Model architecture
         model_input = keras.Input(shape=(image_size, image_size, 3))
         preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
         resnet50 = tf.keras.applications.ResNet50(
@@ -179,17 +186,27 @@ def train_segmentation_model(pthDL, fine_tune=False):
             interpolation="bilinear",
         )(x)
         model_output = layers.Conv2D(num_classes, kernel_size=(1, 1), padding="same")(x)
-        learning_rate = hp.Float('learning_rate', min_value=1e-5, max_value=1e-2, sampling='log')
         model = keras.Model(inputs=model_input, outputs=model_output)
+
+
+        # Define hyperparameters to tune
+        learning_rate = hp.Float('learning_rate', min_value=1e-5, max_value=1e-2, sampling='log')
+        lr_patience = hp.Int('lr_patience', min_value=1, max_value=5, step=1)
+        lr_factor = hp.Float('lr_factor', min_value=0.1, max_value=0.9, step=0.1)
+
+        # Compile the model
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
             loss=loss,
             metrics=["accuracy"],
         )
-        return
+
+
+        return model
 
     class BatchAccCall(keras.callbacks.Callback):
-        def __init__(self, val_data, num_validations=3, early_stopping = True, reduceLRonPlateau = True, monitor='val_accuracy', ES_patience=6, RLRoP_patience=3, factor=0.1, verbose=0,
+        def __init__(self, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
+                     monitor='val_accuracy', ES_patience=6, RLRoP_patience=1, factor=0.75, verbose=0,
                      save_best_model=True, filepath='best_model.h5'):
             super(BatchAccCall, self).__init__()
             self.batch_accuracies = []
@@ -228,14 +245,13 @@ def train_segmentation_model(pthDL, fine_tune=False):
             self.validation_counter = 0
             self.current_step = 0
 
-
         def on_batch_end(self, batch, logs=None):
             batch_end = time.time()
             logs = logs or {}
             self.current_step += 1
             if self.current_step in self.validation_steps:
                 self.run_validation()
-                self.val_indices.append(self.current_step+self.params['steps']*(self.current_epoch))
+                self.val_indices.append(self.current_step + self.params['steps'] * (self.current_epoch))
             accuracy = logs.get('accuracy')  # Use the metric name you specified
             if accuracy is not None:
                 self.batch_accuracies.append(accuracy)
@@ -257,7 +273,8 @@ def train_segmentation_model(pthDL, fine_tune=False):
                 y_val_flat = tf.reshape(y_val, [-1])
                 predictions = tf.argmax(val_logits_flat, axis=1)
                 predictions = tf.cast(predictions, dtype=tf.int32)
-                val_loss = tf.keras.losses.sparse_categorical_crossentropy(y_val_flat, val_logits_flat, from_logits=True)
+                val_loss = tf.keras.losses.sparse_categorical_crossentropy(y_val_flat, val_logits_flat,
+                                                                           from_logits=True)
                 val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
 
                 val_loss_total += tf.reduce_mean(val_loss).numpy()
@@ -297,7 +314,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
                         self.stopped_epoch = self.current_epoch
                         self.model.stop_training = True
                         if self.verbose > 0:
-                           print(f'\nEpoch {self.current_epoch + 1}: early stopping')
+                            print(f'\nEpoch {self.current_epoch + 1}: early stopping')
                     if self.wait >= self.RLRoP_patience and self.RLRoP:
                         old_lr = float(tf.keras.backend.get_value(self.model.optimizer.lr))
                         new_lr = old_lr * self.factor
@@ -363,13 +380,14 @@ def train_segmentation_model(pthDL, fine_tune=False):
             if epoch + 1 >= self.epochs:
                 self.model.stop_training = True
 
+
+
     if fine_tune == False:
         model = DeeplabV3Plus(image_size=IMAGE_SIZE, num_classes=NUM_CLASSES)
         # model.summary()
 
         # Training
         print('Starting model training...')
-        loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate=0.001),
@@ -378,7 +396,8 @@ def train_segmentation_model(pthDL, fine_tune=False):
         )
         num_validations = 3
 
-        plotcall = BatchAccCall(val_data=val_dataset, num_validations=num_validations, filepath=os.path.join(pthDL, 'best_model_net.keras'))
+        plotcall = BatchAccCall(val_data=val_dataset, num_validations=num_validations,
+                                filepath=os.path.join(pthDL, 'best_model_net.keras'))
         # checkpoint = ModelCheckpoint(
         #     filepath= os.path.join(pthDL, 'best_val_net'),  # Path to save the model
         #     monitor='val_accuracy',  # Metric to monitor
@@ -407,39 +426,86 @@ def train_segmentation_model(pthDL, fine_tune=False):
         # Train the model
         model_warmup.fit(x_train, y_train, epochs=1, batch_size=32, verbose=0)
         history = model.fit(train_dataset, validation_data=val_dataset, callbacks=plotcall, verbose=1, epochs=8)
+
+        # Save model
+        print('Saving model...')
+        model.save(os.path.join(pthDL, 'net.keras'))
+        # data['model'] = model
+        data['history'] = history.history  # Get the model history
+        with open(os.path.join(pthDL, 'net.pkl'), 'wb') as f:
+            pickle.dump(data, f)
+
+
     else:
         import keras_tuner
-        hp = 3
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+
+        class PrintTunerCallback(keras_tuner.Callback):
+            def on_trial_begin(self, trial):
+                logger.info(f"Starting trial {trial.trial_id}")
+
+            def on_trial_end(self, trial):
+                logger.info(f"Trial {trial.trial_id} finished with val_accuracy: {trial.score}")
+
+        # Define the tuner
         tuner = keras_tuner.RandomSearch(
             DeeplabV3PlusTuning,
             objective='val_accuracy',
-            max_trials=20,
+            max_trials=20,  # Number of different hyperparameter combinations to try
+            executions_per_trial=2,  # Number of models to fit for each trial
             directory='keras_tuner_dir',
             project_name='deeplabv3plus_tuning'
         )
-        loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-        model = DeeplabV3PlusTuning(image_size=IMAGE_SIZE, num_classes=NUM_CLASSES, hp=hp)
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
-            loss=loss,
-            metrics=["accuracy"],
-        )
-        start = time.time()
-        history = model.fit(train_dataset, validation_data=val_dataset, epochs=8, validation_steps=3)
+        # Callback that includes BatchAccCall
+        class TunerCallback(keras.callbacks.Callback):
+            def __init__(self, val_data, num_validations=3):
+                super().__init__()
+                self.batch_acc_call = BatchAccCall(val_data, num_validations)
+
+            def on_epoch_begin(self, epoch, logs=None):
+                self.batch_acc_call.on_epoch_begin(epoch, logs)
+
+            def on_batch_end(self, batch, logs=None):
+                self.batch_acc_call.on_batch_end(batch, logs)
+
+            def on_train_end(self, logs=None):
+                self.batch_acc_call.on_train_end(logs)
+
+        # Search for the best hyperparameters
+        tuner.search(train_dataset,
+                     epochs=8,
+                     validation_data=val_dataset,
+                     callbacks=[TunerCallback(val_dataset), PrintTunerCallback()])
+
+        # Get the best model
+        best_model = tuner.get_best_models(num_models=1)[0]
+
+        # Print best model learnng rate info
+        best_hp = tuner.get_best_hyperparameters()[0]
+        logger.info("Best hyperparameters found:")
+        logger.info(f"Learning rate: {best_hp.get('learning_rate')}")
+        logger.info(f"LR patience: {best_hp.get('lr_patience')}")
+        logger.info(f"LR factor: {best_hp.get('lr_factor')}")
+
+        # Train the best model
+        best_model.fit(train_dataset,
+                       epochs=8,
+                       validation_data=val_dataset,
+                       callbacks=[BatchAccCall(val_dataset)])
+
+        # Save the best model
+        best_model.save(os.path.join(pthDL, 'best_model_net.keras'))
+
 
     training_time = time.time() - start
     hours, rem = divmod(training_time, 3600)
     minutes, seconds = divmod(rem, 60)
     print(f"Training time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
 
-    # Save model
-    print('Saving model...')
-    model.save(os.path.join(pthDL, 'net.keras'))
-    #data['model'] = model
-    data['history'] = history.history  # Get the model history
-    with open(os.path.join(pthDL, 'net.pkl'), 'wb') as f:
-        pickle.dump(data, f)
-
 
     return
+
+
