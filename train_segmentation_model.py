@@ -26,6 +26,10 @@ from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 
 def train_segmentation_model(pthDL, fine_tune=False):
+    #Start training time
+    start_time = time.time()
+
+
     # Ensure TensorFlow is set to use the GPU
     physical_devices = tf.config.list_physical_devices('GPU')
     if physical_devices:
@@ -419,7 +423,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
         #                                mode='max',
         #                                verbose=1)
 
-        start = time.time()
+
         model_warmup = models.Sequential([
             layers.Dense(10, activation='relu', input_shape=(784,)),
             layers.Dense(10, activation='softmax')
@@ -467,7 +471,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
             max_trials=20,  # Number of different hyperparameter combinations to try
             executions_per_trial=2,  # Number of models to fit for each trial
             directory='keras_tuner_dir',
-            project_name='deeplabv3plus_tuning'
+            project_name='deeplabv3plus_tuning_liver'
         )
 
         # Callback that includes BatchAccCall
@@ -521,7 +525,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
             pickle.dump(data, f)
 
 
-    training_time = time.time() - start
+    training_time = time.time() - start_time
     hours, rem = divmod(training_time, 3600)
     minutes, seconds = divmod(rem, 60)
     print(f"Training time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
