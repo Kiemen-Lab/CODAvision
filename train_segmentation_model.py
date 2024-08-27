@@ -9,6 +9,7 @@ import pickle
 import keras
 from keras import layers, models
 import tensorflow as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -19,6 +20,8 @@ from glob import glob
 from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
+import warnings
+warnings.filterwarnings('ignore')
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 
 
@@ -210,6 +213,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
                      monitor='val_accuracy', ES_patience=6, RLRoP_patience=1, factor=0.75, verbose=0,
                      save_best_model=True, filepath='best_model.h5'):
             super(BatchAccCall, self).__init__()
+            self.model = model
             self.batch_accuracies = []
             self.batch_numbers = []
             self.batch_losses = []
@@ -287,6 +291,9 @@ def train_segmentation_model(pthDL, fine_tune=False):
 
             self.validation_losses.append(val_loss_avg)
             self.validation_accuracies.append(val_accuracy_avg)
+
+            if self.save_best_model:
+                self.model.save(self.save_path)
 
             #print(f'Learning rate:{float(tf.keras.backend.get_value(self.model.optimizer.lr))}')
             #print(f"Validation at step {self.current_step}: loss = {val_loss_avg}, accuracy = {val_accuracy_avg}")
@@ -397,7 +404,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
         )
         num_validations = 3
 
-        plotcall = BatchAccCall(val_data=val_dataset, num_validations=num_validations,
+        plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
                                 filepath=os.path.join(pthDL, 'best_model_net.keras'))
         # checkpoint = ModelCheckpoint(
         #     filepath= os.path.join(pthDL, 'best_val_net'),  # Path to save the model
