@@ -209,7 +209,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
         return model
 
     class BatchAccCall(keras.callbacks.Callback):
-        def __init__(self, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
+        def __init__(self, model, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
                      monitor='val_accuracy', ES_patience=6, RLRoP_patience=1, factor=0.75, verbose=0,
                      save_best_model=True, filepath='best_model.h5'):
             super(BatchAccCall, self).__init__()
@@ -313,7 +313,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
                     self.RLRoP_patience = self.original_RLRoP_patience
                     # Save the model if the `save_best_model` flag is set
                     if self.save_best_model:
-                        model.save(self.save_path)
+                        self.model.save(self.save_path)
                         if self.verbose > 0:
                             print(f'\nEpoch {self.current_epoch + 1}: Model saved to {self.save_path}')
                 else:
@@ -406,6 +406,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
 
         plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
                                 filepath=os.path.join(pthDL, 'best_model_net.keras'))
+
         # checkpoint = ModelCheckpoint(
         #     filepath= os.path.join(pthDL, 'best_val_net'),  # Path to save the model
         #     monitor='val_accuracy',  # Metric to monitor
@@ -506,13 +507,18 @@ def train_segmentation_model(pthDL, fine_tune=False):
         # logger.info(f"LR factor: {best_hp.get('lr_factor')}")
 
         # Train the best model
-        best_model.fit(train_dataset,
-                       epochs=8,
-                       validation_data=val_dataset,
-                       callbacks=[BatchAccCall(val_dataset)])
+        num_validations = 3
+        plotcall = BatchAccCall(model=best_model, val_data=val_dataset, num_validations=num_validations,
+                                filepath=os.path.join(pthDL, 'best_model_net.keras'))
+        history_best_hp_tuning = best_model.fit(train_dataset, validation_data=val_dataset, callbacks=plotcall, verbose=1, epochs=8)
+
 
         # Save the best model
+        print('Saving best model after hyperparameter tuning...')
         best_model.save(os.path.join(pthDL, 'best_model_net.keras'))
+        data['history_best_hp_tuning'] = history_best_hp_tuning.history  # Get the model history
+        with open(os.path.join(pthDL, 'net.pkl'), 'wb') as f:
+            pickle.dump(data, f)
 
 
     training_time = time.time() - start
