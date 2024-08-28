@@ -10,6 +10,7 @@ import os
 import glob
 # from openslide import OpenSlide
 
+
 # Add the OpenSlide DLL directory
 openslide_path = r'C:\Users\Valentina\openslide-win64-20220811\bin'
 if hasattr(os, 'add_dll_directory'):
