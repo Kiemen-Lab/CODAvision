@@ -1,7 +1,6 @@
 """
-
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: August 14, 2024
+Date: August 28, 2024
 """
 
 from PIL import Image
@@ -25,7 +24,7 @@ else:
 
 
 def process_missing_images(pth, pthim, missing_images, umpix):
-    """Process missing images by converting .ndpi or .svs files to .tif."""
+    """Process missing images by converting .ndpi or .svs files to .png"""
     for idx, missing_image in enumerate(missing_images):
         print(f"{idx + 1} / {len(missing_images)} processing: {missing_image}")
         try:
@@ -46,30 +45,30 @@ def process_missing_images(pth, pthim, missing_images, umpix):
 
             # Resize and save the image
             svs_img = svs_img.resize(resize_dimension, resample=Image.NEAREST)
-            output_path = os.path.join(pthim, missing_image + '.tif')
+            output_path = os.path.join(pthim, missing_image + '.png')
             svs_img.save(output_path, resolution=1, resolution_unit=1, quality=100, compression=None)
         except Exception as e:
             print(f"Error processing {missing_image}: {e}")
 
 
-def WSI2tif(pth, resolution, umpix):
+def WSI2png(pth, resolution, umpix):
     pthim = os.path.join(pth, f'{resolution}')
 
     # Ensure the image directory exists
     if not os.path.isdir(pthim):
         os.makedirs(pthim)
 
-    # Get the .tif image names
-    image_files_tif = glob.glob(os.path.join(pthim, '*.tif'))
-    images_names_tif = {os.path.splitext(os.path.basename(image))[0] for image in image_files_tif}
+    # Get the .png image names
+    image_files_png = glob.glob(os.path.join(pthim, '*.png'))
+    images_names_png = {os.path.splitext(os.path.basename(image))[0] for image in image_files_png}
 
     # Get the .ndpi and .svs image names
     image_files_wsi = glob.glob(os.path.join(pth, '*.ndpi')) + glob.glob(os.path.join(pth, '*.svs'))
     images_names_wsi = {os.path.splitext(os.path.basename(image))[0] for image in image_files_wsi}
 
     # Compare image names and process missing images
-    if images_names_tif != images_names_wsi:
-        missing_images = images_names_wsi - images_names_tif
+    if images_names_png != images_names_wsi:
+        missing_images = images_names_wsi - images_names_png
         process_missing_images(pth, pthim, missing_images, umpix)
 
 
@@ -77,12 +76,4 @@ if __name__ == '__main__':
     path = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\slides scanned from bispecific study'
     resolution = '5x'
     umpix = 2
-    WSI2tif(path, resolution, umpix)
-
-
-
-
-
-
-
-
+    WSI2png(path, resolution, umpix)
