@@ -5,10 +5,16 @@ Date: May 20, 2024
 
 import os
 import numpy as np
+from scipy.ndimage import distance_transform_edt
 from edit_annotation_tiles import edit_annotations_tiles
 from PIL import Image
+import tifffile as tiff
 import time
 import cv2
+from scipy import stats
+from scipy.ndimage import convolve
+from scipy.signal import convolve2d
+#from PIL import Image, ImageFilter # it only accepts 3x3 and 5x5 filters
 
 
 def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pthDL, outpth, sxy, stile=10240, nbg=0):
@@ -61,6 +67,11 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     type0 = 0
     numcount = np.zeros(len(imlist['tile_name']))
     typecount = np.zeros(len(ct))
+
+    h = np.ones((51, 51))
+    h[25, 25] = 0
+    h = distance_transform_edt(h) < 26
+    h_array32 = np.array(h / np.sum(h), dtype=np.float64)
 
     # Here comes the fun part, tiles are going to be added to the big black tile until the cutoff is achieved ~55%
     iteration = 1
@@ -117,21 +128,18 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             continue
         # find low density location in large tile to add annotation
         tmp2 = imT[::rsf, ::rsf] > 0
-        dist = cv2.distanceTransform((tmp2 == 0).astype(np.uint8), cv2.DIST_L2, 3)
-
-
-
-
-
+        tmp2_array32 = np.array(tmp2, dtype=np.float64)
+        c = cv2.filter2D(tmp2_array32, -1, h_array32)
+        c = np.round(c*255) # To avoid percentile returning a negative value due to operating with a lot of small values
+        dist = cv2.distanceTransform((c <= np.percentile(c, 5, interpolation='midpoint')).astype(np.uint8), cv2.DIST_L2, 3)
         dist[:20, :] = 0  # Sets the first 20 rows to 0
         dist[:, :20] = 0  # Sets the first 20 columns to 0
         dist[-20:, :] = 0  # Sets the last 20 rows to 0
         dist[:, -20:] = 0  # Sets the last 20 columns to 0
-
-        xii = np.argmax(dist)
-        x, y = np.unravel_index(xii, dist.shape)
-        x = int(x * rsf)
-        y = int(y * rsf)
+        xii = np.where(dist == np.max(dist))
+        index = np.random.choice(len(xii[0]), size=1, replace=False)
+        x = int(xii[0][index[0]]*rsf)
+        y = int(xii[1][index[0]]*rsf)
         szz = np.array(TA.shape) - 1
         szzA = szz // 2
         szzB = szz - szzA
@@ -173,7 +181,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         count += 1
         type0 = type_
         iteration += 1
-        #elapsed_time = time.time() - iteration_start_time
+        elapsed_time = time.time() - iteration_start_time
         #print(f'Iteration {iteration-1} took {elapsed_time} seconds')
 
     # End of while loop timer
@@ -181,7 +189,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     total_time_while = end_time - iter_start_time
     print(f'Total time elapsed for the while loop: {total_time_while}')
     #print(f'Max used: {np.max(numcount)}, Min used: {np.min(numcount)}, Total tiles: {np.sum(numcount)}')
-    print(f'Type count:{typecount}')
+    #print(f'Type count:{typecount}')
 
     # cut edges off tile
     imH = imH[100:-100, 100:-100, :].astype(np.uint8)
@@ -219,7 +227,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
     # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
     # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
-    print(numcount)
+    # print(numcount)
 
     return numann, percann
 

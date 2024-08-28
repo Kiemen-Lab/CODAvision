@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="CODA_python" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="CODA_tinaflow2" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="CODA_tinaflow" project-jdk-type="Python SDK" />
 </project>
