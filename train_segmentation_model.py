@@ -171,7 +171,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
 
         # Define image size and num of classes inside the model architecture to match keras tunes format
         image_size = 1024
-        num_classes = 7  # CHANGE THIS!!! Fine tuning for lung model that has seven classes
+        num_classes = 8  # CHANGE THIS!!! Fine-tuning for lung model that has seven classes
         # Model architecture
         model_input = keras.Input(shape=(image_size, image_size, 3))
         preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
@@ -471,7 +471,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
             max_trials=20,  # Number of different hyperparameter combinations to try
             executions_per_trial=2,  # Number of models to fit for each trial
             directory='keras_tuner_dir',
-            project_name='deeplabv3plus_tuning_liver'
+            project_name='deeplabv3plus_tuning_pancreas]'
         )
 
         # Callback that includes BatchAccCall
