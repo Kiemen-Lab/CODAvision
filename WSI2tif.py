@@ -8,7 +8,19 @@ from PIL import Image
 import numpy as np
 import os
 import glob
-from openslide import OpenSlide
+# from openslide import OpenSlide
+
+# Add the OpenSlide DLL directory
+openslide_path = r'C:\Users\Valentina\openslide-win64-20220811\bin'
+if hasattr(os, 'add_dll_directory'):
+    # Python 3.8+
+    with os.add_dll_directory(openslide_path):
+        from openslide import OpenSlide
+else:
+    # Earlier Python versions
+    if openslide_path not in os.environ['PATH']:
+        os.environ['PATH'] = openslide_path + os.pathsep + os.environ['PATH']
+    from openslide import OpenSlide
 
 
 def process_missing_images(pth, pthim, missing_images, umpix):
