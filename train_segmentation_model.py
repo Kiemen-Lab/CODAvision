@@ -423,21 +423,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
         #                                mode='max',
         #                                verbose=1)
 
-
-        model_warmup = models.Sequential([
-            layers.Dense(10, activation='relu', input_shape=(784,)),
-            layers.Dense(10, activation='softmax')
-        ])
-
-        # Compile the model
-        model_warmup.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-
-        # Create dummy data
-        x_train = np.random.random((1000, 784))
-        y_train = np.random.randint(10, size=(1000,))
-
         # Train the model
-        model_warmup.fit(x_train, y_train, epochs=1, batch_size=32, verbose=0)
         history = model.fit(train_dataset, validation_data=val_dataset, callbacks=plotcall, verbose=1, epochs=8)
 
         # Save model
