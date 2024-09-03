@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from skimage import io, morphology
+from skimage import morphology
 import cv2
 from scipy.ndimage import label
 import time

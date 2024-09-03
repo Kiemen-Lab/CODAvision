@@ -2,7 +2,7 @@
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: April 15, 2024
 """
-from load_annotations import load_annotations
+from .load_annotations import load_annotations
 import os
 import pickle
 import time

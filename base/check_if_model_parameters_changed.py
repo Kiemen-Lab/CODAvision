@@ -4,8 +4,7 @@ Date: April 18, 2024
 """
 import pickle
 import os
-import time
-import numpy as np
+
 
 def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim):
     """

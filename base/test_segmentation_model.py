@@ -4,10 +4,10 @@ import numpy as np
 import pickle
 from tifffile import imread
 from skimage.morphology import remove_small_objects
-from load_annotation_data import load_annotation_data
-from classify_images import classify_images
+from .load_annotation_data import load_annotation_data
+from base.classify_images import classify_images
 from PIL import Image
-from Plot_confussion_matrix import plot_confusion_matrix
+from .Plot_confussion_matrix import plot_confusion_matrix
 import warnings
 warnings.filterwarnings("ignore")
 

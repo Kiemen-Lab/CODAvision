@@ -4,11 +4,9 @@ Date: April 24, 2024
 """
 import os
 import numpy as np
-from skimage import io, morphology
+from skimage import morphology
 import cv2
 import scipy
-from skimage.morphology import remove_small_objects
-import pickle
 import time
 
 def calculate_tissue_mask(pth, imnm):

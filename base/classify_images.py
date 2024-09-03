@@ -12,12 +12,11 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 from scipy.ndimage import binary_fill_holes
-from Semanticseg import semantic_seg
-from make_overlay import make_overlay
+from .Semanticseg import semantic_seg
+from .make_overlay import make_overlay, decode_segmentation_masks
 
 Image.MAX_IMAGE_PIXELS = None
 import keras
-from make_overlay import decode_segmentation_masks
 from keras.models import load_model
 
 

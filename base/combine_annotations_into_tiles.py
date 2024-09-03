@@ -6,14 +6,11 @@ Date: May 20, 2024
 import os
 import numpy as np
 from scipy.ndimage import distance_transform_edt
-from edit_annotation_tiles import edit_annotations_tiles
+from .edit_annotation_tiles import edit_annotations_tiles
 from PIL import Image
-import tifffile as tiff
 import time
 import cv2
-from scipy import stats
-from scipy.ndimage import convolve
-from scipy.signal import convolve2d
+
 #from PIL import Image, ImageFilter # it only accepts 3x3 and 5x5 filters
 
 

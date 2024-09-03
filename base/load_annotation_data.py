@@ -3,12 +3,12 @@ Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: May 3rd, 2024
 """
 
-from calculate_tissue_mask import calculate_tissue_mask
-from check_if_model_parameters_changed import check_if_model_parameters_changed
-from import_xml import import_xml
-from save_annotation_mask import save_annotation_mask
-from save_bounding_boxes import save_bounding_boxes
-from WSI2png import WSI2png
+from base.calculate_tissue_mask import calculate_tissue_mask
+from base.check_if_model_parameters_changed import check_if_model_parameters_changed
+from .import_xml import import_xml
+from .save_annotation_mask import save_annotation_mask
+from .save_bounding_boxes import save_bounding_boxes
+from .WSI2png import WSI2png
 import os
 import pickle
 import shutil
@@ -16,7 +16,7 @@ import numpy as np
 from skimage import io
 import time
 import warnings
-import cv2
+
 
 def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     """

@@ -7,7 +7,7 @@ Date: August 26, 2024
 import time
 import pickle
 import keras
-from keras import layers, models
+from keras import layers
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import os

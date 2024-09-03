@@ -3,8 +3,7 @@ Author: Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: April 24, 2024
 """
 import numpy as np
-import time
-import pandas as pd
+
 
 def format_white(J0, Ig, WS, szz):
     """

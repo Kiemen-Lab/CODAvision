@@ -6,7 +6,7 @@ Date: May 22, 2024
 import glob
 import numpy as np
 import time
-from combine_annotations_into_tiles import combine_annotations_into_tiles
+from .combine_annotations_into_tiles import combine_annotations_into_tiles
 import os
 import pickle
 

@@ -5,7 +5,7 @@ Date: April 17, 2024
 
 import os
 import matplotlib.pyplot as plt
-import plot_cmap_legend
+from .plot_cmap_legend import plot_cmap_legend
 import pickle
 import time
 import numpy as np

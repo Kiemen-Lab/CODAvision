@@ -3,7 +3,7 @@ Author: Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: April 24, 2024
 """
 
-from format_white import format_white
+from .format_white import format_white
 import os
 import numpy as np
 from scipy.ndimage import label, binary_fill_holes
