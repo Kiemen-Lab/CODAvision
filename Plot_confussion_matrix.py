@@ -25,8 +25,10 @@ def plot_confusion_matrix(confusion_data, classNames, pthDL):
     accuracy = np.round(accuracy * 100, 1)
 
     # Custom colormap for precision and recall
-    colors = [(1, 0, 0), (1, 0.8, 0.8), (1, 1, 0.8), (0.8, 1, 0.8)]  # Light Red -> Light Yellow -> Light Green
-    positions = [0, 0.6, 0.8, 1]  # Positions for 0%, 60%, 100%
+    colors = np.array([(250, 116, 95), (252, 189, 189), (255, 255, 133), (199, 252, 199),
+                       (139, 247, 139)]) / 255 # Pastel Red -> Light Pastel Red -> Pastel Yellow -> Light Pastel Green -> Pastel Green
+    colors = colors.tolist()
+    positions = [0, 0.6, 0.7, 0.85, 1]  # Positions for 0%, 60%, 90%, 95%, 100%
     n_bins = 100  # Discretize the interpolation into bins
     cmap_name = 'red_yellow_green'
     cm = LinearSegmentedColormap.from_list(cmap_name, list(zip(positions, colors)), N=n_bins)
