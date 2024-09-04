@@ -662,6 +662,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
+
+    # Load and apply the dark theme stylesheet
+    with open('dark_theme.qss', 'r') as file:
+        app.setStyleSheet(file.read())
+
     window = MainWindow()
     window.show()
     app.exec()
