@@ -5,6 +5,7 @@ from .create_training_tiles import create_training_tiles
 from .train_segmentation_model import train_segmentation_model
 from .test_segmentation_model import test_segmentation_model
 from .classify_images import classify_images
+from .quantify_images import quantify_images
 
 #
 # Package version
