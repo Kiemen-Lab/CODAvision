@@ -17,12 +17,7 @@ from .make_overlay import make_overlay, decode_segmentation_masks
 
 Image.MAX_IMAGE_PIXELS = None
 import keras
-<<<<<<< HEAD:base/classify_images.py
 from keras.models import load_model
-=======
-from make_overlay import decode_segmentation_masks
-from tensorflow.keras.models import load_model
->>>>>>> origin:classify_images.py
 
 
 def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
@@ -100,42 +95,14 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
 
         for s1 in range(sxy, sz[0]-sxy, sxy - b * 2):
             for s2 in range(sxy, sz[1]-sxy, sxy - b * 2):
-<<<<<<< HEAD:base/classify_images.py
 
                 tileHE = im_array[s1:s1 + sxy, s2:s2 + sxy, :]
-=======
-
-                # print(f'   Tile: {count} of {total_tiles}')
-
-                tileHE = im_array[s1:s1 + sxy, s2:s2 + sxy, :]
-                #tileHE_image = Image.fromarray(tileHE)
-                #save_path_HE = os.path.join(save_dirHE,
-                #                            f'{img_name}_tileHE_{count}.png')  # You can change the filename as needed
-                #tileHE_image.save(save_path_HE)
-
->>>>>>> origin:classify_images.py
                 tileTA = TA[s1:s1 + sxy, s2:s2 + sxy]
-                # print(f'   Tile: {count} of {total_tiles} at ({s1}, {s2}), size: {tileHE.shape}')
 
-<<<<<<< HEAD:base/classify_images.py
-=======
-                #if np.sum(tileTA) < 100:
-                #    tileclassify = np.zeros((sxy,sxy))
-                #    tileclassify.fill(nblack-1)
-                #else:
->>>>>>> origin:classify_images.py
                 tileclassify = semantic_seg(tileHE, image_size=sxy, model=model)
 
                 tileclassify = tileclassify[b:-b, b:-b]
 
-<<<<<<< HEAD:base/classify_images.py
-=======
-                # Convert to uint8 before saving
-                #tileclassify_uint8 = (tileclassify * 10).astype(np.uint8)
-                #tilemask_image = Image.fromarray(tileclassify_uint8)
-                #save_path_mask = os.path.join(save_dirmask, f'{img_name}_tilemask_{count}.png')
-                #tilemask_image.save(save_path_mask)
->>>>>>> origin:classify_images.py
                 imclassify[s1 + b:s1 + sxy - b, s2 + b:s2 + sxy - b] = tileclassify
                 count += 1
 
@@ -152,11 +119,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
 
         # Save Classified Image
         imclassify_PIL = Image.fromarray(imclassify)  # Convert NumPy array to PIL Image
-<<<<<<< HEAD:base/classify_images.py
         imclassify_PIL.save(os.path.join(outpth, img_name[:-3] + 'tif'))  # Save as tif
-=======
-        imclassify_PIL.save(os.path.join(outpth, img_name[:-3] + 'tif'))  # Save as TIFF
->>>>>>> origin:classify_images.py
 
 
         # Make color image overlay on H&E
