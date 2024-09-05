@@ -12,23 +12,21 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 from scipy.ndimage import binary_fill_holes
+from tensorflow.keras.models import load_model
+import keras
 from .Semanticseg import semantic_seg
 from .make_overlay import make_overlay, decode_segmentation_masks
-
 Image.MAX_IMAGE_PIXELS = None
-import keras
-from keras.models import load_model
+
 
 
 def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     start_time = time.time()
-
     # Load the model weights and other relevant data
     model = load_model(os.path.join(pthDL, 'best_model_net.keras'))
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         classNames = data['classNames']
-        # sxy = data['sxy']
         nblack = data['nblack']
         nwhite = data['nwhite']
         cmap = data['cmap']
@@ -39,7 +37,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     os.makedirs(outpth, exist_ok=True)
 
     b = 100
-    imlist = sorted(glob(os.path.join(pthim, '*.tif')))
+    imlist = sorted(glob(os.path.join(pthim, '*.png')))
     # If no PNGs found, search for TIFF and JPG files
     if not imlist:
         jpg_files = glob(os.path.join(pthim, "*.jpg"))
@@ -57,22 +55,25 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         print("No TIFF, PNG or JPG image files found in", pthim)
     print('   ')
 
-    classification_st = time.time()
+
     im_array = None
+    first_img = None
 
     for i, img_path in enumerate(imlist):
+        classification_st = time.time()
         img_name = os.path.basename(img_path)
         print(f'  Starting classification of image {i + 1} of {len(imlist)}: {img_name}')
         if os.path.isfile(os.path.join(outpth, img_name[:-4] + ".tif")):
             print(f'  Image {img_name} already classified by this model')
             continue
+        print(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))
         im = Image.open(os.path.join(pthim, img_name))
         im_array = np.array(im)  # Convert to NumPy array for slicing
         try:
             try:
-                TA = Image.open(os.path.join(outpth, 'TA', img_name[:-4] + ".png"))
+                TA = Image.open(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))
             except:
-                TA = Image.open(os.path.join(outpth, 'TA', img_name[:-4] + ".tif"))
+                TA = Image.open(os.path.join(pthim, 'TA', img_name[:-4] + ".tif"))
             TA = binary_fill_holes(TA)
         except:
             TA = np.array(im.convert('L')) < 220
@@ -82,45 +83,30 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         im_array = np.pad(im_array, pad_width=((sxy + b, sxy + b), (sxy + b, sxy + b), (0, 0)), mode='constant',
                           constant_values=0)
         TA = np.pad(TA, pad_width=((sxy + b, sxy + b), (sxy + b, sxy + b)), mode='constant', constant_values=True)
-
         imclassify = np.zeros(TA.shape, dtype=np.uint8)
         sz = np.array(im_array).shape
 
-        # Calculate the total number of tiles
-        padded_height, padded_width, _ = np.array(im).shape  # Get the padded image dimensions
-        tile_rows = (sz[0]-2*sxy) // (sxy - b * 2) + 1
-        tile_cols = (sz[1]-2*sxy) // (sxy - b * 2) + 1
-        total_tiles = tile_rows * tile_cols
+        # Calculate the total number of tiles# Get the padded image dimensions
         count = 1
-
         for s1 in range(sxy, sz[0]-sxy, sxy - b * 2):
             for s2 in range(sxy, sz[1]-sxy, sxy - b * 2):
-
                 tileHE = im_array[s1:s1 + sxy, s2:s2 + sxy, :]
-                tileTA = TA[s1:s1 + sxy, s2:s2 + sxy]
-
                 tileclassify = semantic_seg(tileHE, image_size=sxy, model=model)
-
                 tileclassify = tileclassify[b:-b, b:-b]
-
                 imclassify[s1 + b:s1 + sxy - b, s2 + b:s2 + sxy - b] = tileclassify
                 count += 1
 
         # Remove padding
         im_array = im_array[sxy + b:-sxy - b, sxy + b:-sxy - b, :]
         imclassify = imclassify[sxy + b:-sxy - b, sxy + b:-sxy - b]
-
         imclassify = imclassify +1
-
         imclassify[np.logical_or(imclassify == nblack, imclassify == 0)] = nwhite  #Change black labels to whitespace
-
         elapsed_time = round(time.time() - classification_st)
         print(f'Image {i + 1} of {len(imlist)} took {elapsed_time} s')
 
         # Save Classified Image
         imclassify_PIL = Image.fromarray(imclassify)  # Convert NumPy array to PIL Image
-        imclassify_PIL.save(os.path.join(outpth, img_name[:-3] + 'tif'))  # Save as tif
-
+        imclassify_PIL.save(os.path.join(outpth, img_name[:-3] + 'tif'))  # Save as TIFF
 
         # Make color image overlay on H&E
         if color_overlay_HE:
@@ -144,6 +130,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         # Display the first image in the series
         if i == 0 and cmap is not None:
             prediction_colormap = decode_segmentation_masks(imclassify, cmap, n_classes=len(classNames)-1)
+            first_img = im_array
 
 
 
@@ -153,9 +140,9 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     print(f'  Total time for classification: {hours}h {minutes}m {seconds}s')
 
     # Only show images if im_array was actually assigned
-    if im_array is not None:
+    if first_img is not None:
         fig, axs = plt.subplots(1, 2)
-        axs[0].imshow(im_array)
+        axs[0].imshow(first_img)
         axs[1].imshow(keras.utils.array_to_img(prediction_colormap))
         for ax in axs:
             ax.axis('off')
