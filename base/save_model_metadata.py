@@ -7,8 +7,6 @@ import os
 import matplotlib.pyplot as plt
 from .plot_cmap_legend import plot_cmap_legend
 import pickle
-import time
-import numpy as np
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
     """
