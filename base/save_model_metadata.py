@@ -116,7 +116,7 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
                          "nvalidate": nvalidate}, f)
 
     # plot color legend
-    plot_cmap_legend.plot_cmap_legend(cmap, classNames)
+    plot_cmap_legend(cmap, classNames)
     plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
     elapsed_time = time.time() - metadata_start
     print(f'Saving metadata took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
