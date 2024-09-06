@@ -32,7 +32,7 @@ def read_image(image_input, image_size, mask=False):
         return None
 
 def infer(model, image_tensor):
-    predictions = model.predict(np.expand_dims(image_tensor, axis=0), verbose=0)
+    predictions = model.predict(np.expand_dims(image_tensor, axis=0))
     predictions = np.squeeze(predictions)
     predictions = np.argmax(predictions, axis=2)
     return predictions

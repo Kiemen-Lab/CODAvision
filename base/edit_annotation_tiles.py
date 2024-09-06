@@ -5,7 +5,8 @@ Date: May 14, 2024
 
 import numpy as np
 from skimage.morphology import disk, dilation
-from .augment_annotation import augment_annotation
+from base.augment_annotation import augment_annotation
+
 
 def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, big_tile_size, kpall):
     """

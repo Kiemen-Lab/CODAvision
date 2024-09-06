@@ -4,10 +4,14 @@ Date: May 20, 2024
 """
 
 import os
-import cv2
 import numpy as np
-from PIL import Image
+from scipy.ndimage import distance_transform_edt
 from .edit_annotation_tiles import edit_annotations_tiles
+from PIL import Image
+import time
+import cv2
+
+#from PIL import Image, ImageFilter # it only accepts 3x3 and 5x5 filters
 
 
 def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pthDL, outpth, sxy, stile=10240, nbg=0):
@@ -52,32 +56,51 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     nL = imT.size  # size of the big tile
     ct = np.zeros(numann.shape[1])  # list (size of how many annotations you have)
     sf = np.sum(ct) / nL  # how full is the big tile
-    num_classes = len(ct)
+
     count = 1
     tcount = 1  # is not one because of python indexing starts at 0
     cutoff = 0.55  # Cut off for how full the big tile is (55% full)
-    rsf = 10
+    rsf = 5
     type0 = 0
+    numcount = np.zeros(len(imlist['tile_name']))
+    typecount = np.zeros(len(ct))
+
+    h = np.ones((51, 51))
+    h[25, 25] = 0
+    h = distance_transform_edt(h) < 26
+    h_array32 = np.array(h / np.sum(h), dtype=np.float64)
 
     # Here comes the fun part, tiles are going to be added to the big black tile until the cutoff is achieved ~55%
+    iteration = 1
+    num_classes = len(ct)
+    # start iteration timing
+    iter_start_time = time.time()
+    print('Starting time for the while loop')
     while sf < cutoff:
+        iteration_start_time = time.time()
+        #print(f'Iteration: {iteration}')
+        #print(f' Bigtile occupancy rate: {sf*100:.2e} %') # Were only changing sf every other iteration, so why not print it every other iteration
         # choose one of each class in order in a loop
         if count % 10 == 1:
             type_ = tcount-1
-            tcount = (tcount % num_classes)+1
-
+            tcount = (tcount % num_classes)+1 #Was one pf reasons of tile composition
         # choose a tile containing the least prevalent class
         else:
             tmp = ct.copy()
             tmp[type0] = np.max(tmp)
             type_ = np.argmin(tmp)
 
+        #print(f" type_: {type_}")
+        typecount[type_] += 1
         num = np.where(numann[:, type_] > 0)[0]
+
         if len(num) == 0:
             numann[:, type_] = numann0[:, type_]
             num = np.where(numann[:, type_] > 0)[0]
         num = np.random.choice(num, size=1, replace=False)
-        tile_name = imlist['tile_name'][num[0]]  # chosen random tile to be processed
+        numcount[num[0]] += 1
+        # chosen random tile to be processed
+        tile_name = imlist['tile_name'][num[0]]
 
         tile_path = os.path.join(imlist['tile_pth'][num[0]], tile_name)
         pf = tile_path.rfind('\\', 0, tile_path.rfind('\\'))
@@ -102,11 +125,14 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             continue
         # find low density location in large tile to add annotation
         tmp2 = imT[::rsf, ::rsf] > 0
-        dist = cv2.distanceTransform((tmp2 <= 0).astype(np.uint8), cv2.DIST_L2, 3)
-        dist[:(100/rsf)-1, :] = 0  # Sets the first 20 rows to 0
-        dist[:, :(100/rsf)-1] = 0  # Sets the first 20 columns to 0
-        dist[-100/rsf:, :] = 0  # Sets the last 20 rows to 0
-        dist[:, -100/rsf:] = 0  # Sets the last 20 columns to 0
+        tmp2_array32 = np.array(tmp2, dtype=np.float64)
+        c = cv2.filter2D(tmp2_array32, -1, h_array32)
+        c = np.round(c*255) # To avoid percentile returning a negative value due to operating with a lot of small values
+        dist = cv2.distanceTransform((c <= np.percentile(c, 5, interpolation='midpoint')).astype(np.uint8), cv2.DIST_L2, 3)
+        dist[:20, :] = 0  # Sets the first 20 rows to 0
+        dist[:, :20] = 0  # Sets the first 20 columns to 0
+        dist[-20:, :] = 0  # Sets the last 20 rows to 0
+        dist[:, -20:] = 0  # Sets the last 20 columns to 0
         xii = np.where(dist == np.max(dist))
         index = np.random.choice(len(xii[0]), size=1, replace=False)
         x = int(xii[0][index[0]]*rsf)
@@ -118,8 +144,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         # Ensure szzA and szzB are tuples of integers to be used for slicing afterward
         szzA = tuple(map(int, szzA))
         szzB = tuple(map(int, szzB))
-
-        # x,y - Location in the big tile to add the BB to
+        #x,y - Location in the big tile to add the BB to
         if x + szzA[0]+1 > imT.shape[1]:
             x -= szzA[0]
         if y + szzA[1]+1 > imT.shape[0]: #Since we use y+szzA[1]+1 as the upper bound, we should compare it to imT.shape
@@ -138,8 +163,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
         # Update total count
         if count % 2 == 0:
-            tmp = imT[100:-100, 100:-100]
-            sf = cv2.countNonZero(tmp)/nL
+            sf = cv2.countNonZero(imT)/nL
             #print(f' Bigtile occupancy rate: {sf * 100:.2e} %')
 
         for p in range(numann.shape[1]):
@@ -153,6 +177,16 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
         count += 1
         type0 = type_
+        iteration += 1
+        elapsed_time = time.time() - iteration_start_time
+        #print(f'Iteration {iteration-1} took {elapsed_time} seconds')
+
+    # End of while loop timer
+    end_time = time.time()
+    total_time_while = end_time - iter_start_time
+    print(f'Total time elapsed for the while loop: {total_time_while}')
+    #print(f'Max used: {np.max(numcount)}, Min used: {np.min(numcount)}, Total tiles: {np.sum(numcount)}')
+    #print(f'Type count:{typecount}')
 
     # cut edges off tile
     imH = imH[100:-100, 100:-100, :].astype(np.uint8)
@@ -169,17 +203,28 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             try:
                 imHtmp = imH[s1:s1 + sxy, s2:s2 + sxy, :]
                 imTtmp = imT[s1:s1 + sxy, s2:s2 + sxy]
-                Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.png"))
-                Image.fromarray(imTtmp).save(os.path.join(outpthlabel, f"{nm0}.png"))
-                nm0 += 1
             except ValueError:
                 continue
 
+            Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.png"))
+            Image.fromarray(imTtmp).save(os.path.join(outpthlabel, f"{nm0}.png"))
+            #io.imsave(os.path.join(outpthim, f"{nm0}.png"), imHtmp)
+            #io.imsave(os.path.join(outpthlabel, f"{nm0}.png"), imTtmp)
+            #tiff.imsave(os.path.join(outpthim, f"{nm0}.tif"), imHtmp)
+            #tiff.imsave(os.path.join(outpthlabel, f"{nm0}.tif"), imTtmp)
+
+
+            nm0 += 1
+
+    nm1 = len([f for f in os.listdir(outpthbg) if f.startswith('HE')]) + 1
+
     # save large tiles
     print('Saving big tiles')
-    nm1 = len([f for f in os.listdir(outpthbg) if f.startswith('HE')]) + 1
     Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
     Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
+    # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
+    # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
+    # print(numcount)
 
     return numann, percann
 

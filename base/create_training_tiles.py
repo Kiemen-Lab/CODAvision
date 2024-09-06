@@ -4,11 +4,11 @@ Date: May 22, 2024
 """
 
 import glob
+import numpy as np
 import time
+from .combine_annotations_into_tiles import combine_annotations_into_tiles
 import os
 import pickle
-import numpy as np
-from .combine_annotations_into_tiles import combine_annotations_into_tiles
 
 def create_training_tiles(pthDL, numann0, ctlist0):
     """
@@ -60,7 +60,6 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     percann0 = percann.copy()
     ty = 'training\\'
     obg = os.path.join(pthDL, ty, 'big_tiles\\')
-
     # Generate tiles until enough are made
     train_start = time.time()
     if len(glob.glob(os.path.join(obg, 'HE*.jpg'))) >= ntrain:
@@ -87,6 +86,7 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     hours, rem = divmod(total_time_train_bigtiles, 3600)
     minutes, seconds = divmod(rem, 60)
     print(f'  Elapsed time to create training big tiles: {hours}h {minutes}m {seconds}s')
+
     print('')
 
     # Build validation tiles
