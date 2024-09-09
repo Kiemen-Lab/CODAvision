@@ -25,13 +25,15 @@ setup(
         'pip==24.2',
         'attrs==24.2.0',
         'wheel==0.43.0',
-        # 'openssl==3.3.1',
         'tornado==6.4.1',
         'jinja2==3.1.4',
         'setuptools==72.1.0',
         'packaging==24.1',
         'zipp==3.20.1'
     ],
+    package_data={
+        '': ['*.ipynb', '*.qss'],
+    },
     classifiers=[
         'Programming Language :: Python :: 3.9',
         'License :: OSI Approved :: MIT License',
