@@ -51,6 +51,9 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
         pth_annotation_data = os.path.join(pthtestdata, folder)
         annotation_file_png = os.path.join(pth_annotation_data, 'view_annotations.png')
         annotation_file_raw_png = os.path.join(pth_annotation_data, 'view_annotations_raw.png')
+        # annotation_file_png = os.path.join(pth_annotation_data, 'view_annotations.tif')
+        # annotation_file_raw_png = os.path.join(pth_annotation_data, 'view_annotations_raw.tif')
+
 
         if os.path.exists(os.path.join(pth_annotation_data, 'view_annotations.png')) or os.path.exists(
                 os.path.join(pth_annotation_data, 'view_annotations_raw.png')):

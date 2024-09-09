@@ -70,7 +70,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
     val_masks = sorted(glob(os.path.join(pthValidation, 'label', "*.png")))
 
     # Define constants
-    BATCH_SIZE = 3
+    BATCH_SIZE = 4
     NUM_CLASSES = len(classNames)  # Number of classes
 
     # Create TensorFlow dataset
@@ -402,7 +402,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
         print('Starting model training...')
 
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.001),
+            optimizer=keras.optimizers.Adam(learning_rate=0.0005),
             loss=loss,
             metrics=["accuracy"],
         )

@@ -37,7 +37,8 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     os.makedirs(outpth, exist_ok=True)
 
     b = 100
-    imlist = sorted(glob(os.path.join(pthim, '*.png')))
+
+    imlist = sorted(glob(os.path.join(pthim, '*.tif')))
     # If no PNGs found, search for TIFF and JPG files
     if not imlist:
         jpg_files = glob(os.path.join(pthim, "*.jpg"))
@@ -45,11 +46,6 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
             imlist.extend(jpg_files)  # Add full paths of JPGs to list
         png_files = glob(os.path.join(pthim, '*.png'))
         if png_files:
-            for file in png_files:
-                im = Image.open(file)
-                imname = os.path.basename(file)
-                im.save(os.path.join(pthim, imname[:-4] + '.png'))
-            png_files = glob(os.path.join(pthim, "*.png"))
             imlist.extend(png_files)
     if not imlist:
         print("No TIFF, PNG or JPG image files found in", pthim)
@@ -66,7 +62,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         if os.path.isfile(os.path.join(outpth, img_name[:-4] + ".tif")):
             print(f'  Image {img_name} already classified by this model')
             continue
-        print(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))
+        # print(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))
         im = Image.open(os.path.join(pthim, img_name))
         im_array = np.array(im)  # Convert to NumPy array for slicing
         try:

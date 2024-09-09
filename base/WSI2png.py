@@ -9,7 +9,10 @@ import os
 import glob
 
 # Add the OpenSlide DLL directory
-script_dir = os.path.dirname(os.path.abspath(__file__))
+try:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    script_dir = os.getcwd()  # Fallback to the current working direc
 openslide_path = os.path.join(script_dir, 'OpenSlide bin')
 
 if hasattr(os, 'add_dll_directory'):
