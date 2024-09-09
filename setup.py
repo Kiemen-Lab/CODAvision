@@ -29,7 +29,8 @@ setup(
         'jinja2==3.1.4',
         'setuptools==72.1.0',
         'packaging==24.1',
-        'zipp==3.20.1'
+        'zipp==3.20.1',
+        'openslide-python==1.3.1'
     ],
     package_data={
         '': ['*.ipynb', '*.qss'],
