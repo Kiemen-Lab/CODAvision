@@ -25,7 +25,7 @@ setup(
         'pip==24.2',
         'attrs==24.2.0',
         'wheel==0.43.0',
-        'openssl==3.3.1',
+        # 'openssl==3.3.1',
         'tornado==6.4.1',
         'jinja2==3.1.4',
         'setuptools==72.1.0',
