@@ -124,21 +124,3 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     hours, rem = divmod(total_time_validation_bigtiles, 3600)
     minutes, seconds = divmod(rem, 60)
     print(f'Elapsed time to create validation big tiles: {hours}h {minutes}m {seconds}s')
-
-# Example usage
-
-#if __name__ == '__main__':
-#    # Pre - inputs
-#    pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model'
-#    pthim_ann = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
-#    classcheck = 0
-
-#    from load_annotation_data import load_annotation_data
-
-    # _____________________________________________________________________________
-
-    # Inputs
-#    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
-#    ctlist0, numann0 = load_annotation_data(pthDL, pth, pthim_ann, classcheck)
-
-#    create_training_tiles(pthDL, numann0, ctlist0)

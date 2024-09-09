@@ -32,26 +32,8 @@ def plot_cmap_legend(cmap, titles):
         plt.xticks([])
         plt.tick_params(axis='y', length=0)
         plt.tick_params(axis='both', labelsize=15)
-        #plt.show() # This line displays the plot, but it avoids save_model_metadata to properly save the colormap
-                    # as a png. Instead, this line has been added after plt.savefig() in the save_model_metadata function
+        #plt.show() # Uncomment this line to display the plot. It might unable save_model_metadata to save the plot.
     else:
         plt.figure()
         plt.imshow(im)
 
-
-# Example usage:
-# if __name__ == "__main__":
-#     cmap = np.array([[121, 248, 252],
-#                    [0, 0, 255],
-#                    [80, 237, 80],
-#                    [255, 255, 0],
-#                    [149, 35, 184],
-#                    [25, 194, 245],
-#                    [255, 255, 255],
-#                    [255, 0, 0],
-#                    [73, 120, 111],
-#                    [0, 0, 0],
-#                    [135, 7, 7],
-#                    [240, 159, 10]])
-#     titles = ['islet', 'duct', 'blood vessel', 'fat','acini','ecm','whitespace','LG PanIN','nerves','immune','HG PanIN','PDAC']
-#     plot_cmap_legend(cmap, titles)

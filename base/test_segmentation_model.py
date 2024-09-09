@@ -151,12 +151,3 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
     _ = plot_confusion_matrix(confusion_data, classNames, pthDL)
     return
 
-
-# #Example:
-# if __name__ == '__main__':
-#     # Inputs:
-#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
-#     pthtest = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images'
-#     pthtestim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\testing images\5x'
-#
-#     test_segmentation_model(pthDL, pthtest, pthtestim)

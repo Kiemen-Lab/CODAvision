@@ -117,22 +117,3 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
     plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
 
 
-# # Example usage
-# if __name__ == "__main__":
-#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\variables'
-#     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Test Dashboard\5x'
-#     WS = [[0, 0, 0, 0, 0, 2, 0], [6, 6], [1, 2, 3, 4, 5, 6, 3], [7, 2, 4, 3, 1, 6], 4]
-#     nm = '04_03_2024'
-#     umpix = 2
-#     cmap = np.array([[0, 255, 0],
-#                      [255, 255, 0],
-#                      [255, 128, 0],
-#                      [0, 255, 255],
-#                      [0, 0, 255],
-#                      [0, 0, 0]])
-#     sxy = 1000
-#     classNames = ["bronchioles", "alveoli", "smooth_operator", "mets", "test", "whitespace", "black"]
-#     ntrain = 15
-#     nvalidate = 3
-#
-#     save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
