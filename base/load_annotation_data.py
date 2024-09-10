@@ -9,6 +9,7 @@ from .import_xml import import_xml
 from .save_annotation_mask import save_annotation_mask
 from .save_bounding_boxes import save_bounding_boxes
 from .WSI2png import WSI2png
+from .WSI2tif import WSI2tif
 import os
 import pickle
 import shutil
@@ -54,7 +55,9 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     print(' ')
     print(' Loading PNG images...')
     resolution = pthim.split('\\')[-1]
-    WSI2png(pth, resolution, umpix)
+    # WSI2png(pth, resolution, umpix)
+    WSI2tif(pth, resolution, umpix)
+
 
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
     numclass = np.max(WS[2])
