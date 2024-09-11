@@ -131,8 +131,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             f.close()
 
         # 2 fill annotation outlines and delete unwanted pixels
-        with open(annotations_file, 'rb') as f:  #
-            data = pickle.load(f)
 
         I0, TA, _ = calculate_tissue_mask(pthim, imnm)
 
