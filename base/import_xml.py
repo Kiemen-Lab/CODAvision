@@ -64,10 +64,3 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
     return xyout_df, reduced_annotations
 
-
-# if __name__ == "__main__":
-#     ra = None
-#
-#     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
-#     print("\nAnnotations Coordinates DataFrame:")
-#     print(xyout_df)

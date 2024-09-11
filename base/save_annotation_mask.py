@@ -61,10 +61,8 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
                 TA = TAa & TAb
                 TA *= 255
                 TA = label(TA, np.ones((3, 3)))[0] >= 5
-            #Ig1 = np.flatnonzero(TA)  # Find the linear indices of non-zero elements
             Ig = TA>0
             szz = TA.shape  # Get the size of the binary image
-            #J1 = [[] for _ in range(num)] # Create a list with as many entries as there are tissues
             J =np.zeros((szz[0],szz[1],len(WS[0])),dtype=int)
 
             # interpolate annotation points to make closed objects
@@ -99,8 +97,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
                     except ValueError:
                         print('  annotation out of bounds')
                         continue
-                    #indnew = indnew[~np.isnan(indnew)].astype(int) # Remove NaN values
-                    #bwtypek.flat[indnew] = True  # Make the values in bwtypek one in the coordinates with an annotation vertix
+
 
                 bwtypek = binary_fill_holes(bwtypek)
                 Jtmp[bwtypek] = k # Save the annotation vertices in Jtemp with a value equal to their position in WS[0]
@@ -109,36 +106,22 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
                     Jtmp[:, :400] = 0
                     Jtmp[-401:, :] = 0
                     Jtmp[:, -401:] = 0
-                #J1[int(k) - 1] = np.flatnonzero(Jtmp == k)
-                py_index = k-1
-                J[:,:,py_index.astype(int)] = Jtmp == k#Store the annotation vertices indexes in the entry of J with their position in WS[0]
 
-            #elapsed_time = time.time() - loop_start
-            #print(f'Loop took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
+                py_index = k-1
+                J[:,:,py_index.astype(int)] = Jtmp == k # Store the annotation vertices indexes in the entry of J with their position in WS[0]
+
+
             del bwtypek, Jtmp, xyz # Clear the temporary variables at the end of the iteration
+
             # format annotations to keep or remove whitespace
             format_start = time.time()
             J, ind = format_white(J, Ig, WS, szz)
             elapsed_time = time.time() - format_start
             print(f'Format white took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
-            #image_start = time.time()
             from PIL import Image
-            #Image.fromarray(np.uint8(J)).save(os.path.join(outpth.rstrip('\\'), 'view_annotations_raw.tif')) # Save the image containing the annotations in a PNG file
             Image.fromarray(np.uint8(J)).save(os.path.join(outpth.rstrip('\\'), 'view_annotations_raw.png'))
-            #elapsed_time = time.time() - image_start
-            #print(f'Saving image took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
+
     except FileNotFoundError:
         J=np.zeros(I.size)
 
     return J
-
-#Example usage
-# if __name__ == "__main__":
-#     import calculate_tissue_mask
-#     outpth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\data py\84 - 2024-02-26 10.33.40'
-#     umpix=2
-#     imnm = '84 - 2024-02-26 10.33.40'
-#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests\5x'
-#     WS = [[0,2,0,0,0,2,0],[6,7],[1,2,3,4,1,5,6],[7,2,4,3,1,6],[5]]
-#     [I0,TA,_] = calculate_tissue_mask.calculate_tissue_mask(pth,imnm)
-#     J0 = save_annotation_mask(I0,outpth,WS,umpix,TA)

@@ -68,6 +68,9 @@ def WSI2tif(pth, resolution, umpix):
 
     # Get the .ndpi and .svs image names
     image_files_wsi = glob.glob(os.path.join(pth, '*.ndpi')) + glob.glob(os.path.join(pth, '*.svs'))
+    if not image_files_wsi:
+        print("No .ndpi or .svs files found in the directory.")
+        return
     images_names_wsi = {os.path.splitext(os.path.basename(image))[0] for image in image_files_wsi}
 
     # Compare image names and process missing images
