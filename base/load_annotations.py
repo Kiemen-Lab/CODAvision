@@ -53,3 +53,16 @@ def load_annotations(xml_file):
 
     xyout_df = pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
     return reduced_annotations, xyout_df
+
+# #Example usage
+# def main():
+#     xml_file= r'put your path here'
+#     reduced_annotations, annotations_df = load_annotations(xml_file)
+#
+#     print("Reduced Annotations (Microns Per Pixel):", reduced_annotations)
+#     print("\nAnnotations DataFrame:")
+#     # print(annotations_df.head())
+#     print(annotations_df)
+#
+# if __name__ == "__main__":
+#     main()

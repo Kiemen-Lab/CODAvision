@@ -55,3 +55,14 @@ def semantic_seg(image_path, image_size, model):
     assert image_tensor is not None, f"Error: Could not read the image from path {image_path}"
     prediction_mask = infer(model, image_tensor)
     return prediction_mask
+
+
+# Example usage
+
+# if __name__ == '__main__':
+#     image_path = 'path_to_your_image.png'  # only PNG IMAGES!!!!!
+#     prediction_mask = semantic_seg(image_path, image_size=1024, model)
+#     if prediction_mask is not None:
+#         print(prediction_mask.shape)
+#     else:
+#         print("Prediction failed due to image read error.")

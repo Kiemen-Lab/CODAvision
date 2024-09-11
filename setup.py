@@ -31,7 +31,6 @@ setup(
         'packaging==24.1',
         'zipp==3.20.1',
         'openslide-python==1.3.1'
-        'openpyxl==3.1.2'
     ],
     package_data={
         '': ['*.ipynb', '*.qss'],

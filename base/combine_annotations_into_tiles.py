@@ -75,12 +75,16 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     num_classes = len(ct)
     # start iteration timing
     iter_start_time = time.time()
+    print('Starting time for the while loop')
     while sf < cutoff:
         iteration_start_time = time.time()
+        #print(f'Iteration: {iteration}')
+        #print(f' Bigtile occupancy rate: {sf*100:.2e} %') # Were only changing sf every other iteration, so why not print it every other iteration
         # choose one of each class in order in a loop
         if count % 10 == 1:
             type_ = tcount-1
-            tcount = (tcount % num_classes)+1
+            tcount = (tcount % num_classes)+1 #Was one pf reasons of tile composition
+        # choose a tile containing the least prevalent class
         else:
             tmp = ct.copy()
             tmp[type0] = np.max(tmp)
@@ -175,12 +179,14 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         type0 = type_
         iteration += 1
         elapsed_time = time.time() - iteration_start_time
+        #print(f'Iteration {iteration-1} took {elapsed_time} seconds')
 
     # End of while loop timer
     end_time = time.time()
     total_time_while = end_time - iter_start_time
     print(f'Total time elapsed for the while loop: {total_time_while}')
-
+    #print(f'Max used: {np.max(numcount)}, Min used: {np.min(numcount)}, Total tiles: {np.sum(numcount)}')
+    #print(f'Type count:{typecount}')
 
     # cut edges off tile
     imH = imH[100:-100, 100:-100, :].astype(np.uint8)
@@ -202,6 +208,10 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
             Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.png"))
             Image.fromarray(imTtmp).save(os.path.join(outpthlabel, f"{nm0}.png"))
+            #io.imsave(os.path.join(outpthim, f"{nm0}.png"), imHtmp)
+            #io.imsave(os.path.join(outpthlabel, f"{nm0}.png"), imTtmp)
+            #tiff.imsave(os.path.join(outpthim, f"{nm0}.tif"), imHtmp)
+            #tiff.imsave(os.path.join(outpthlabel, f"{nm0}.tif"), imTtmp)
 
 
             nm0 += 1
@@ -214,5 +224,50 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
     # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
     # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)
+    # print(numcount)
 
     return numann, percann
+
+# # Example usage
+#
+#if __name__ == '__main__':
+#
+#     # Pre - inputs
+#     pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\Optimize'
+#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\Optimize\optimization_06_28_2024'
+#     pthim_ann = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\Optimize\5x'
+#     classcheck = 0
+#     datafile = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\Optimize\optimization_06_28_2024\net.pkl'
+##
+#     # Inputs
+#     import pickle
+#     from load_annotation_data import load_annotation_data
+##
+#     with open(datafile, 'rb') as f:
+#         data = pickle.load(f)
+#     nblack = data['nblack']
+#     sxy = data['sxy']
+#     ctlist0, numann0 = load_annotation_data(pthDL, pth, pthim_ann, classcheck)
+#     numann0 = np.array(numann0)  # Convert numann0 to a NumPy array
+#
+#     numann = numann0.copy()
+#     percann = np.double(numann0 > 0)
+#     percann = np.dstack((percann, percann))
+#     percann0 = percann.copy()
+#     stile = None
+#     nbg = None
+##
+#     outpth = r'training'
+##
+##     # Function
+##     full_function_start_time = time.time()
+##     print('Starting timer for the function call')
+#     numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, outpth, sxy)
+#     end_fucntion_time = time.time() - full_function_start_time
+#     hours, re, = divmod(end_fucntion_time, 3600)
+#     minutes, seconds = divmod(re, 60)
+#     print(f'Function call took {hours}h {minutes}m {seconds}s')
+#
+#
+#
+#

@@ -44,12 +44,17 @@ def format_white(J0, Ig, WS, szz):
             ii = J0[:,:,py_index]
         except IndexError:
             continue
-
+        #part1 = time.time()
+        #print(f'Part 1 took {time.time()-part1}s')
+        #part11 = time.time()
         iiNW = ii*(Ig==0)
         iiW = ii*Ig
         iiW = np.flatnonzero(iiW)
         iiNW = np.flatnonzero(iiNW)
-
+        #print(f'Part 1.1 took {time.time()-part11}s')
+        #print(np.sum(iiNW==iiNW1)/iiNW1.size)
+        #print(np.sum(iiW==iiW1)/iiW1.size)
+        #part2 = time.time()
         if ws[k-1] == 0 and iiNW.size > 0:  # remove whitespace and add to wsa
             Jws.flat[iiNW] = k
             Jws.flat[iiW] = wsa
@@ -59,10 +64,12 @@ def format_white(J0, Ig, WS, szz):
         elif ws[k-1] == 2 and iiNW.size > 0:  # keep both whitespace and non whitespace
             Jws.flat[iiNW] = k
             Jws.flat[iiW] = k
+        #print(f'Part 2 took {time.time()-part2}s')
 
     # remove small objects and redefine labels (combine labels if desired)
     J = np.zeros(szz, dtype=int)
     unique_k = np.unique(Jws)
+    #part3 = time.time()
     for k in unique_k:
         if k == 0:
             continue
@@ -72,4 +79,5 @@ def format_white(J0, Ig, WS, szz):
         if ii.size > 0:
             P = np.column_stack((np.full((ii.size, 2), [p, wsnew[k - 1]]), ii))
             ind.extend(P)
+    #print(f'Part 3 took {time.time()-part3}s')
     return J, ind

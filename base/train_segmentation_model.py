@@ -299,6 +299,8 @@ def train_segmentation_model(pthDL, fine_tune=False):
             if self.save_best_model:
                 self.model.save(self.save_path)
 
+            #print(f'Learning rate:{float(tf.keras.backend.get_value(self.model.optimizer.lr))}')
+            #print(f"Validation at step {self.current_step}: loss = {val_loss_avg}, accuracy = {val_accuracy_avg}")
 
             if self.early_stopping or self.RLRoP:
                 if self.monitor == 'val_loss':
@@ -409,6 +411,18 @@ def train_segmentation_model(pthDL, fine_tune=False):
         plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
                                 filepath=os.path.join(pthDL, 'best_model_net.keras'))
 
+        # checkpoint = ModelCheckpoint(
+        #     filepath= os.path.join(pthDL, 'best_val_net'),  # Path to save the model
+        #     monitor='val_accuracy',  # Metric to monitor
+        #     save_best_only=True,  # Save only the best model
+        #     mode='max',  # 'max' for validation accuracy
+        #     verbose=1  # Print messages when saving
+        # )
+        # early_stopping = EarlyStopping(monitor='val_accuracy',
+        #                                patience=2,
+        #                                mode='max',
+        #                                verbose=1)
+
         # Train the model
         history = model.fit(train_dataset, validation_data=val_dataset, callbacks=plotcall, verbose=1, epochs=8)
 
@@ -467,6 +481,10 @@ def train_segmentation_model(pthDL, fine_tune=False):
                      validation_data=val_dataset,
                      callbacks=[PrintTunerCallback()])
 
+        # tuner.search(train_dataset,
+        #              epochs=8,
+        #              validation_data=val_dataset,
+        #              callbacks=[TunerCallback(val_dataset), PrintTunerCallback()])
 
         # Get the best model
         best_model = tuner.get_best_models(num_models=1)[0]
@@ -475,6 +493,8 @@ def train_segmentation_model(pthDL, fine_tune=False):
         best_hp = tuner.get_best_hyperparameters()[0]
         logger.info("Best hyperparameters found:")
         logger.info(f"Learning rate: {best_hp.get('learning_rate')}")
+        # logger.info(f"LR patience: {best_hp.get('lr_patience')}")
+        # logger.info(f"LR factor: {best_hp.get('lr_factor')}")
 
         # Train the best model
         num_validations = 3

@@ -44,3 +44,11 @@ def optimize_TA_old(pth, imnm):
     TA = label(TA, np.ones((3, 3)))[0] >= 4
     cv2.imwrite(os.path.join(outpth, imnm + '.tif'), TA.astype(np.uint8))
     return im0, TA, outpth
+
+# Example usage:
+if __name__ == "__main__":
+    TA_start = time.time()
+    imnm = 'SG_014_0016'
+    pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\Optimize\5x'
+    optimize_TA_old(pth, imnm)
+    print(time.time() - TA_start)

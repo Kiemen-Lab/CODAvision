@@ -57,3 +57,33 @@ def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim):
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
+
+
+#Example
+#
+# # Load data from pickle file (example):
+# datafile = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\variables\net.pkl'
+#
+# with open(datafile, 'rb') as f:
+#     data = pickle.load(f)
+#
+# WS = data['WS']
+# cmap = data['cmap']
+# classnames = data['classNames']
+# nm = data['nm']
+# umpix = data['umpix']
+# nwhite = data['nwhite']
+# pthim = data['pthim']
+#
+# print(f'WS: {WS}')
+# print(f'classnames: {classnames}')
+# print(f'Cmap: {cmap}')
+# print(f'Umpix: {umpix}')
+# print(f'Nwhite: {nwhite}')
+# print(f'Pthim: {pthim}')
+#
+#
+# # Change paraters
+# umpix = 3
+#
+# reload = check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim)

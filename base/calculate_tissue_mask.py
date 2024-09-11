@@ -7,6 +7,7 @@ import numpy as np
 from skimage import morphology
 import cv2
 import scipy
+import time
 
 def calculate_tissue_mask(pth, imnm):
     """
@@ -25,6 +26,7 @@ def calculate_tissue_mask(pth, imnm):
     if not os.path.isdir(outpth): #Check if the path to the image exists
         os.mkdir(outpth)
     try:
+        #im0 = io.imread(os.path.join(pth, imnm + '.tif')) #Check for TIFF images
         im0 = cv2.imread(os.path.join(pth, imnm + '.tif'))
         im0 = im0[:,:,::-1] # cv2.imread() reads image in BGR order, so we have to reorder color channels
     except:
@@ -36,11 +38,11 @@ def calculate_tissue_mask(pth, imnm):
             try:
                 #im0 = io.imread(os.path.join(pth, imnm + '.jp2')) #Check for jp2 images
                 im0 = cv2.imread(os.path.join(pth, imnm + '.jp2'))
-                im0 = im0[:, :, ::-1]  #
+                im0 = im0[:, :, ::-1]  # cv2.imread() reads image in BGR order, so we have to reorder color channels
             except:
                 #im0 = io.imread(os.path.join(pth, imnm + '.png'))  # Check for png images
                 im0 = cv2.imread(os.path.join(pth, imnm + '.png'))
-                im0 = im0[:, :, ::-1]
+                im0 = im0[:, :, ::-1]  # cv2.imread() reads image in BGR order, so we have to reorder color channels
     if os.path.isfile(os.path.join(outpth, imnm + '.tif')): # If there already is an TA image in the outpth, load it and return
         TA = cv2.imread(os.path.join(outpth, imnm + '.tif'), cv2.IMREAD_GRAYSCALE)
         print('  Existing TA loaded')
@@ -50,6 +52,16 @@ def calculate_tissue_mask(pth, imnm):
     if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')): # Check if the TA value has already been calculated
         data = scipy.io.loadmat(os.path.join(outpth, 'TA_cutoff.mat'))
 
+    # if os.path.exists(os.path.join(outpth, 'TA_cutoff.pkl')):   # todo: uncomment these two lines and delete the one above when TA_cutoff.plk has been created
+    #     with open(os.path.join(outpth, 'TA_cutoff.pkl'), 'rb') as f:
+    #         try:
+    #             data = pickle.load(f)      # todo: check if bugs arise after changing .mat file for .pkl file
+    #         except EOFError:
+    #             existing_data = {}
+    #             ct = 210
+    #             continue
+    # else:
+    #     print('No TA_cuttoff file found')
 
         cts = data['cts']
         ct=0
@@ -60,6 +72,7 @@ def calculate_tissue_mask(pth, imnm):
     else:
         ct = 210 #If there is no previous TA value, use 210
 
+    baseline = time.time()
     TA = im0[:, :, 1] < ct # Threshold the image green values
     kernel_size = 3
     TA = TA.astype(np.uint8)
@@ -69,3 +82,8 @@ def calculate_tissue_mask(pth, imnm):
     cv2.imwrite(os.path.join(outpth, imnm + '.tif'), TA.astype(np.uint8))
     return im0, TA, outpth
 
+# Example usage
+# if __name__ == "__main__":
+#   imnm = '84 - 2024-02-26 10.33.40'
+#   pth = r'\\10.99.68.52\Kiemendata\Valentina Matos\LG HG PanIN project\Jaime\Python tests'
+#   calculate_tissue_mask(pth, imnm)
