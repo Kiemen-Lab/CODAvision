@@ -29,4 +29,4 @@ ANACODA is an open-source Python package designed for microanatomical tissue lab
     Install the ANACODA package using pip:
     
     ```sh
-    pip install git+https://github.com/Valentinamatos/CODA_python.git@CODA-GUI-Tina
+    pip install -e git+https://github.com/Valentinamatos/CODA_python.git#egg=ANACODA

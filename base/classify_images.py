@@ -149,12 +149,3 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     return outpth
 
 
-#Example:
-#if __name__ == '__main__':
-#    # Inputs:
-#    pthim = r'C:\Users\Valentina\OneDrive - Johns Hopkins\Desktop\test png\PNG'
-#    pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\04_19_2024'
-#    color_overlay_HE = False  # set to true in the real code
-#    color_mask = False
-
- #   _ = classify_images(pthim, pthDL, color_overlay_HE=False, color_mask=False)
