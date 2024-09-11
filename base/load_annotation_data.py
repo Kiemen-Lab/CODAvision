@@ -53,7 +53,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
     # Make PNG images if they don't exist
     print(' ')
-    print(' Making downsampled images...')
     resolution = pthim.split('\\')[-1]
     # WSI2png(pth, resolution, umpix)
     WSI2tif(pth, resolution, umpix)

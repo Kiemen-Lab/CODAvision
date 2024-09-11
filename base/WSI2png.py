@@ -55,6 +55,8 @@ def process_missing_images(pth, pthim, missing_images, umpix):
 
 
 def WSI2png(pth, resolution, umpix):
+    print(' Making down-sampled images...')
+
     pthim = os.path.join(pth, f'{resolution}')
 
     # Ensure the image directory exists
@@ -76,6 +78,9 @@ def WSI2png(pth, resolution, umpix):
     if images_names_png != images_names_wsi:
         missing_images = images_names_wsi - images_names_png
         process_missing_images(pth, pthim, missing_images, umpix)
+    else:
+        print("All down-sampled images already exist in the directory.")
+
 
 
 if __name__ == '__main__':
