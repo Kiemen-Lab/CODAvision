@@ -1,14 +1,4 @@
 
-# from PySide2 import QtWidgets, QtCore
-# from CODA import Ui_MainWindow
-# import os
-# from datetime import datetime
-# import xmltodict
-# import pandas as pd
-# from PySide2.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
-# from PySide2.QtWidgets import QColorDialog, QHeaderView, QTableWidgetItem
-# from PySide2.QtCore import Qt
-
 from PySide6 import QtWidgets, QtCore
 from CODA import Ui_MainWindow
 import os
@@ -23,6 +13,7 @@ from PySide6.QtCore import Qt
 class CustomDialog(QtWidgets.QDialog):
     def __init__(self, training_folder, parent=None):
         super().__init__(parent)
+        self.original_df = None
         self.training_folder = training_folder
         self.df = None
         self.combined_df = None
@@ -54,6 +45,7 @@ class CustomDialog(QtWidgets.QDialog):
         if xml_file:
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
+                self.original_df = self.df.copy()  # Initialize original_df after loading data
                 print(f"Loaded XML file: {xml_file}")
                 print(self.df)
                 self.accept()
@@ -61,7 +53,6 @@ class CustomDialog(QtWidgets.QDialog):
                 QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
         else:
             QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
-
     def use_prerecorded_data(self):
         print("Using prerecorded data")
         self.accept()
@@ -82,6 +73,7 @@ class CustomDialog(QtWidgets.QDialog):
                 {'Layer Name': layer_name, 'Color': rgb, 'Whitespace Settings': None})  # Add whitespace settings
 
         df = pd.DataFrame(data)
+        self.original_df = df.copy()  # Save the original dataframe for resetting
         return df
 
     def int_to_rgb(self, hex_color):
@@ -98,9 +90,11 @@ class CustomDialog(QtWidgets.QDialog):
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
-        QtWidgets.QMainWindow.__init__(self)
+        super().__init__()  # Use super() to initialize the parent class
+
         self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
+        self.ui.setupUi(self)  # Pass the MainWindow instance itself as the parent
+        self.setCentralWidget(self.ui.centralwidget)  # Set the central widget
         self.ui.Save_FL_PB.clicked.connect(self.fill_form_and_continue)
         self.ui.trainin_PB.clicked.connect(lambda: self.select_imagedir('training'))
         self.ui.testing_PB.clicked.connect(lambda: self.select_imagedir('testing'))
@@ -113,13 +107,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Movedown_PB.clicked.connect(self.move_row_down)
         self.ui.return_nesting_PB.clicked.connect(lambda: self.return_to_previous_tab(return_to_first=False))
         self.ui.save_nesting_PB.clicked.connect(self.save_nesting_and_continue)
-        self.ui.addcombo_PB.clicked.connect(self.add_combo)
-        self.ui.removecombo_PB.clicked.connect(self.remove_combo)
+        self.ui.Combine_PB.clicked.connect(self.add_combo)
+        self.ui.Reset_PB.clicked.connect(self.reset_combo)
         self.ui.save_ad_PB.clicked.connect(self.save_advanced_settings_and_close)
         self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
-        self.ui.Combine_TW_1.verticalHeader().setVisible(False)
-        self.ui.Combine_TW_2.verticalHeader().setVisible(False)
         self.combo_colors = {}
+        self.original_df = None  # Initialize original_df
+        self.df = None
 
         self.set_initial_model_name()
         self.ui.tabWidget.setCurrentIndex(0)  # Initialize the first tab
@@ -150,6 +144,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.tabWidget.setTabEnabled(next_tab_index, True)
             self.switch_to_next_tab()
             self.show_custom_dialog()
+
+    def reset_combo(self):
+        if self.original_df is not None:
+            self.df = self.original_df.copy()  # Reset df to the original data
+            self.populate_table_widget()
+        else:
+            QtWidgets.QMessageBox.warning(self, 'Warning', 'Original data not loaded.')
 
     def save_and_continue_from_tab_2(self):
 
@@ -321,31 +322,46 @@ class MainWindow(QtWidgets.QMainWindow):
         if dialog.exec() == QtWidgets.QDialog.Accepted:
             self.df = dialog.get_dataframe()
             if self.df is not None:
+                self.original_df = self.df.copy()  # Set original_df in MainWindow
+                self.populate_table_widget()
+            if self.df is not None:
                 self.populate_table_widget()
 
-    def populate_table_widget(self):
-        if self.df is None:
+    def populate_table_widget(self, df=None):
+        if df is None:
+            df = self.df  # Populate the table with the original dataframe if no dataframe is passed
+
+        if df is None:
             return
 
         table = self.ui.tissue_segmentation_TW
-        table.setRowCount(len(self.df))
+        table.setRowCount(len(df))
         table.setColumnCount(2)  # Adjust column count
         table.setHorizontalHeaderLabels(["Annotation Class", "Whitespace Settings"])
 
-        for row, (index, data) in enumerate(self.df.iterrows()):
+        ws_map = {
+            0: 'Remove whitespace',
+            1: 'Keep only whitespace',
+            2: 'Keep tissue and whitespace'
+        }
+
+        for row, (index, data) in enumerate(df.iterrows()):
             layer_name = data['Layer Name']
             color = data['Color']
+            whitespace_setting = data['Whitespace Settings']
 
             item = QtWidgets.QTableWidgetItem(layer_name)
             item.setBackground(QColor(*color))
             table.setItem(row, 0, item)
 
-            ws_item = QtWidgets.QTableWidgetItem("")
+            ws_text = ws_map.get(whitespace_setting, "")
+            ws_item = QtWidgets.QTableWidgetItem(ws_text)
             ws_item.setBackground(QColor(255, 255, 255))
             table.setItem(row, 1, ws_item)
 
         table.resizeColumnsToContents()
         table.resizeRowsToContents()
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Stretch columns to fit the table width
 
         # Populate combo boxes with layer names
         self.populate_combo_boxes()
@@ -423,7 +439,7 @@ class MainWindow(QtWidgets.QMainWindow):
         color_dialog = QColorDialog(self)
         color_dialog.setCurrentColor(initial_color)
 
-        if color_dialog.exec_():
+        if color_dialog.exec():
             new_color = color_dialog.currentColor()
             new_rgb = (new_color.red(), new_color.green(), new_color.blue())
 
@@ -475,93 +491,61 @@ class MainWindow(QtWidgets.QMainWindow):
         # Connect itemChanged signal to the slot
         self.ui.delete_TW.itemChanged.connect(self.on_delete_item_changed)
 
-
-        # Configure Combine_TW_1
-        self.ui.Combine_TW_1.setColumnCount(1)
-        self.ui.Combine_TW_1.setHorizontalHeaderLabels(["Layer Name"])
-        for name in layer_names:
-            row_position = self.ui.Combine_TW_1.rowCount()
-            self.ui.Combine_TW_1.insertRow(row_position)
-            item = QtWidgets.QTableWidgetItem(name)
-            item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable)  # Make item non-editable
-            self.ui.Combine_TW_1.setItem(row_position, 0, item)
-
-        # Configure Combine_TW_2
-        self.ui.Combine_TW_2.setColumnCount(0)
-
-        # Hide vertical headers and add horizontal header line for both tables
-        for table in [self.ui.Combine_TW_1, self.ui.Combine_TW_2]:
-            table.verticalHeader().setVisible(False)
-            table.horizontalHeader().setVisible(True)
-            table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-            table.setShowGrid(True)
-            table.setStyleSheet("QHeaderView::section { background-color: #f0f0f0; }")
-
     def on_delete_item_changed(self, item):
         if item.checkState() == Qt.Checked:
             item.setBackground(QColor(200, 200, 200))  # Light gray
         else:
             item.setBackground(QColor(255, 255, 255))  # White
-
     def add_combo(self):
-        selected_items = self.ui.Combine_TW_1.selectedItems()
-        if selected_items:
-            while True:
-                combo_name, ok = QtWidgets.QInputDialog.getText(self, "Combo Name",
-                                                                "Please type combo name (letters only):")
-                if not ok:
-                    return
-                if combo_name and combo_name.isalpha():
-                    break
-                QtWidgets.QMessageBox.warning(self, 'Invalid Name', 'Please use only letters for the combo name.')
+        table = self.ui.tissue_segmentation_TW
+        selected_items = table.selectedItems()
 
-            #show info about color selection
-            QtWidgets.QMessageBox.information(self, 'Select Color',
-                                              'Please select the color for the created combination of annotation classes.')
+        selected_rows = list(set(item.row() for item in selected_items))
+        if len(selected_rows) < 2:
+            QtWidgets.QMessageBox.warning(self, "Insufficient Selection",
+                                          "Please select at least two classes to combine.")
+            return
 
-            # Display the color picker dialog
-            color_dialog = QColorDialog(self)
-            color_dialog.setWindowTitle("Select Combo Color")
+        combo_name, ok = QtWidgets.QInputDialog.getText(self, "Combo Name", "Enter a name for the combined class:")
+        if not ok or not combo_name:
+            return
 
-            if color_dialog.exec_():
-                selected_color = color_dialog.currentColor()
-                rgb_color = (selected_color.red(), selected_color.green(), selected_color.blue())
+        color_dialog = QColorDialog(self)
+        if color_dialog.exec():
+            selected_color = color_dialog.selectedColor().getRgb()[:3]
+        else:
+            return
 
-                # Save the combo name and RGB color
-                self.combo_colors[combo_name] = rgb_color
 
-                new_column = self.ui.Combine_TW_2.columnCount()
-                self.ui.Combine_TW_2.insertColumn(new_column)
-                self.ui.Combine_TW_2.setHorizontalHeaderItem(new_column, QtWidgets.QTableWidgetItem(combo_name))
+        combined_class = {
+            "Layer Name": combo_name,
+            "Color": selected_color,
+            "Whitespace Settings": self.df.loc[min(selected_rows), 'Whitespace Settings'],  #set the whitespace settings of the one of the minor slecetd row
+            "Layer idx": sorted(selected_rows)  # Store the original row numbers of the combined classes
+        }
 
-                for i, item in enumerate(selected_items):
-                    if self.ui.Combine_TW_2.rowCount() <= i:
-                        self.ui.Combine_TW_2.insertRow(i)
-                    new_item = QtWidgets.QTableWidgetItem(item.text())
-                    new_item.setFlags(new_item.flags() & ~QtCore.Qt.ItemIsEditable)  # Make item non-editable
-                    self.ui.Combine_TW_2.setItem(i, new_column, new_item)
+        # Create the combined DataFrame
+        combine_df = self.df.copy()
+        combine_df['Layer idx'] = combine_df.index + 1  # Store the original row numbers
 
-                    # Find and remove the item from Combine_TW_1
-                    for row in range(self.ui.Combine_TW_1.rowCount()):
-                        if self.ui.Combine_TW_1.item(row, 0).text() == item.text():
-                            self.ui.Combine_TW_1.removeRow(row)
-                            break
+        # Find the position to insert the combined class (minor row number)
+        insert_position = min(selected_rows)
 
-                # Ensure the horizontal header is visible and styled
-            self.ui.Combine_TW_2.horizontalHeader().setVisible(True)
-            self.ui.Combine_TW_2.setStyleSheet("QHeaderView::section { background-color: #f0f0f0; }")
+        # Remove the selected rows
+        combine_df = combine_df.drop(selected_rows).reset_index(drop=True)
 
-    def remove_combo(self):
-        selected_columns = set(index.column() for index in self.ui.Combine_TW_2.selectedIndexes())
-        for column in sorted(selected_columns, reverse=True):
-            for row in range(self.ui.Combine_TW_2.rowCount()):
-                item = self.ui.Combine_TW_2.item(row, column)
-                if item:
-                    self.ui.Combine_TW_1.insertRow(self.ui.Combine_TW_1.rowCount())
-                    self.ui.Combine_TW_1.setItem(self.ui.Combine_TW_1.rowCount() - 1, 0,
-                                                 QtWidgets.QTableWidgetItem(item.text()))
-            self.ui.Combine_TW_2.removeColumn(column)
+        # Insert the new combined class at the position of the minor row number
+        combine_df = pd.concat([combine_df.iloc[:insert_position], pd.DataFrame([combined_class]),
+                                combine_df.iloc[insert_position:]]).reset_index(drop=True)
 
+        # Restore the whitespace settings for the remaining rows
+        for i, row in enumerate(combine_df.index):
+            if row not in selected_rows:
+                combine_df.at[row, 'Whitespace Settings'] = self.df.at[row, 'Whitespace Settings']
+
+        print("Combined DataFrame:")
+        print(combine_df)
+        self.populate_table_widget(combine_df)  # Populate the table with the updated DataFrame
 
     # Add or update these methods in the MainWindow class:
     def save_advanced_settings_and_close(self):
@@ -587,75 +571,51 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.df['Component analysis'] = self.df['Layer Name'].map(component_layers)
 
-        # Combined layers
-        combo_updates = {}
-        original_indices = {name: index for index, name in enumerate(self.df['Layer Name'])}
 
-        for col in range(self.ui.Combine_TW_2.columnCount()):
-            combo_name = self.ui.Combine_TW_2.horizontalHeaderItem(col).text()
-            layers = [self.ui.Combine_TW_2.item(row, col).text() for row in range(self.ui.Combine_TW_2.rowCount())
-                      if self.ui.Combine_TW_2.item(row, col)]
-            if layers:
-                combo_indexes = [original_indices[layer] + 1 for layer in layers]  # Add 1 to make it 1-indexed
-                combo_updates[combo_name] = combo_indexes
 
-        # Function to generate the combined layers based on the updates
-        def combine_layers(layers_indexes, layer_names, combo_updates):
-            new_indexes = layers_indexes.copy()
-            new_names = layer_names.copy()
+    # Function to generate the combined layers based on the updates
+    def combine_layers(layers_indexes, layer_names, combo_updates):
+        new_indexes = layers_indexes.copy()
+        new_names = layer_names.copy()
 
-            sorted_updates = sorted(combo_updates.items(), key=lambda x: max(x[1]), reverse=True)
+        sorted_updates = sorted(combo_updates.items(), key=lambda x: max(x[1]), reverse=True)
 
-            for combo_name, indexes in sorted_updates:
-                min_index = min(indexes)
-                max_index = max(indexes)
+        for combo_name, indexes in sorted_updates:
+            min_index = min(indexes)
+            max_index = max(indexes)
 
-                for i in range(len(new_indexes)):
-                    if new_indexes[i] == max_index:
-                        new_indexes[i] = min_index
-                    elif new_indexes[i] > max_index:
-                        new_indexes[i] -= 1
+            for i in range(len(new_indexes)):
+                if new_indexes[i] == max_index:
+                    new_indexes[i] = min_index
+                elif new_indexes[i] > max_index:
+                    new_indexes[i] -= 1
 
-                new_names[min_index - 1] = combo_name
-                new_names.pop(max_index - 1)
-                # new_names.insert(max_index - 2, new_names.pop(min_index - 1))
+            new_names[min_index - 1] = combo_name
+            new_names.pop(max_index - 1)
 
-            return new_indexes, new_names
+        return new_indexes, new_names
 
-        # Get the original layer indexes and names
-        original_indexes = list(range(1, len(self.df) + 1))
-        original_names = self.df['Layer Name'].tolist()
 
-        combined_idxes, combined_names = combine_layers(original_indexes, original_names, combo_updates)
+        if hasattr(self,'combined_df') and self.combined_df is not None:
+            final_combined_df = self.combined_df.copy()
 
-        # Create the Combined layers column
-        self.df['Combined layers'] = combined_idxes
 
-        # Create new dataframe for combined layers info
-        self.combined_df = pd.DataFrame({
-            'Combined names': combined_names,
-        })
+            ###### include here the fucntion to make the array of numbers with the final combined indexes
 
-        # Initialize Combined colors with colors from self.combo_colors
-        self.combined_df['Combined colors'] = [self.combo_colors.get(name, '') for name in combined_names]
-
-        # Map colors from self.df to combined_df based on 'Combined names' if self.combo_colors does not have a color
-        self.combined_df['Combined colors'] = self.combined_df.apply(
-            lambda row: self.df.set_index('Layer Name')['Color'].get(row['Combined names'], row['Combined colors']),
-            axis=1
-        )
+        final_df = self.original_df.copy()
+        final_df['Layer Name'] = new_names
+        final_df = final_df.drop(index=[i for i in range(len(final_df)) if i + 1 not in new_indexes]).reset_index(drop=True)
 
         self.tile_size = int(self.ui.tts_CB.currentText())
         self.ntrain = self.ui.ttn_SB.value()
         self.nval = self.ui.vtn_SB.value()
         self.TA = self.ui.TA_SB.value()
 
-        df = self.df
-        combined_df = self.combined_df
-        print("Original DataFrame:")
-        print(df)
+
+        print("Final DataFrame:")
+        print(final_df)
         print("\nCombined Layers DataFrame:")
-        print(combined_df)
+        print(final_combined_df)
 
         self.close()
 

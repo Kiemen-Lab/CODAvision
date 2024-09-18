@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>770</width>
-    <height>499</height>
+    <width>706</width>
+    <height>525</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,8 +19,8 @@
      <rect>
       <x>20</x>
       <y>10</y>
-      <width>731</width>
-      <height>471</height>
+      <width>676</width>
+      <height>500</height>
      </rect>
     </property>
     <property name="whatsThis">
@@ -30,7 +30,7 @@
      <enum>QTabWidget::TabShape::Triangular</enum>
     </property>
     <property name="currentIndex">
-     <number>3</number>
+     <number>1</number>
     </property>
     <property name="movable">
      <bool>false</bool>
@@ -217,65 +217,10 @@
       <string>Tissue Segmentation</string>
      </attribute>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0" rowspan="2">
-       <layout class="QVBoxLayout" name="verticalLayout_5">
-        <item>
-         <widget class="QTableWidget" name="tissue_segmentation_TW"/>
-        </item>
-        <item>
-         <widget class="QPushButton" name="changecolor_PB">
-          <property name="text">
-           <string>Change Color</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_4">
-            <item>
-             <widget class="QLabel" name="label_6">
-              <property name="text">
-               <string>Add Whitespace to:</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="addws_CB">
-              <item>
-               <property name="text">
-                <string>Select</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_5">
-            <item>
-             <widget class="QLabel" name="label_7">
-              <property name="text">
-               <string>Add Non-whitespace to:</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="addnonws_CB">
-              <item>
-               <property name="text">
-                <string>Select</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </item>
-       </layout>
+      <item row="0" column="0" rowspan="2" colspan="2">
+       <widget class="QTableWidget" name="tissue_segmentation_TW"/>
       </item>
-      <item row="0" column="1">
+      <item row="0" column="2">
        <widget class="QGroupBox" name="groupBox">
         <property name="title">
          <string>Annotation class whitespace sesttings</string>
@@ -326,7 +271,7 @@
         </layout>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item row="1" column="2" rowspan="4">
        <spacer name="verticalSpacer_3">
         <property name="orientation">
          <enum>Qt::Orientation::Vertical</enum>
@@ -339,7 +284,65 @@
         </property>
        </spacer>
       </item>
-      <item row="2" column="0" colspan="2">
+      <item row="3" column="0" colspan="2">
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Add Whitespace to:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="addws_CB">
+            <item>
+             <property name="text">
+              <string>Select</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Add Non-whitespace to:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="addnonws_CB">
+            <item>
+             <property name="text">
+              <string>Select</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item row="4" column="0">
+       <widget class="QPushButton" name="Combine_PB">
+        <property name="text">
+         <string>Combine classes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QPushButton" name="Reset_PB">
+        <property name="text">
+         <string>Reset list</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0" colspan="3">
        <layout class="QHBoxLayout" name="horizontalLayout_8">
         <item>
          <spacer name="horizontalSpacer_2">
@@ -369,6 +372,13 @@
          </widget>
         </item>
        </layout>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="QPushButton" name="changecolor_PB">
+        <property name="text">
+         <string>Change Color</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
@@ -480,7 +490,7 @@
           <item>
            <widget class="QComboBox" name="tts_CB">
             <property name="currentText">
-             <string>1024</string>
+             <string>64</string>
             </property>
             <item>
              <property name="text">
@@ -592,58 +602,6 @@
          </layout>
         </item>
        </layout>
-      </item>
-      <item row="0" column="1">
-       <widget class="QGroupBox" name="groupBox_4">
-        <property name="title">
-         <string>Combine classes:</string>
-        </property>
-        <layout class="QGridLayout" name="gridLayout_6">
-         <item row="0" column="0">
-          <layout class="QHBoxLayout" name="horizontalLayout_16">
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_6">
-             <item>
-              <widget class="QTableWidget" name="Combine_TW_1">
-               <property name="alternatingRowColors">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="addcombo_PB">
-               <property name="text">
-                <string>Add Combo </string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout_7">
-             <item>
-              <widget class="QPushButton" name="removecombo_PB">
-               <property name="text">
-                <string>Remove Combo</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QTableWidget" name="Combine_TW_2">
-               <property name="enabled">
-                <bool>true</bool>
-               </property>
-               <property name="alternatingRowColors">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </item>
-        </layout>
-       </widget>
       </item>
       <item row="1" column="1">
        <widget class="QGroupBox" name="groupBox_3">
