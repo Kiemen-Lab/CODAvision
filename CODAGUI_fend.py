@@ -53,6 +53,8 @@ class CustomDialog(QtWidgets.QDialog):
                 QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
         else:
             QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+
+
     def use_prerecorded_data(self):
         print("Using prerecorded data")
         self.accept()
@@ -114,6 +116,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
+        self.combined_df = None  # Initialize combined_df
+
 
         self.set_initial_model_name()
         self.ui.tabWidget.setCurrentIndex(0)  # Initialize the first tab
@@ -496,6 +500,7 @@ class MainWindow(QtWidgets.QMainWindow):
             item.setBackground(QColor(200, 200, 200))  # Light gray
         else:
             item.setBackground(QColor(255, 255, 255))  # White
+
     def add_combo(self):
         table = self.ui.tissue_segmentation_TW
         selected_items = table.selectedItems()
@@ -516,36 +521,42 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             return
 
+        # Create a mapping of layer names to their original indices
+        original_indices = {name: index + 1 for index, name in enumerate(self.original_df['Layer Name'])}
 
+        # Create the combined class with original indices
         combined_class = {
             "Layer Name": combo_name,
             "Color": selected_color,
-            "Whitespace Settings": self.df.loc[min(selected_rows), 'Whitespace Settings'],  #set the whitespace settings of the one of the minor slecetd row
-            "Layer idx": sorted(selected_rows)  # Store the original row numbers of the combined classes
+            # Use original indices
+            "Layer idx": [original_indices[self.df.iloc[idx]['Layer Name']] for idx in sorted(selected_rows)],
         }
 
         # Create the combined DataFrame
-        combine_df = self.df.copy()
-        combine_df['Layer idx'] = combine_df.index + 1  # Store the original row numbers
+        if self.combined_df is None:
+            self.combined_df = self.df.copy()
+            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
 
         # Find the position to insert the combined class (minor row number)
         insert_position = min(selected_rows)
 
         # Remove the selected rows
-        combine_df = combine_df.drop(selected_rows).reset_index(drop=True)
+        self.combined_df = self.combined_df.drop(selected_rows).reset_index(drop=True)
 
         # Insert the new combined class at the position of the minor row number
-        combine_df = pd.concat([combine_df.iloc[:insert_position], pd.DataFrame([combined_class]),
-                                combine_df.iloc[insert_position:]]).reset_index(drop=True)
+        self.combined_df = pd.concat([self.combined_df.iloc[:insert_position], pd.DataFrame([combined_class]),
+                                      self.combined_df.iloc[insert_position:]]).reset_index(drop=True)
 
         # Restore the whitespace settings for the remaining rows
-        for i, row in enumerate(combine_df.index):
+        for i, row in enumerate(self.combined_df.index):
             if row not in selected_rows:
-                combine_df.at[row, 'Whitespace Settings'] = self.df.at[row, 'Whitespace Settings']
+                self.combined_df.at[row, 'Whitespace Settings'] = self.df.at[row, 'Whitespace Settings']
 
         print("Combined DataFrame:")
-        print(combine_df)
-        self.populate_table_widget(combine_df)  # Populate the table with the updated DataFrame
+        print(self.combined_df)
+        self.populate_table_widget(self.combined_df)  # Populate the table with the updated DataFrame
+
+
 
     # Add or update these methods in the MainWindow class:
     def save_advanced_settings_and_close(self):
@@ -571,53 +582,33 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.df['Component analysis'] = self.df['Layer Name'].map(component_layers)
 
-
-
-    # Function to generate the combined layers based on the updates
-    def combine_layers(layers_indexes, layer_names, combo_updates):
-        new_indexes = layers_indexes.copy()
-        new_names = layer_names.copy()
-
-        sorted_updates = sorted(combo_updates.items(), key=lambda x: max(x[1]), reverse=True)
-
-        for combo_name, indexes in sorted_updates:
-            min_index = min(indexes)
-            max_index = max(indexes)
-
-            for i in range(len(new_indexes)):
-                if new_indexes[i] == max_index:
-                    new_indexes[i] = min_index
-                elif new_indexes[i] > max_index:
-                    new_indexes[i] -= 1
-
-            new_names[min_index - 1] = combo_name
-            new_names.pop(max_index - 1)
-
-        return new_indexes, new_names
-
-
-        if hasattr(self,'combined_df') and self.combined_df is not None:
-            final_combined_df = self.combined_df.copy()
-
-
-            ###### include here the fucntion to make the array of numbers with the final combined indexes
-
-        final_df = self.original_df.copy()
-        final_df['Layer Name'] = new_names
-        final_df = final_df.drop(index=[i for i in range(len(final_df)) if i + 1 not in new_indexes]).reset_index(drop=True)
-
         self.tile_size = int(self.ui.tts_CB.currentText())
         self.ntrain = self.ui.ttn_SB.value()
         self.nval = self.ui.vtn_SB.value()
         self.TA = self.ui.TA_SB.value()
 
+        # Combine layers
+        if self.combined_df is not None:
+            combined_layers = [None] * len(self.df)
+            for idx, row in self.combined_df.iterrows():
+                if isinstance(row['Layer idx'], list):
+                    for original_idx in row['Layer idx']:
+                        combined_layers[original_idx - 1] = idx + 1
+                else:
+                    combined_layers[row['Layer idx'] - 1] = idx + 1
+            self.df['Combined layers'] = combined_layers
+            self.df['Combined layers'] = self.df['Combined layers'].apply(lambda x: int(x) if x is not None else x)
+        else:
+            self.df['Combined layers'] = (self.df.index + 1).astype(int)
 
-        print("Final DataFrame:")
-        print(final_df)
+
+        final_df = self.df
+
         print("\nCombined Layers DataFrame:")
-        print(final_combined_df)
+        print(final_df)
 
         self.close()
+
 
 
 if __name__ == '__main__':
