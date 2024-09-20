@@ -157,21 +157,26 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, 'Warning', 'Original data not loaded.')
 
     def save_and_continue_from_tab_2(self):
-
         if self.ui.addws_CB.currentText() == "Select":
-            QtWidgets.QMessageBox.warning(self, 'Warning', 'Please select a valid option from the "Add Whitespace '
-                                                           'to:" dropdown box.')
+            QtWidgets.QMessageBox.warning(self, 'Warning',
+                                          'Please select a valid option from the "Add Whitespace to:" dropdown box.')
             return
 
         if self.ui.addnonws_CB.currentText() == "Select":
-            QtWidgets.QMessageBox.warning(self, 'Warning', 'Please select a valid option from the "Add Non-whitespace '
-                                                           'to:" dropdown box.')
+            QtWidgets.QMessageBox.warning(self, 'Warning',
+                                          'Please select a valid option from the "Add Non-whitespace to:" dropdown box.')
             return
 
-        if any(self.combined_df['Whitespace Settings'].isna()):
-            QtWidgets.QMessageBox.warning(self, 'Warning',
-                                          'Please assign a whitespace settings option to all annotation layers.')
-            return
+        if self.combined_df is not None:
+            if any(self.combined_df['Whitespace Settings'].isna()):
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'Please assign a whitespace settings option to all annotation layers.')
+                return
+        else:
+            if any(self.df['Whitespace Settings'].isna()):
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'Please assign a whitespace settings option to all annotation layers.')
+                return
 
         self.add_ws_to = self.ui.addws_CB.currentIndex()
         self.add_nonws_to = self.ui.addnonws_CB.currentIndex()
@@ -179,12 +184,21 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create a mapping of original indices to layer names
         original_indices = {index + 1: name for index, name in enumerate(self.original_df['Layer Name'])}
 
+        # Initialize combined_df if it is None
+        if self.combined_df is None:
+            self.combined_df = self.df.copy()
+            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
+
+        # Ensure 'Layer idx' column exists
+        if 'Layer idx' not in self.combined_df.columns:
+            self.combined_df['Layer idx'] = self.combined_df.index + 1
+
         # Update self.df based on the whitespace settings in self.combined_df
         for idx, row in self.combined_df.iterrows():
             layer_indices = row['Layer idx']
             whitespace_setting = row['Whitespace Settings']
 
-            if isinstance(layer_indices, list): #when you combine layers you get a list of values to update
+            if isinstance(layer_indices, list):  # when you combine layers you get a list of values to update
                 for original_idx in layer_indices:
                     layer_name = original_indices[original_idx]
                     df_idx = self.df[self.df['Layer Name'] == layer_name].index
@@ -206,8 +220,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 else:
                     combined_layers[row['Layer idx'] - 1] = idx + 1
             self.df['Combined layers'] = combined_layers
-            self.df['Combined layers'] = self.df['Combined layers'].apply(
-                lambda x: int(x) if x is not None else x)
+            self.df['Combined layers'] = self.df['Combined layers'].apply(lambda x: int(x) if x is not None else x)
         else:
             self.df['Combined layers'] = (self.df.index + 1).astype(int)
 
@@ -215,7 +228,6 @@ class MainWindow(QtWidgets.QMainWindow):
         print(self.df)
 
         self.initialize_nesting_table()
-
 
         next_tab_index = self.ui.tabWidget.currentIndex() + 1
         if next_tab_index < self.ui.tabWidget.count():
