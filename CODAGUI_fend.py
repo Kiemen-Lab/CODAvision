@@ -168,13 +168,51 @@ class MainWindow(QtWidgets.QMainWindow):
                                                            'to:" dropdown box.')
             return
 
-        if any(self.df['Whitespace Settings'].isna()):
+        if any(self.combined_df['Whitespace Settings'].isna()):
             QtWidgets.QMessageBox.warning(self, 'Warning',
                                           'Please assign a whitespace settings option to all annotation layers.')
             return
 
         self.add_ws_to = self.ui.addws_CB.currentIndex()
         self.add_nonws_to = self.ui.addnonws_CB.currentIndex()
+
+        # Create a mapping of original indices to layer names
+        original_indices = {index + 1: name for index, name in enumerate(self.original_df['Layer Name'])}
+
+        # Update self.df based on the whitespace settings in self.combined_df
+        for idx, row in self.combined_df.iterrows():
+            layer_indices = row['Layer idx']
+            whitespace_setting = row['Whitespace Settings']
+
+            if isinstance(layer_indices, list): #when you combine layers you get a list of values to update
+                for original_idx in layer_indices:
+                    layer_name = original_indices[original_idx]
+                    df_idx = self.df[self.df['Layer Name'] == layer_name].index
+                    if not df_idx.empty:
+                        self.df.at[df_idx[0], 'Whitespace Settings'] = whitespace_setting
+            else:
+                layer_name = original_indices[layer_indices]
+                df_idx = self.df[self.df['Layer Name'] == layer_name].index
+                if not df_idx.empty:
+                    self.df.at[df_idx[0], 'Whitespace Settings'] = whitespace_setting
+
+        # Combine layers in main dataframe
+        if self.combined_df is not None:
+            combined_layers = [None] * len(self.df)
+            for idx, row in self.combined_df.iterrows():
+                if isinstance(row['Layer idx'], list):
+                    for original_idx in row['Layer idx']:
+                        combined_layers[original_idx - 1] = idx + 1
+                else:
+                    combined_layers[row['Layer idx'] - 1] = idx + 1
+            self.df['Combined layers'] = combined_layers
+            self.df['Combined layers'] = self.df['Combined layers'].apply(
+                lambda x: int(x) if x is not None else x)
+        else:
+            self.df['Combined layers'] = (self.df.index + 1).astype(int)
+
+        print("Updated DataFrame from tab 2:")
+        print(self.df)
 
         self.initialize_nesting_table()
 
@@ -397,7 +435,10 @@ class MainWindow(QtWidgets.QMainWindow):
         selected_row = selected_items[0].row()
         ws_value = ws_map[ws_option]
 
-        self.df.at[selected_row, 'Whitespace Settings'] = ws_value
+        if self.combined_df is  None:
+            self.df.at[selected_row, 'Whitespace Settings'] = ws_value
+        else:
+            self.combined_df.at[selected_row, 'Whitespace Settings'] = ws_value
 
         ws_item = table.item(selected_row, 1)
         if ws_item:
@@ -524,12 +565,22 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create a mapping of layer names to their original indices
         original_indices = {name: index + 1 for index, name in enumerate(self.original_df['Layer Name'])}
 
+        # Get the layer names from the selected rows
+        if self.combined_df is None:
+            selected_layer_names = [self.df.iloc[idx]['Layer Name'] for idx in selected_rows]
+        else:
+            selected_layer_names = [self.combined_df.iloc[idx]['Layer Name'] for idx in selected_rows]
+
+
         # Create the combined class with original indices
+        layer_indices = sorted([original_indices[name] for name in selected_layer_names])
+        print('Original indices:', original_indices)
+        print('Layer idx:', layer_indices)
+
         combined_class = {
             "Layer Name": combo_name,
             "Color": selected_color,
-            # Use original indices
-            "Layer idx": [original_indices[self.df.iloc[idx]['Layer Name']] for idx in sorted(selected_rows)],
+            "Layer idx": layer_indices,
         }
 
         # Create the combined DataFrame
@@ -550,7 +601,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Restore the whitespace settings for the remaining rows
         for i, row in enumerate(self.combined_df.index):
             if row not in selected_rows:
-                self.combined_df.at[row, 'Whitespace Settings'] = self.df.at[row, 'Whitespace Settings']
+                self.combined_df.at[row, 'Whitespace Settings'] = self.combined_df.at[row, 'Whitespace Settings']
 
         print("Combined DataFrame:")
         print(self.combined_df)
@@ -586,21 +637,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ntrain = self.ui.ttn_SB.value()
         self.nval = self.ui.vtn_SB.value()
         self.TA = self.ui.TA_SB.value()
-
-        # Combine layers
-        if self.combined_df is not None:
-            combined_layers = [None] * len(self.df)
-            for idx, row in self.combined_df.iterrows():
-                if isinstance(row['Layer idx'], list):
-                    for original_idx in row['Layer idx']:
-                        combined_layers[original_idx - 1] = idx + 1
-                else:
-                    combined_layers[row['Layer idx'] - 1] = idx + 1
-            self.df['Combined layers'] = combined_layers
-            self.df['Combined layers'] = self.df['Combined layers'].apply(lambda x: int(x) if x is not None else x)
-        else:
-            self.df['Combined layers'] = (self.df.index + 1).astype(int)
-
 
         final_df = self.df
 
