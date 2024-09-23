@@ -152,7 +152,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def reset_combo(self):
         if self.original_df is not None:
             self.df = self.original_df.copy()  # Reset df to the original data
+            self.combined_df = None  # Reset combined_df
             self.populate_table_widget()
+            # Reset original_indices
+            self.original_indices = {name: index + 1 for index, name in enumerate(self.original_df['Layer Name'])}
         else:
             QtWidgets.QMessageBox.warning(self, 'Warning', 'Original data not loaded.')
 
@@ -224,7 +227,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.df['Combined layers'] = (self.df.index + 1).astype(int)
 
-        print("Updated DataFrame from tab 2:")
+        print("Updated Raw DataFrame from tab 2:")
         print(self.df)
 
         self.initialize_nesting_table()
@@ -243,6 +246,14 @@ class MainWindow(QtWidgets.QMainWindow):
             item = QStandardItem(row['Layer Name'])
             item.setBackground(QColor(*row['Color']))
             item.setEditable(False)
+
+            # Convert the background color to greyscale
+            greyscale = 0.299 * row['Color'][0] + 0.587 * row['Color'][1] + 0.114 * row['Color'][2]
+            if greyscale > 128:  # If greyscale is above 50% grey, set text color to black
+                item.setForeground(QBrush(QColor(0, 0, 0)))
+            else:  # Otherwise, set text color to white
+                item.setForeground(QBrush(QColor(255, 255, 255)))
+
             model.appendRow(item)
 
         self.ui.nesting_TW.setModel(model)
@@ -406,12 +417,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
             item = QtWidgets.QTableWidgetItem(layer_name)
             item.setBackground(QColor(*color))
+
+            # Convert the background color to greyscale
+            greyscale = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+            if greyscale > 128:  # If greyscale is above 50% grey, set text color to black
+                item.setForeground(QBrush(QColor(0, 0, 0)))
+            else:  # Otherwise, set text color to white
+                item.setForeground(QBrush(QColor(255, 255, 255)))
             table.setItem(row, 0, item)
 
             ws_text = ws_map.get(whitespace_setting, "")
             ws_item = QtWidgets.QTableWidgetItem(ws_text)
-            ws_item.setBackground(QColor(255, 255, 255))
+            ws_item.setBackground(QColor(0, 0, 0))  # Set background color to black
+            ws_item.setForeground(QBrush(QColor(255, 255, 255)))  # Set text color to white
             table.setItem(row, 1, ws_item)
+
 
         table.resizeColumnsToContents()
         table.resizeRowsToContents()
@@ -474,6 +494,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for row in range(table.rowCount()):
             self.df.at[row, 'Whitespace Settings'] = ws_value
+            if self.combined_df is not None:
+                self.combined_df.at[row, 'Whitespace Settings'] = ws_value
 
             ws_item = table.item(row, 1)
             if ws_item:
@@ -606,14 +628,17 @@ class MainWindow(QtWidgets.QMainWindow):
         # Remove the selected rows
         self.combined_df = self.combined_df.drop(selected_rows).reset_index(drop=True)
 
+        #Set whtiespace settings to None for the combined class
+        combined_class['Whitespace Settings'] = None
+
         # Insert the new combined class at the position of the minor row number
         self.combined_df = pd.concat([self.combined_df.iloc[:insert_position], pd.DataFrame([combined_class]),
                                       self.combined_df.iloc[insert_position:]]).reset_index(drop=True)
 
         # Restore the whitespace settings for the remaining rows
         for i, row in enumerate(self.combined_df.index):
-            if row not in selected_rows:
-                self.combined_df.at[row, 'Whitespace Settings'] = self.combined_df.at[row, 'Whitespace Settings']
+            if row not in selected_rows and 'Whitespace Settings' in self.combined_df.columns:
+                self.combined_df.at[row, 'Whitespace Settings'] = self.df.at[row, 'Whitespace Settings']
 
         print("Combined DataFrame:")
         print(self.combined_df)
@@ -651,9 +676,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.TA = self.ui.TA_SB.value()
 
         final_df = self.df
+        combined_df = self.combined_df
 
-        print("\nCombined Layers DataFrame:")
+        print("\nRaw DataFrame with combined indexes:")
         print(final_df)
+        print("\nCombined DataFrame:")
+        print(combined_df)
 
         self.close()
 

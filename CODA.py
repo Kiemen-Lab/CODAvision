@@ -25,7 +25,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(706, 441)
+        MainWindow.resize(706, 453)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget = QTabWidget(self.centralwidget)
@@ -526,7 +526,7 @@ class Ui_MainWindow(object):
         self.tts_CB.setItemText(4, QCoreApplication.translate("MainWindow", u"1024", None))
         self.tts_CB.setItemText(5, QCoreApplication.translate("MainWindow", u"2048", None))
 
-        self.tts_CB.setCurrentText(QCoreApplication.translate("MainWindow", u"1024", None))
+        self.tts_CB.setCurrentText(QCoreApplication.translate("MainWindow", u"64", None))
         self.label_10.setText(QCoreApplication.translate("MainWindow", u"Training tiles number:", None))
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Validation tiles number:", None))
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"TA average count:", None))
