@@ -25,12 +25,12 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(706, 525)
+        MainWindow.resize(706, 441)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.tabWidget = QTabWidget(self.centralwidget)
         self.tabWidget.setObjectName(u"tabWidget")
-        self.tabWidget.setGeometry(QRect(20, 10, 676, 500))
+        self.tabWidget.setGeometry(QRect(20, 10, 676, 411))
         self.tabWidget.setTabShape(QTabWidget.TabShape.Triangular)
         self.tabWidget.setMovable(False)
         self.tabWidget.setTabBarAutoHide(True)
@@ -450,7 +450,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(3)
+        self.tabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(MainWindow)
