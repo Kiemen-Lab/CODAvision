@@ -113,6 +113,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.Reset_PB.clicked.connect(self.reset_combo)
         self.ui.save_ad_PB.clicked.connect(self.save_advanced_settings_and_close)
         self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
+        self.ui.delete_PB.clicked.connect(self.delete_annotation_class)
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
@@ -213,15 +214,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 if not df_idx.empty:
                     self.df.at[df_idx[0], 'Whitespace Settings'] = whitespace_setting
 
+
         # Combine layers in main dataframe
         if self.combined_df is not None:
             combined_layers = [None] * len(self.df)
             for idx, row in self.combined_df.iterrows():
                 if isinstance(row['Layer idx'], list):
                     for original_idx in row['Layer idx']:
-                        combined_layers[original_idx - 1] = idx + 1
+                        if 0 <= original_idx - 1 < len(combined_layers):
+                            combined_layers[original_idx - 1] = idx + 1
                 else:
-                    combined_layers[row['Layer idx'] - 1] = idx + 1
+                    if 0 <= row['Layer idx'] - 1 < len(combined_layers):
+                        combined_layers[row['Layer idx'] - 1] = idx + 1
             self.df['Combined layers'] = combined_layers
             self.df['Combined layers'] = self.df['Combined layers'].apply(lambda x: int(x) if x is not None else x)
         else:
@@ -400,7 +404,8 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         table = self.ui.tissue_segmentation_TW
-        table.setRowCount(len(df))
+        # table.setRowCount(len(df))
+        table.setRowCount(0) # Clear the table before populating
         table.setColumnCount(2)  # Adjust column count
         table.setHorizontalHeaderLabels(["Annotation Class", "Whitespace Settings"])
 
@@ -410,7 +415,14 @@ class MainWindow(QtWidgets.QMainWindow):
             2: 'Keep tissue and whitespace'
         }
 
-        for row, (index, data) in enumerate(df.iterrows()):
+        for index, data in df.iterrows():
+            if data.get('Deleted', False):
+                print(f"Skipping row {data['Layer Name']} marked as deleted")
+                continue  # Skip rows marked as deleted
+
+            row = table.rowCount()
+            table.insertRow(row)
+
             layer_name = data['Layer Name']
             color = data['Color']
             whitespace_setting = data['Whitespace Settings']
@@ -424,14 +436,15 @@ class MainWindow(QtWidgets.QMainWindow):
                 item.setForeground(QBrush(QColor(0, 0, 0)))
             else:  # Otherwise, set text color to white
                 item.setForeground(QBrush(QColor(255, 255, 255)))
+
             table.setItem(row, 0, item)
 
             ws_text = ws_map.get(whitespace_setting, "")
             ws_item = QtWidgets.QTableWidgetItem(ws_text)
             ws_item.setBackground(QColor(0, 0, 0))  # Set background color to black
             ws_item.setForeground(QBrush(QColor(255, 255, 255)))  # Set text color to white
-            table.setItem(row, 1, ws_item)
 
+            table.setItem(row, 1, ws_item)
 
         table.resizeColumnsToContents()
         table.resizeRowsToContents()
@@ -441,7 +454,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.populate_combo_boxes()
 
     def populate_combo_boxes(self):
-        layer_names = self.df['Layer Name'].tolist()
+        if 'Deleted' in self.df.columns:
+            layer_names = self.df[self.df['Deleted'] == False]['Layer Name'].tolist()
+        else:
+            layer_names = self.df['Layer Name'].tolist()
+
+        self.ui.addws_CB.clear()
+        self.ui.addnonws_CB.clear()
+
+        # Add "Select" as the first item
+        self.ui.addws_CB.addItem("Select")
+        self.ui.addnonws_CB.addItem("Select")
+
+        # Add the layer names
         self.ui.addws_CB.addItems(layer_names)
         self.ui.addnonws_CB.addItems(layer_names)
 
@@ -553,23 +578,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Connect itemChanged signal to slot (value gets gray after being checked)
         self.ui.component_TW.itemChanged.connect(self.on_delete_item_changed)
 
-
-        # Configure delete_TW
-        self.ui.delete_TW.setColumnCount(1)
-        self.ui.delete_TW.setHorizontalHeaderLabels(["Annotation layers"])
-        self.ui.delete_TW.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) #data matches the table width
-
-
-        for row, layer_name in enumerate(layer_names):
-            self.ui.delete_TW.insertRow(row)
-            item = QtWidgets.QTableWidgetItem(layer_name)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Unchecked)
-            self.ui.delete_TW.setItem(row, 0, item)
-
-        # Connect itemChanged signal to the slot
-        self.ui.delete_TW.itemChanged.connect(self.on_delete_item_changed)
-
     def on_delete_item_changed(self, item):
         if item.checkState() == Qt.Checked:
             item.setBackground(QColor(200, 200, 200))  # Light gray
@@ -608,8 +616,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create the combined class with original indices
         layer_indices = sorted([original_indices[name] for name in selected_layer_names])
-        print('Original indices:', original_indices)
-        print('Layer idx:', layer_indices)
+        # print('Original indices:', original_indices)
+        # print('Layer idx:', layer_indices)
 
         combined_class = {
             "Layer Name": combo_name,
@@ -644,20 +652,63 @@ class MainWindow(QtWidgets.QMainWindow):
         print(self.combined_df)
         self.populate_table_widget(self.combined_df)  # Populate the table with the updated DataFrame
 
+    def delete_annotation_class(self):
+        table = self.ui.tissue_segmentation_TW
+        selected_items = table.selectedItems()
 
+        if not selected_items:
+            QtWidgets.QMessageBox.warning(self, "Insufficient Selection", "Please select at least one class to delete.")
+            return
+
+        selected_rows = list(set(item.row() for item in selected_items))
+
+        for idx in selected_rows:
+            if isinstance(self.combined_df.at[idx, 'Layer idx'], list):
+                QtWidgets.QMessageBox.warning(self, "Invalid Selection",
+                                              "Cannot delete a combined class. Please reset the list first.")
+                return
+
+        # Initialize combined_df if not already initialized
+        if self.combined_df is None:
+            self.combined_df = self.df.copy()
+            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
+
+        # Add 'Deleted' column to combined_df if not already present
+        if 'Deleted' not in self.combined_df.columns:
+            self.combined_df['Deleted'] = False
+
+        # Mark the selected rows as deleted
+        for idx in selected_rows:
+            self.combined_df.at[idx, 'Deleted'] = True
+
+        # Add 'Delete layer' column to self.df
+        if 'Delete layer' not in self.df.columns:
+            self.df['Delete layer'] = False
+            for idx in selected_rows:
+                original_idx = self.original_df[self.original_df['Layer Name'] == self.combined_df.at[idx, 'Layer Name']].index[
+                    0]
+                self.df.at[original_idx, 'Delete layer'] = True
+        else:
+            for idx in selected_rows:
+                original_idx = self.original_df[self.original_df['Layer Name'] == self.combined_df.at[idx, 'Layer Name']].index[
+                    0]
+                self.df.at[original_idx, 'Delete layer'] = True
+
+        # print("Marked rows as deleted:", selected_rows)
+        print("Updated DataFrame with 'Delete layer' column:")
+        print(self.df)
+
+        # Populate the table with the updated DataFrame
+        # print("Combined DataFrame after deletion:")
+        # print(self.combined_df)
+        self.populate_table_widget(self.combined_df)
+
+        # Update the add whitespace/non whitespace comboboxes
+        self.populate_combo_boxes()
 
     # Add or update these methods in the MainWindow class:
     def save_advanced_settings_and_close(self):
-        # Delete layers
-        delete_layers = {}
-        for row in range(self.ui.delete_TW.rowCount()):
-            item = self.ui.delete_TW.item(row, 0)
-            if item:
-                layer_name = item.text()
-                is_checked = item.checkState() == Qt.Checked
-                delete_layers[layer_name] = not is_checked  # Save True for non-checked items
 
-        self.df['Delete layer'] = self.df['Layer Name'].map(delete_layers)
 
         # Component analysis
         component_layers = {}
@@ -678,13 +729,12 @@ class MainWindow(QtWidgets.QMainWindow):
         final_df = self.df
         combined_df = self.combined_df
 
-        print("\nRaw DataFrame with combined indexes:")
+        print("\nFinal Raw DataFrame with combined indexes:")
         print(final_df)
-        print("\nCombined DataFrame:")
+        print("\nFinal Combined DataFrame:")
         print(combined_df)
 
         self.close()
-
 
 
 if __name__ == '__main__':
