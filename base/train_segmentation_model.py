@@ -70,7 +70,7 @@ def train_segmentation_model(pthDL, fine_tune=False):
     val_masks = sorted(glob(os.path.join(pthValidation, 'label', "*.png")))
 
     # Define constants
-    BATCH_SIZE = 4
+    BATCH_SIZE = 3
     NUM_CLASSES = len(classNames)  # Number of classes
 
     # Create TensorFlow dataset
