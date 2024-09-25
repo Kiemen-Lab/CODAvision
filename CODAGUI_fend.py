@@ -429,6 +429,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
             item = QtWidgets.QTableWidgetItem(layer_name)
             item.setBackground(QColor(*color))
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)  # Make the item read-only
 
             # Convert the background color to greyscale
             greyscale = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
@@ -443,6 +444,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ws_item = QtWidgets.QTableWidgetItem(ws_text)
             ws_item.setBackground(QColor(0, 0, 0))  # Set background color to black
             ws_item.setForeground(QBrush(QColor(255, 255, 255)))  # Set text color to white
+            ws_item.setFlags(ws_item.flags() & ~Qt.ItemIsEditable)  # Make the item read-only
 
             table.setItem(row, 1, ws_item)
 
@@ -585,6 +587,13 @@ class MainWindow(QtWidgets.QMainWindow):
             item.setBackground(QColor(255, 255, 255))  # White
 
     def add_combo(self):
+
+        # Create the combined DataFrame
+        if self.combined_df is None:
+            self.combined_df = self.df.copy()
+            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
+
+
         table = self.ui.tissue_segmentation_TW
         selected_items = table.selectedItems()
 
@@ -616,19 +625,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create the combined class with original indices
         layer_indices = sorted([original_indices[name] for name in selected_layer_names])
-        # print('Original indices:', original_indices)
-        # print('Layer idx:', layer_indices)
 
         combined_class = {
             "Layer Name": combo_name,
             "Color": selected_color,
             "Layer idx": layer_indices,
+            "Whitespace Settings": None,
+            "Deleted": False
         }
-
-        # Create the combined DataFrame
-        if self.combined_df is None:
-            self.combined_df = self.df.copy()
-            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
 
         # Find the position to insert the combined class (minor row number)
         insert_position = min(selected_rows)
@@ -653,6 +657,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.populate_table_widget(self.combined_df)  # Populate the table with the updated DataFrame
 
     def delete_annotation_class(self):
+
+        # Initialize combined_df if not already initialized
+        if self.combined_df is None:
+            columns_to_copy = [col for col in self.df.columns if col != 'Deleted']
+            self.combined_df = self.df[columns_to_copy].copy()
+            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
+            self.combined_df['Delete layer'] = False #Add delete layer column to combined_df if not already present
+
         table = self.ui.tissue_segmentation_TW
         selected_items = table.selectedItems()
 
@@ -667,11 +679,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, "Invalid Selection",
                                               "Cannot delete a combined class. Please reset the list first.")
                 return
-
-        # Initialize combined_df if not already initialized
-        if self.combined_df is None:
-            self.combined_df = self.df.copy()
-            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
 
         # Add 'Deleted' column to combined_df if not already present
         if 'Deleted' not in self.combined_df.columns:
