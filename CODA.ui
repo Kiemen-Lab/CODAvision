@@ -14,14 +14,14 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
+   <layout class="QGridLayout" name="gridLayout_6">
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="whatsThis">
        <string/>
       </property>
       <property name="tabShape">
-       <enum>QTabWidget::TabShape::Triangular</enum>
+       <enum>QTabWidget::TabShape::Rounded</enum>
       </property>
       <property name="currentIndex">
        <number>1</number>
@@ -37,7 +37,7 @@
         <string>File Location</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="0" column="0" colspan="4">
+        <item row="0" column="0" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
            <widget class="QLabel" name="label">
@@ -77,14 +77,7 @@
           </item>
          </layout>
         </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="label_3">
-          <property name="text">
-           <string>Model name</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0" colspan="4">
+        <item row="1" column="0" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
            <widget class="QLabel" name="label_2">
@@ -109,27 +102,38 @@
           </item>
          </layout>
         </item>
-        <item row="2" column="2">
+        <item row="2" column="0">
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Model name</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="model_name">
+            <property name="toolTip">
+             <string>Model name</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="2" column="1">
          <spacer name="horizontalSpacer_3">
           <property name="orientation">
            <enum>Qt::Orientation::Horizontal</enum>
           </property>
           <property name="sizeHint" stdset="0">
            <size>
-            <width>419</width>
-            <height>20</height>
+            <width>416</width>
+            <height>17</height>
            </size>
           </property>
          </spacer>
         </item>
-        <item row="2" column="1">
-         <widget class="QLineEdit" name="model_name">
-          <property name="toolTip">
-           <string>Model name</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0" colspan="2">
+        <item row="3" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
            <widget class="QLabel" name="label_4">
@@ -167,7 +171,20 @@
           </item>
          </layout>
         </item>
-        <item row="6" column="0" colspan="4">
+        <item row="4" column="0">
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Orientation::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>187</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item row="5" column="0" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout_9">
           <item>
            <spacer name="horizontalSpacer">
@@ -191,189 +208,195 @@
           </item>
          </layout>
         </item>
-        <item row="5" column="0">
-         <spacer name="verticalSpacer">
-          <property name="orientation">
-           <enum>Qt::Orientation::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>187</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
        </layout>
       </widget>
       <widget class="QWidget" name="tab_2">
        <attribute name="title">
         <string>Segmentation Settings</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_6">
-        <item row="0" column="0" rowspan="6">
-         <widget class="QTableWidget" name="tissue_segmentation_TW"/>
-        </item>
-        <item row="0" column="1" colspan="3">
-         <widget class="QGroupBox" name="groupBox">
-          <property name="title">
-           <string>Annotation class whitespace sesttings</string>
+       <layout class="QGridLayout" name="gridLayout_7">
+        <item row="0" column="0" rowspan="2">
+         <widget class="QTableWidget" name="tissue_segmentation_TW">
+          <property name="enabled">
+           <bool>true</bool>
           </property>
-          <layout class="QGridLayout" name="gridLayout_4">
-           <item row="0" column="0">
-            <layout class="QGridLayout" name="gridLayout_2">
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="QGroupBox" name="groupBox">
+            <property name="title">
+             <string>Annotation class whitespace sesttings</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_4">
              <item row="0" column="0">
-              <widget class="QComboBox" name="wsoptions_CB">
-               <item>
-                <property name="text">
-                 <string>Select</string>
-                </property>
+              <layout class="QGridLayout" name="gridLayout_2">
+               <item row="0" column="0">
+                <widget class="QComboBox" name="wsoptions_CB">
+                 <item>
+                  <property name="text">
+                   <string>Select</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Remove whitespace</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Keep only whitespace</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>Keep tissue and whitespace</string>
+                  </property>
+                 </item>
+                </widget>
                </item>
-               <item>
-                <property name="text">
-                 <string>Remove whitespace</string>
-                </property>
+               <item row="0" column="1">
+                <widget class="QPushButton" name="apply_PB">
+                 <property name="text">
+                  <string>Apply</string>
+                 </property>
+                </widget>
                </item>
-               <item>
-                <property name="text">
-                 <string>Keep only whitespace</string>
-                </property>
+               <item row="0" column="2">
+                <widget class="QPushButton" name="applyall_PB">
+                 <property name="text">
+                  <string>Apply to all</string>
+                 </property>
+                </widget>
                </item>
-               <item>
-                <property name="text">
-                 <string>Keep tissue and whitespace</string>
-                </property>
-               </item>
-              </widget>
-             </item>
-             <item row="0" column="1">
-              <widget class="QPushButton" name="apply_PB">
-               <property name="text">
-                <string>Apply</string>
-               </property>
-              </widget>
-             </item>
-             <item row="0" column="2">
-              <widget class="QPushButton" name="applyall_PB">
-               <property name="text">
-                <string>Apply to all</string>
-               </property>
-              </widget>
+              </layout>
              </item>
             </layout>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QPushButton" name="changecolor_PB">
-          <property name="text">
-           <string>Change Color</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2" colspan="2">
-         <widget class="QPushButton" name="Reset_PB">
-          <property name="text">
-           <string>Reset list</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QPushButton" name="Combine_PB">
-          <property name="text">
-           <string>Combine classes</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="2" colspan="2">
-         <widget class="QPushButton" name="delete_PB">
-          <property name="text">
-           <string>Delete class</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="2" colspan="2">
-         <spacer name="verticalSpacer_3">
-          <property name="orientation">
-           <enum>Qt::Orientation::Vertical</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>20</width>
-            <height>327</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="5" column="1">
-         <spacer name="horizontalSpacer_2">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>205</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="5" column="2">
-         <widget class="QPushButton" name="return_ts_PB">
-          <property name="text">
-           <string>Return</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="3">
-         <widget class="QPushButton" name="save_ts_PB">
-          <property name="text">
-           <string>Save and Continue</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1" colspan="3">
-         <layout class="QVBoxLayout" name="verticalLayout">
+           </widget>
+          </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_4">
+           <layout class="QVBoxLayout" name="verticalLayout">
             <item>
-             <widget class="QLabel" name="label_6">
+             <layout class="QHBoxLayout" name="horizontalLayout_4">
+              <item>
+               <widget class="QLabel" name="label_6">
+                <property name="text">
+                 <string>Add Whitespace to:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="addws_CB">
+                <item>
+                 <property name="text">
+                  <string>Select</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_5">
+              <item>
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>Add Non-whitespace to:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="addnonws_CB">
+                <item>
+                 <property name="text">
+                  <string>Select</string>
+                 </property>
+                </item>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="0" column="0">
+             <widget class="QPushButton" name="changecolor_PB">
               <property name="text">
-               <string>Add Whitespace to:</string>
+               <string>Change Color</string>
               </property>
              </widget>
             </item>
-            <item>
-             <widget class="QComboBox" name="addws_CB">
-              <item>
-               <property name="text">
-                <string>Select</string>
-               </property>
-              </item>
+            <item row="0" column="1">
+             <widget class="QPushButton" name="Reset_PB">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
+              <property name="text">
+               <string>Reset list</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QPushButton" name="Combine_PB">
+              <property name="text">
+               <string>Combine classes</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QPushButton" name="delete_PB">
+              <property name="text">
+               <string>Delete class</string>
+              </property>
              </widget>
             </item>
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_5">
-            <item>
-             <widget class="QLabel" name="label_7">
-              <property name="text">
-               <string>Add Non-whitespace to:</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="addnonws_CB">
-              <item>
-               <property name="text">
-                <string>Select</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-           </layout>
+           <spacer name="verticalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Orientation::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>17</width>
+              <height>142</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="1">
+         <layout class="QHBoxLayout" name="horizontalLayout_7">
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Orientation::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>128</width>
+              <height>17</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="return_ts_PB">
+            <property name="text">
+             <string>Return</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="save_ts_PB">
+            <property name="text">
+             <string>Save and Continue</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -518,7 +541,10 @@
             <item>
              <widget class="QComboBox" name="tts_CB">
               <property name="currentText">
-               <string>64</string>
+               <string>1024</string>
+              </property>
+              <property name="currentIndex">
+               <number>4</number>
               </property>
               <item>
                <property name="text">

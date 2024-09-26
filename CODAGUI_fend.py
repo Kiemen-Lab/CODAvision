@@ -6,7 +6,7 @@ from datetime import datetime
 import xmltodict
 import pandas as pd
 from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
-from PySide6.QtWidgets import QColorDialog, QHeaderView, QTableWidgetItem
+from PySide6.QtWidgets import QColorDialog, QHeaderView
 from PySide6.QtCore import Qt
 
 
@@ -124,6 +124,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.tabWidget.setCurrentIndex(0)  # Initialize the first tab
         for i in range(1, self.ui.tabWidget.count()):
             self.ui.tabWidget.setTabEnabled(i, False)
+
+        self.setWindowTitle("ANACODA")
 
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""
@@ -496,8 +498,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.combined_df is  None:
             self.df.at[selected_row, 'Whitespace Settings'] = ws_value
+            print('changing ws df')        ###delete
+            print(self.df) ###delete
         else:
             self.combined_df.at[selected_row, 'Whitespace Settings'] = ws_value
+            print('changing ws combined df')        ###delete
+            print(self.combined_df) ###delete
+
 
         ws_item = table.item(selected_row, 1)
         if ws_item:
@@ -591,6 +598,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Create the combined DataFrame
         if self.combined_df is None:
             self.combined_df = self.df.copy()
+            self.combined_df['Deleted'] = False
             self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
 
 
