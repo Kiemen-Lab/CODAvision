@@ -605,8 +605,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def initialize_advanced_settings(self):
-
-        #Cear table befor populating
+        #Cear table before populating
         self.ui.component_TW.setRowCount(0)
         self.ui.component_TW.setColumnCount(0)
 
@@ -623,6 +622,11 @@ class MainWindow(QtWidgets.QMainWindow):
             item = QtWidgets.QTableWidgetItem(layer_name)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
             item.setCheckState(Qt.Unchecked)
+
+            # Set background color to dark and text color to white
+            item.setBackground(QColor(45, 45, 45))  # Dark color
+            item.setForeground(QBrush(Qt.white))  # White text
+
             self.ui.component_TW.setItem(row, 0, item)
 
         # Connect itemChanged signal to slot (value gets gray after being checked)
@@ -631,8 +635,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def on_item_changed(self, item):
         if item.checkState() == Qt.Checked:
             item.setBackground(QColor(200, 200, 200))  # Light gray
+            item.setForeground(QBrush(Qt.black))  # Black text
         else:
-            item.setBackground(QColor(255, 255, 255))  # White
+            item.setBackground(QColor(45, 45, 45))  # Dark color
 
     def add_combo(self):
 
@@ -771,15 +776,23 @@ class MainWindow(QtWidgets.QMainWindow):
     # Add or update these methods in the MainWindow class:
     def save_advanced_settings_and_close(self):
 
-
         # Component analysis
         component_layers = {}
+
+
         for row in range(self.ui.component_TW.rowCount()):
             item = self.ui.component_TW.item(row, 0)
             if item:
                 layer_name = item.text()
-                is_checked = item.checkState() == Qt.Checked
-                component_layers[layer_name] = is_checked  # Save True for checked items
+                layer_indices = self.combined_df[self.combined_df['Layer Name'] == layer_name]['Layer idx'].values[0]
+
+                if isinstance(layer_indices, list):  #if the layer is a combined layer
+                    for original_idx in layer_indices:
+                        is_checked = item.checkState() == Qt.Checked
+                        component_layers[self.original_df.loc[original_idx - 1, 'Layer Name']] = is_checked  # Save True for checked items
+                else: #Not a combined layer
+                    is_checked = item.checkState() == Qt.Checked
+                    component_layers[layer_name] = is_checked # Save True for checked items
 
         self.df['Component analysis'] = self.df['Layer Name'].map(component_layers)
 
