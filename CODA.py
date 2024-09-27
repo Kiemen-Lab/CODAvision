@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
     QWidget)
 
 class Ui_MainWindow(object):
-
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
@@ -317,26 +316,36 @@ class Ui_MainWindow(object):
         self.verticalLayout_5.addItem(self.verticalSpacer_4)
 
 
-        self.gridLayout_5.addLayout(self.verticalLayout_5, 0, 2, 1, 1)
+        self.gridLayout_5.addLayout(self.verticalLayout_5, 0, 2, 1, 2)
 
-        self.horizontalLayout_10 = QHBoxLayout()
-        self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
         self.horizontalSpacer_4 = QSpacerItem(438, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.horizontalLayout_10.addItem(self.horizontalSpacer_4)
+        self.gridLayout_5.addItem(self.horizontalSpacer_4, 1, 1, 1, 2)
 
+        self.verticalLayout_6 = QVBoxLayout()
+        self.verticalLayout_6.setObjectName(u"verticalLayout_6")
+        self.AS_checkBox = QCheckBox(self.tab_3)
+        self.AS_checkBox.setObjectName(u"AS_checkBox")
+
+        self.verticalLayout_6.addWidget(self.AS_checkBox)
+
+        self.horizontalLayout_8 = QHBoxLayout()
+        self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
         self.return_nesting_PB = QPushButton(self.tab_3)
         self.return_nesting_PB.setObjectName(u"return_nesting_PB")
 
-        self.horizontalLayout_10.addWidget(self.return_nesting_PB)
+        self.horizontalLayout_8.addWidget(self.return_nesting_PB)
 
         self.save_nesting_PB = QPushButton(self.tab_3)
         self.save_nesting_PB.setObjectName(u"save_nesting_PB")
 
-        self.horizontalLayout_10.addWidget(self.save_nesting_PB)
+        self.horizontalLayout_8.addWidget(self.save_nesting_PB)
 
 
-        self.gridLayout_5.addLayout(self.horizontalLayout_10, 1, 1, 1, 2)
+        self.verticalLayout_6.addLayout(self.horizontalLayout_8)
+
+
+        self.gridLayout_5.addLayout(self.verticalLayout_6, 1, 3, 1, 1)
 
         self.tabWidget.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
@@ -539,8 +548,9 @@ class Ui_MainWindow(object):
         self.moveup_PB.setText(QCoreApplication.translate("MainWindow", u"Move up", None))
         self.Movedown_PB.setText(QCoreApplication.translate("MainWindow", u"Move Down", None))
         self.nesting_checkBox.setText(QCoreApplication.translate("MainWindow", u"Nest uncombined data", None))
+        self.AS_checkBox.setText(QCoreApplication.translate("MainWindow", u"Modify advanced settings", None))
         self.return_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
-        self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
+        self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Nesting", None))
         self.return_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
         self.save_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))

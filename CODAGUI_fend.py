@@ -201,6 +201,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if 'Layer idx' not in self.combined_df.columns:
             self.combined_df['Layer idx'] = self.combined_df.index + 1
 
+        # Ensure 'Delete layer' column exists
+        if 'Delete layer' not in self.df.columns:
+            self.df['Delete layer'] = False
+
         # Update self.df based on the whitespace settings in self.combined_df
         for idx, row in self.combined_df.iterrows():
             layer_indices = row['Layer idx']
@@ -255,7 +259,11 @@ class MainWindow(QtWidgets.QMainWindow):
             source_df = self.df
         else:
             source_df = self.combined_df
+            # Ensure 'Deleted' column exists
+            if 'Deleted' not in source_df.columns:
+                source_df['Deleted'] = False
             source_df = source_df[source_df['Deleted'] != True]
+
 
         for index, row in source_df.iterrows():
             item = QStandardItem(row['Layer Name'])
@@ -369,15 +377,20 @@ class MainWindow(QtWidgets.QMainWindow):
         print("Updated DataFrame:")
         print(self.df)
 
-        current_tab_index = self.ui.tabWidget.currentIndex()
-        next_tab_index = current_tab_index + 1
+        # Check if advanced settings need to be modified
+        if self.ui.AS_checkBox.isChecked():
+            current_tab_index = self.ui.tabWidget.currentIndex()
+            next_tab_index = current_tab_index + 1
 
-        if next_tab_index < self.ui.tabWidget.count():
-            self.ui.tabWidget.setTabEnabled(current_tab_index, False)  # Disable current tab
-            self.ui.tabWidget.setTabEnabled(next_tab_index, True)  # Enable next tab
-            self.ui.tabWidget.setCurrentIndex(next_tab_index)  # Switch to next tab
+            if next_tab_index < self.ui.tabWidget.count():
+                self.ui.tabWidget.setTabEnabled(current_tab_index, False)  # Disable current tab
+                self.ui.tabWidget.setTabEnabled(next_tab_index, True)  # Enable next tab
+                self.ui.tabWidget.setCurrentIndex(next_tab_index)  # Switch to next tab
 
-        self.initialize_advanced_settings()
+            self.initialize_advanced_settings()
+        else:
+            self.initialize_advanced_settings()
+            self.save_advanced_settings_and_close()
 
     def fill_form(self):
         """Process data"""
