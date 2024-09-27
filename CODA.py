@@ -15,13 +15,15 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QGridLayout, QGroupBox,
-    QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QMainWindow, QPushButton, QSizePolicy, QSpacerItem,
-    QSpinBox, QStatusBar, QTabWidget, QTableView,
-    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
+    QGroupBox, QHBoxLayout, QHeaderView, QLabel,
+    QLineEdit, QMainWindow, QPushButton, QSizePolicy,
+    QSpacerItem, QSpinBox, QStatusBar, QTabWidget,
+    QTableView, QTableWidget, QTableWidgetItem, QVBoxLayout,
+    QWidget)
 
 class Ui_MainWindow(object):
+
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
@@ -303,9 +305,19 @@ class Ui_MainWindow(object):
 
         self.gridLayout_5.addLayout(self.verticalLayout_4, 0, 1, 1, 1)
 
-        self.horizontalSpacer_5 = QSpacerItem(305, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.verticalLayout_5 = QVBoxLayout()
+        self.verticalLayout_5.setObjectName(u"verticalLayout_5")
+        self.nesting_checkBox = QCheckBox(self.tab_3)
+        self.nesting_checkBox.setObjectName(u"nesting_checkBox")
 
-        self.gridLayout_5.addItem(self.horizontalSpacer_5, 1, 2, 1, 1)
+        self.verticalLayout_5.addWidget(self.nesting_checkBox)
+
+        self.verticalSpacer_4 = QSpacerItem(20, 161, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.verticalLayout_5.addItem(self.verticalSpacer_4)
+
+
+        self.gridLayout_5.addLayout(self.verticalLayout_5, 0, 2, 1, 1)
 
         self.horizontalLayout_10 = QHBoxLayout()
         self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
@@ -324,7 +336,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_10.addWidget(self.save_nesting_PB)
 
 
-        self.gridLayout_5.addLayout(self.horizontalLayout_10, 2, 0, 1, 3)
+        self.gridLayout_5.addLayout(self.horizontalLayout_10, 1, 1, 1, 2)
 
         self.tabWidget.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
@@ -459,7 +471,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(2)
         self.tts_CB.setCurrentIndex(4)
 
 
@@ -526,6 +538,7 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Segmentation Settings", None))
         self.moveup_PB.setText(QCoreApplication.translate("MainWindow", u"Move up", None))
         self.Movedown_PB.setText(QCoreApplication.translate("MainWindow", u"Move Down", None))
+        self.nesting_checkBox.setText(QCoreApplication.translate("MainWindow", u"Nest uncombined data", None))
         self.return_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
         self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Nesting", None))

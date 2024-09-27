@@ -114,6 +114,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.save_ad_PB.clicked.connect(self.save_advanced_settings_and_close)
         self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
         self.ui.delete_PB.clicked.connect(self.delete_annotation_class)
+        self.ui.nesting_checkBox.stateChanged.connect(self.on_nesting_checkbox_state_changed)
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
@@ -248,7 +249,15 @@ class MainWindow(QtWidgets.QMainWindow):
         model.setColumnCount(1)
         model.setHorizontalHeaderLabels(["Layer Name"])
 
-        for index, row in self.df.iterrows():
+        # Use combined classes or uncombined classes depending on the checkbox state
+        if self.ui.nesting_checkBox.isChecked():
+            source_df = self.df
+        else:
+            source_df = self.combined_df
+            if 'Delete' in source_df.columns:
+                source_df = source_df[source_df['Delete'] != True]
+
+        for index, row in source_df.iterrows():
             item = QStandardItem(row['Layer Name'])
             item.setBackground(QColor(*row['Color']))
             item.setEditable(False)
@@ -256,9 +265,9 @@ class MainWindow(QtWidgets.QMainWindow):
             # Convert the background color to greyscale
             greyscale = 0.299 * row['Color'][0] + 0.587 * row['Color'][1] + 0.114 * row['Color'][2]
             if greyscale > 128:  # If greyscale is above 50% grey, set text color to black
-                item.setForeground(QBrush(QColor(0, 0, 0)))
+                item.setForeground(QBrush(Qt.black))
             else:  # Otherwise, set text color to white
-                item.setForeground(QBrush(QColor(255, 255, 255)))
+                item.setForeground(QBrush(Qt.white))
 
             model.appendRow(item)
 
@@ -288,6 +297,9 @@ class MainWindow(QtWidgets.QMainWindow):
             model.setItem(current_index.row() + 1, current_item)
 
             self.ui.nesting_TW.setCurrentIndex(model.index(current_index.row() + 1, 0))
+
+    def on_nesting_checkbox_state_changed(self, state):
+        self.initialize_nesting_table()
 
     def return_to_previous_tab(self, return_to_first=False):
         current_index = self.ui.tabWidget.currentIndex()
@@ -327,9 +339,32 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Create a mapping of layer names to their original indices
         original_indices = {name: index for index, name in enumerate(self.df['Layer Name'])}
+        reverse_original_indices = {index + 1: name for index, name in enumerate(self.df['Layer Name'])}
 
-        # Create the Nesting column
-        self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order]
+        # Create the Nesting column in self.df
+        if self.ui.checkBox_uncombined.isChecked():
+            # Update the Nesting column for uncombined classes
+            self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order]
+        else:
+            # Update the Nesting column for combined classes
+            nesting_order_combined = []
+            for name in nesting_order:
+                layer_idx = self.combined_df.loc[self.combined_df['Layer Name'] == name, 'Layer idx'].values[0]
+                if isinstance(layer_idx, list):
+                    nesting_order_combined.extend(layer_idx)
+                else:
+                    nesting_order_combined.append(layer_idx)
+
+            # Add deleted layers to the end of the nesting list
+            deleted_layers = self.df[self.df['Delete layer'] == True].index + 1
+            nesting_order_combined.extend(deleted_layers)
+
+            # Get the names for the combined nesting order, handling missing keys
+            nesting_order_combined_names = [reverse_original_indices[i] for i in nesting_order_combined if
+                                            i in reverse_original_indices]
+
+            # Update the Nesting column for combined classes
+            self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order_combined_names]
 
         print("Updated DataFrame:")
         print(self.df)
@@ -681,6 +716,12 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         selected_rows = list(set(item.row() for item in selected_items))
+
+        for idx in selected_rows:
+            if pd.isna(self.combined_df.at[idx, 'Whitespace Settings']):
+                QtWidgets.QMessageBox.warning(self, "Unable to Delete",
+                                              "You can only delete a class if it has an assigned whitespace value.")
+                return
 
         for idx in selected_rows:
             if isinstance(self.combined_df.at[idx, 'Layer idx'], list):

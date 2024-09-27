@@ -24,7 +24,7 @@
        <enum>QTabWidget::TabShape::Rounded</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>false</bool>
@@ -445,20 +445,31 @@
           </item>
          </layout>
         </item>
-        <item row="1" column="2">
-         <spacer name="horizontalSpacer_5">
-          <property name="orientation">
-           <enum>Qt::Orientation::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>305</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
+        <item row="0" column="2">
+         <layout class="QVBoxLayout" name="verticalLayout_5">
+          <item>
+           <widget class="QCheckBox" name="nesting_checkBox">
+            <property name="text">
+             <string>Nest uncombined data</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Orientation::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>161</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
         </item>
-        <item row="2" column="0" colspan="3">
+        <item row="1" column="1" colspan="2">
          <layout class="QHBoxLayout" name="horizontalLayout_10">
           <item>
            <spacer name="horizontalSpacer_4">
