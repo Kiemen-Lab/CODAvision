@@ -254,8 +254,7 @@ class MainWindow(QtWidgets.QMainWindow):
             source_df = self.df
         else:
             source_df = self.combined_df
-            if 'Delete' in source_df.columns:
-                source_df = source_df[source_df['Delete'] != True]
+            source_df = source_df[source_df['Deleted'] != True]
 
         for index, row in source_df.iterrows():
             item = QStandardItem(row['Layer Name'])
@@ -342,7 +341,7 @@ class MainWindow(QtWidgets.QMainWindow):
         reverse_original_indices = {index + 1: name for index, name in enumerate(self.df['Layer Name'])}
 
         # Create the Nesting column in self.df
-        if self.ui.checkBox_uncombined.isChecked():
+        if self.nesting_checkBox.isChecked():
             # Update the Nesting column for uncombined classes
             self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order]
         else:
