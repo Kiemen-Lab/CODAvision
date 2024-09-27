@@ -94,6 +94,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()  # Use super() to initialize the parent class
 
+
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)  # Pass the MainWindow instance itself as the parent
         self.setCentralWidget(self.ui.centralwidget)  # Set the central widget
@@ -341,7 +342,7 @@ class MainWindow(QtWidgets.QMainWindow):
         reverse_original_indices = {index + 1: name for index, name in enumerate(self.df['Layer Name'])}
 
         # Create the Nesting column in self.df
-        if self.nesting_checkBox.isChecked():
+        if self.ui.nesting_checkBox.isChecked():
             # Update the Nesting column for uncombined classes
             self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order]
         else:
@@ -604,7 +605,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
     def initialize_advanced_settings(self):
-        layer_names = self.df['Layer Name'].tolist()
+
+        #Cear table befor populating
+        self.ui.component_TW.setRowCount(0)
+        self.ui.component_TW.setColumnCount(0)
+
+        # Get the layer names from the combined DataFrame
+        layer_names = self.combined_df['Layer Name'].tolist()
 
         # Configure component_TW
         self.ui.component_TW.setColumnCount(1)
@@ -619,9 +626,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.component_TW.setItem(row, 0, item)
 
         # Connect itemChanged signal to slot (value gets gray after being checked)
-        self.ui.component_TW.itemChanged.connect(self.on_delete_item_changed)
+        self.ui.component_TW.itemChanged.connect(self.on_item_changed)
 
-    def on_delete_item_changed(self, item):
+    def on_item_changed(self, item):
         if item.checkState() == Qt.Checked:
             item.setBackground(QColor(200, 200, 200))  # Light gray
         else:
