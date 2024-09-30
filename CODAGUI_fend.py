@@ -8,6 +8,7 @@ import pandas as pd
 from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
 from PySide6.QtWidgets import QColorDialog, QHeaderView
 from PySide6.QtCore import Qt
+import pickle
 
 
 class CustomDialog(QtWidgets.QDialog):
@@ -116,10 +117,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
         self.ui.delete_PB.clicked.connect(self.delete_annotation_class)
         self.ui.nesting_checkBox.stateChanged.connect(self.on_nesting_checkbox_state_changed)
+        self.ui.prerecorded_CB.stateChanged.connect(self.toggle_prerecorded)
+        self.ui.prerecorded_PB.clicked.connect(self.browse_prerecorded_file)
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
         self.combined_df = None  # Initialize combined_df
+        self.update_styles()
+
 
 
         self.set_initial_model_name()
@@ -136,7 +141,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.model_name.setText(date_string)
 
     def select_imagedir(self, purpose):
-        """Open a dialog to select an image directory for training or testing."""
         dialog_title = f'Select {purpose.capitalize()} Image Directory'
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, os.getcwd())
         if folder_path:
@@ -144,6 +148,44 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.trianing_LE.setText(folder_path)
             elif purpose == 'testing':
                 self.ui.testing_LE.setText(folder_path)
+
+    def browse_prerecorded_file(self):
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Prerecorded Data File", "",
+                                                             "Data Files (*.pkl)")
+        if file_path:
+            self.ui.prerecorded_LE.setText(file_path)
+            self.load_prerecorded_data(file_path)
+
+    def toggle_prerecorded(self, state):
+        if self.ui.prerecorded_CB.isChecked():
+            self.ui.prerecorded_LE.setEnabled(True)
+            self.ui.prerecorded_PB.setEnabled(True)
+        else:
+            self.ui.prerecorded_LE.setEnabled(False)
+            self.ui.prerecorded_PB.setEnabled(False)
+            self.ui.prerecorded_LE.clear()
+        self.update_styles()
+
+
+    def update_styles(self):
+        if self.ui.prerecorded_LE.isEnabled():
+            self.ui.prerecorded_LE.setStyleSheet("")
+            self.ui.prerecorded_PB.setStyleSheet("")
+        else:
+            self.ui.prerecorded_LE.setStyleSheet("color: gray;")
+            self.ui.prerecorded_PB.setStyleSheet("color: gray;")
+
+    def load_prerecorded_data(self, file_path):
+        try:
+            with open(file_path, 'rb') as file:
+                data = pickle.load(file)
+                self.df = data['df']
+                self.combined_df = data['combined_df']
+                self.populate_table_widget(self.df)
+                print("Prerecorded data loaded successfully.")
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
+
 
     def fill_form_and_continue(self):
         """Fill the form, process data, and switch to the next tab if successful."""
