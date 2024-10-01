@@ -1,5 +1,6 @@
 # Import  modules or functions
 from .save_model_metadata import save_model_metadata
+from .save_model_metadata_GUI import save_model_metadata_GUI
 from .load_annotation_data import load_annotation_data
 from .create_training_tiles import create_training_tiles
 from .train_segmentation_model import train_segmentation_model

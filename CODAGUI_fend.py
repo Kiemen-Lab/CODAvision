@@ -9,6 +9,9 @@ from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
 from PySide6.QtWidgets import QColorDialog, QHeaderView
 from PySide6.QtCore import Qt
 import pickle
+import numpy as np
+from base import save_model_metadata_GUI
+
 
 
 class CustomDialog(QtWidgets.QDialog):
@@ -627,6 +630,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # Function to change the color of the selected row in the annotation class table and update the dataframe
     def change_color(self):
+
+        # Initialize combined_df if it is None
+        if self.combined_df is None:
+            self.combined_df = self.df.copy()
+            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
+
+
         table = self.ui.tissue_segmentation_TW
         selected_items = table.selectedItems()
 
@@ -636,25 +646,27 @@ class MainWindow(QtWidgets.QMainWindow):
 
         selected_row = selected_items[0].row()
 
-        current_color = self.df.iloc[selected_row]['Color']
+        current_color = self.combined_df.iloc[selected_row]['Color']
         initial_color = QColor(*current_color)
 
         color_dialog = QColorDialog(self)
         color_dialog.setCurrentColor(initial_color)
+
+        self.populate_table_widget(self.combined_df)
 
         if color_dialog.exec():
             new_color = color_dialog.currentColor()
             new_rgb = (new_color.red(), new_color.green(), new_color.blue())
 
             # Update the DataFrame
-            self.df.at[selected_row, 'Color'] = new_rgb
+            self.combined_df.at[selected_row, 'Color'] = new_rgb
 
             # Update only the Annotation Class column in the table
             item = table.item(selected_row, 0)
             if item:
                 item.setBackground(new_color)
 
-            layer_name = self.df.iloc[selected_row]['Layer Name']
+            layer_name = self.combined_df.iloc[selected_row]['Layer Name']
             print(f"Color changed for {layer_name} to {new_rgb}")
 
 
@@ -856,15 +868,77 @@ class MainWindow(QtWidgets.QMainWindow):
         self.nval = self.ui.vtn_SB.value()
         self.TA = self.ui.TA_SB.value()
 
+        #Save model metadata onto pickle file
+        self.variable_parametrization_to_WS()
+
+        self.close()
+
+
+
+    def variable_parametrization_to_WS(self):
+
         final_df = self.df
         combined_df = self.combined_df
+
+        # Paths
+        pth = self.ui.trianing_LE.text()
+        # pthtest = self.ui.testing_LE.text()
+        model_name = self.ui.model_name.text()
+        resolution = self.ui.resolution_CB.currentText()
+        pthim = os.path.join(pth, f'{resolution}')
+        pthDL = os.path.join(pth, model_name)
+
+        # Tif resolution
+        resolution_to_umpix = {"10x": 1, "5x": 2, "16x": 4}
+        umpix = resolution_to_umpix.get(resolution, 2)  # Default to 2 if resolution not found
+
+        # Get the dataframe with annotation information
+
+        classNames = combined_df['Layer Name'].tolist()
+        colormap = combined_df['Color'].tolist()
+
+        # Training tile size
+        tile_size = self.tile_size
+        # Number of training tiles
+        ntrain = self.ntrain
+        nvalidate = self.nval
+        # Number of validations tiles
+        nval = self.nval
+        # Number of TA images to evaluate (coming soon)
+        # TA = self.TA
+
+        # Create WS
+
+        layers_to_delete = final_df.index[final_df['Delete layer']==True].tolist()
+        layers_to_delete = [i + 1 for i in layers_to_delete]  # get row index starting from 1
+        nesting_list = final_df['Nesting'].tolist()
+        nesting_list.reverse()
+        WS = [final_df['Whitespace Settings'].tolist(),
+              [self.add_ws_to, self.add_nonws_to],
+              final_df['Combined layers'].tolist(),
+              nesting_list,
+              layers_to_delete
+              ]
+
+        # numclass = max(WS[2])
+        # nblack = numclass + 1
+        # nwhite = WS[1][0]
+
+        colormap = np.array(colormap)
 
         print("\nFinal Raw DataFrame with combined indexes:")
         print(final_df)
         print("\nFinal Combined DataFrame:")
         print(combined_df)
 
-        self.close()
+        # Final Parameters
+        print('Classnames: ', classNames)
+        print('Colormap: ', colormap)
+        print(WS)
+
+        # Save model metadata onto pickle file
+        save_model_metadata_GUI(pthDL, pthim, WS, model_name, umpix, colormap, tile_size, classNames, ntrain, nvalidate,
+                                final_df, combined_df)
 
 
 if __name__ == '__main__':

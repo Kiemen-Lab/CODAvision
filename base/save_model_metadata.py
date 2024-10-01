@@ -1,6 +1,6 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: April 17, 2024
+Date: October 01, 2024
 """
 
 import os
@@ -44,13 +44,13 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
         classNames.pop()
 
     # fix WS and classNames if there are classes to delete
-    ndelete = WS[4]
+    ndelete = WS[4].copy()
     if isinstance(ndelete, list):
         ndelete.sort(reverse=True)
         if ndelete:
             for b in ndelete:
-                ncombine = WS[2]
-                nload = WS[3]
+                ncombine = WS[2].copy()
+                nload = WS[3].copy()
                 oldnum = ncombine[b - 1]
                 ncombine[b - 1] = 1
                 ncombine = [n - 1 if n > oldnum else n for n in ncombine]
@@ -65,20 +65,7 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
 
             WS[2] = ncombine
             WS[3] = nload
-    elif isinstance(ndelete, int):
-        ncombine = WS[2]
-        nload = WS[3]
-        oldnum = ncombine[ndelete - 1]
-        ncombine[ndelete - 1] = 1
-        ncombine = [n - 1 if n > oldnum else n for n in ncombine]
-        nload = [n for n in nload if n != ndelete]
 
-        if len(classNames) == max(WS[2]):
-            zz = [i for i in range(len(classNames)) if i + 1 not in [oldnum]]
-            classNames = [classNames[i] for i in zz]
-            cmap = cmap[zz]
-        WS[2] = ncombine
-        WS[3] = nload
 
     nwhite = WS[2]
     nwhite = nwhite[WS[1][0] - 1]
