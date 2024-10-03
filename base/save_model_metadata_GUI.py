@@ -5,7 +5,7 @@ Date: September 30, 2024
 
 import os
 import matplotlib.pyplot as plt
-# from .plot_cmap_legend import plot_cmap_legend
+from .plot_cmap_legend import plot_cmap_legend
 import pickle
 
 def save_model_metadata_GUI(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, final_df, combined_df):
@@ -108,9 +108,7 @@ def save_model_metadata_GUI(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, 
     plt.savefig(os.path.join(pthDL, 'model_color_legend.jpg'))
 
 #Example usage
-import numpy as np
-import pandas as pd
-from plot_cmap_legend import plot_cmap_legend
+
 if __name__ == '__main__':
     # Inputs
     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\october_test_delete'

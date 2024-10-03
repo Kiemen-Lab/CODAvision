@@ -881,7 +881,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Paths
         pth = self.ui.trianing_LE.text()
-        # pthtest = self.ui.testing_LE.text()
+        pthtest = self.ui.testing_LE.text()
         model_name = self.ui.model_name.text()
         resolution = self.ui.resolution_CB.currentText()
         pthim = os.path.join(pth, f'{resolution}')
@@ -938,7 +938,21 @@ class MainWindow(QtWidgets.QMainWindow):
         # Save model metadata onto pickle file
         save_model_metadata_GUI(pthDL, pthim, WS, model_name, umpix, colormap, tile_size, classNames, ntrain, nvalidate,
                                 final_df, combined_df)
+    # Load paths
+    def get_pthDL(self):
+        pth = self.ui.trianing_LE.text()
+        model_name = self.ui.model_name.text()
+        return os.path.join(pth, model_name)
 
+    def get_pthim(self):
+        pth = self.ui.trianing_LE.text()
+        resolution = self.ui.resolution_CB.currentText()
+        return os.path.join(pth, f'{resolution}')
+
+    def get_pthtestim(self):
+        pthtest = self.ui.testing_LE.text()
+        resolution = self.ui.resolution_CB.currentText()
+        return os.path.join(pthtest, f'{resolution}')
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])

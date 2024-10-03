@@ -66,7 +66,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
             J =np.zeros((szz[0],szz[1],len(WS[0])),dtype=int)
 
             # interpolate annotation points to make closed objects
-            loop_start = time.time()
+            # loop_start = time.time()
             Jtmp = np.zeros(szz, dtype=int)
             bwtypek = np.zeros(szz, dtype=bool)
             for k in np.unique(xyout[:, 0]):
@@ -114,10 +114,10 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
             del bwtypek, Jtmp, xyz # Clear the temporary variables at the end of the iteration
 
             # format annotations to keep or remove whitespace
-            format_start = time.time()
+            # format_start = time.time()
             J, ind = format_white(J, Ig, WS, szz)
-            elapsed_time = time.time() - format_start
-            print(f'Format white took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
+            # elapsed_time = time.time() - format_start
+            # print(f'Format white took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
             from PIL import Image
             Image.fromarray(np.uint8(J)).save(os.path.join(outpth.rstrip('\\'), 'view_annotations_raw.png'))
 
