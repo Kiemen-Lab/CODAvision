@@ -13,7 +13,6 @@ import numpy as np
 from base import save_model_metadata_GUI
 
 
-
 class CustomDialog(QtWidgets.QDialog):
     def __init__(self, training_folder, parent=None):
         super().__init__(parent)
