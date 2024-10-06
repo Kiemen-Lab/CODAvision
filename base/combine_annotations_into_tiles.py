@@ -16,7 +16,8 @@ import cv2
 
 def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pthDL, outpth, sxy, stile=10240, nbg=0):
     """
-        Combine annotations into large tiles to train the deep neural network
+        Combine annotations into large tiles to train the deep neural network.
+        Faster version with no image filtering and downsampling.
 
         Inputs:
         - numann0 (numpy array): Initial An array containing the number of pixels per class per bounding box. Each row
@@ -121,12 +122,12 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             continue
         # find low density location in large tile to add annotation
         tmp2 = imT[::rsf, ::rsf] > 0
-        tmp2_array32 = np.array(tmp2, dtype=np.float64)
+        pad = int(100/rsf)
         dist = cv2.distanceTransform((tmp2 <= 0).astype(np.uint8), cv2.DIST_L2, 3)
-        dist[:(100 / rsf) - 1, :] = 0  # Sets the first 20 rows to 0
-        dist[:, :(100 / rsf) - 1] = 0  # Sets the first 20 columns to 0
-        dist[-100 / rsf:, :] = 0  # Sets the last 20 rows to 0
-        dist[:, -100 / rsf:] = 0  # Sets the last 20 columns to 0
+        dist[:pad, :] = 0  # Sets the first 20 rows to 0
+        dist[:, :pad] = 0  # Sets the first 20 columns to 0
+        dist[-pad:, :] = 0  # Sets the last 20 rows to 0
+        dist[:, -pad:] = 0  # Sets the last 20 columns to 0
         xii = np.where(dist == np.max(dist))
         index = np.random.choice(len(xii[0]), size=1, replace=False)
         x = int(xii[0][index[0]]*rsf)
