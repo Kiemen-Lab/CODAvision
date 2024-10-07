@@ -58,7 +58,7 @@ def calculate_tissue_mask(pth, imnm):
                 ct += j
             ct = ct/len(i)
     else:
-        ct = 210 #If there is no previous TA value, use 210
+        ct = 205 #If there is no previous TA value, use 205
 
     TA = im0[:, :, 1] < ct # Threshold the image green values
     kernel_size = 3
