@@ -11,7 +11,7 @@ import cv2
 
 def quantify_images(pthDL, pthim):
     """
-       Quantifies tissue composition in images and saves the results to an Excel file.
+       Quantifies tissue composition in images and saves the results to an Excel file. Not part of the CODA main pipline.
 
        Parameters:
        pthDL (str): Path to the directory containing the 'net.pkl' file with the model metadata.

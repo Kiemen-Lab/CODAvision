@@ -20,7 +20,7 @@ def create_training_tiles(pthDL, numann0, ctlist0):
         ctlist0 (list): List of image paths.
 
     Outputs:
-        HE and Label big tiles, they are saved within the function.
+        HE and Label tiles, they are saved within the function.
         The code returns NONE
     """
 

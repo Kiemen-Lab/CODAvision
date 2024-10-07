@@ -17,7 +17,7 @@ def quantify_objects(pthDL, quantpath, tissue):
     """
     Quantifies the connected components in each classified image (for the specified annotation class) located in the
     specified quantpath, and writes the results to an Excel file named image_quantifications.xlsx in the same
-    directory, under the sheet named 'Object analysis'.
+    directory, under the sheet named 'Object analysis'. Not part of the CODA main pipeline.
 
     Inputs:
     - pthDL (str): Path to the directory containing the model data file 'net.pkl'.

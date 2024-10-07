@@ -1,6 +1,6 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: May 20, 2024
+Date: October 10th, 2024
 """
 
 import os
@@ -16,7 +16,8 @@ import cv2
 
 def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pthDL, outpth, sxy, stile=10240, nbg=0):
     """
-        Combine annotations into large tiles to train the deep neural network
+        Combine annotations into large tiles to train the deep neural network.
+        Faster version with no image filtering.
 
         Inputs:
         - numann0 (numpy array): Initial An array containing the number of pixels per class per bounding box. Each row
@@ -60,7 +61,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     count = 1
     tcount = 1  # is not one because of python indexing starts at 0
     cutoff = 0.55  # Cut off for how full the big tile is (55% full)
-    rsf = 5
+    rsf = 10
     type0 = 0
     numcount = np.zeros(len(imlist['tile_name']))
     typecount = np.zeros(len(ct))
@@ -74,7 +75,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     iteration = 1
     num_classes = len(ct)
     # start iteration timing
-    iter_start_time = time.time()
+    # iter_start_time = time.time()
     while sf < cutoff:
         iteration_start_time = time.time()
         # choose one of each class in order in a loop
@@ -121,14 +122,12 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             continue
         # find low density location in large tile to add annotation
         tmp2 = imT[::rsf, ::rsf] > 0
-        tmp2_array32 = np.array(tmp2, dtype=np.float64)
-        c = cv2.filter2D(tmp2_array32, -1, h_array32)
-        c = np.round(c*255) # To avoid percentile returning a negative value due to operating with a lot of small values
-        dist = cv2.distanceTransform((c <= np.percentile(c, 5, interpolation='midpoint')).astype(np.uint8), cv2.DIST_L2, 3)
-        dist[:20, :] = 0  # Sets the first 20 rows to 0
-        dist[:, :20] = 0  # Sets the first 20 columns to 0
-        dist[-20:, :] = 0  # Sets the last 20 rows to 0
-        dist[:, -20:] = 0  # Sets the last 20 columns to 0
+        pad = int(100/rsf)
+        dist = cv2.distanceTransform((tmp2 <= 0).astype(np.uint8), cv2.DIST_L2, 3)
+        dist[:pad, :] = 0  # Sets the first 20 rows to 0
+        dist[:, :pad] = 0  # Sets the first 20 columns to 0
+        dist[-pad:, :] = 0  # Sets the last 20 rows to 0
+        dist[:, -pad:] = 0  # Sets the last 20 columns to 0
         xii = np.where(dist == np.max(dist))
         index = np.random.choice(len(xii[0]), size=1, replace=False)
         x = int(xii[0][index[0]]*rsf)
@@ -177,9 +176,9 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         elapsed_time = time.time() - iteration_start_time
 
     # End of while loop timer
-    end_time = time.time()
-    total_time_while = end_time - iter_start_time
-    print(f'Total time elapsed for the while loop: {total_time_while}')
+    # end_time = time.time()
+    # total_time_while = end_time - iter_start_time
+    # print(f'Total time elapsed for the while loop: {total_time_while}')
 
 
     # cut edges off tile
