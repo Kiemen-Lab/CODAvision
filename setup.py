@@ -31,15 +31,14 @@ setup(
         'packaging==24.1',
         'zipp==3.20.1',
         'openslide-python==1.3.1',
-        'openpyxl==3.1.2'
+        'openpyxl==3.1.2',
+        'GPUtil==1.4.0'
     ],
     package_data={
         '': ['*.ipynb', '*.qss'],
     },
     classifiers=[
         'Programming Language :: Python :: 3.9',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
     ],
     python_requires='>=3.9',
 )
