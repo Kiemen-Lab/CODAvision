@@ -26,7 +26,7 @@ import GPUtil
 warnings.filterwarnings('ignore')
 
 
-def train_segmentation_model(pthDL,logdir= None, fine_tune=False):
+def train_segmentation_model(pthDL):
     #Start training time
     start_time = time.time()
 
