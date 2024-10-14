@@ -39,55 +39,7 @@ class CustomDialog(QtWidgets.QDialog):
         self.xml_button.clicked.connect(self.load_xml)
         self.prerecorded_button.clicked.connect(self.use_prerecorded_data)
 
-    def load_xml(self):
-        xml_file = None
-        for file in os.listdir(self.training_folder):
-            if file.endswith('.xml'):
-                xml_file = os.path.join(self.training_folder, file)
-                break
-        if xml_file:
-            try:
-                self.df = self.parse_xml_to_dataframe(xml_file)
-                self.original_df = self.df.copy()  # Initialize original_df after loading data
-                print(f"Loaded XML file: {xml_file}")
-                print(self.df)
-                self.accept()
-            except Exception as e:
-                QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
-        else:
-            QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
 
-
-    def use_prerecorded_data(self):
-        print("Using prerecorded data")
-        self.accept()
-
-    def parse_xml_to_dataframe(self, xml_file):
-        with open(xml_file, 'r', encoding='utf-8') as file:
-            xml_content = file.read()
-
-        xml_dict = xmltodict.parse(xml_content)
-
-        annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
-        data = []
-        for layer in annotations:
-            layer_name = layer.get('@Name')
-            color = layer.get('@LineColor')
-            rgb = self.int_to_rgb(color)
-            data.append(
-                {'Layer Name': layer_name, 'Color': rgb, 'Whitespace Settings': None})  # Add whitespace settings
-
-        df = pd.DataFrame(data)
-        self.original_df = df.copy()  # Save the original dataframe for resetting
-        return df
-
-    def int_to_rgb(self, hex_color):
-        hex_color = int(hex_color)
-        b = (hex_color // 65536) % 256
-        g = (hex_color // 256) % 256
-        r = hex_color % 256
-
-        return r, g, b
 
     def get_dataframe(self):
         return self.df if hasattr(self, 'df') else None
@@ -96,7 +48,6 @@ class CustomDialog(QtWidgets.QDialog):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()  # Use super() to initialize the parent class
-
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)  # Pass the MainWindow instance itself as the parent
@@ -159,6 +110,55 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.prerecorded_LE.setText(file_path)
             self.load_prerecorded_data(file_path)
 
+    def load_xml(self):
+        xml_file = None
+        training_folder = self.ui.trianing_LE.text()
+        for file in os.listdir(training_folder):
+            if file.endswith('.xml'):
+                xml_file = os.path.join(training_folder, file)
+                break
+        if xml_file:
+            try:
+                self.df = self.parse_xml_to_dataframe(xml_file)
+                self.original_df = self.df.copy()  # Initialize original_df after loading data
+                print(f"Loaded XML file: {xml_file}")
+                print(self.df)
+                self.populate_table_widget()
+            except Exception as e:
+                QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
+        else:
+            QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+
+    def parse_xml_to_dataframe(self, xml_file):
+        with open(xml_file, 'r', encoding='utf-8') as file:
+            xml_content = file.read()
+
+        xml_dict = xmltodict.parse(xml_content)
+
+        annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
+        data = []
+        for layer in annotations:
+            layer_name = layer.get('@Name')
+            color = layer.get('@LineColor')
+            rgb = self.int_to_rgb(color)
+            data.append(
+                {'Layer Name': layer_name, 'Color': rgb, 'Whitespace Settings': None})  # Add whitespace settings
+
+        df = pd.DataFrame(data)
+        self.original_df = df.copy()  # Save the original dataframe for resetting
+        return df
+
+    def int_to_rgb(self, hex_color):
+        hex_color = int(hex_color)
+        b = (hex_color // 65536) % 256
+        g = (hex_color // 256) % 256
+        r = hex_color % 256
+
+        return r, g, b
+
+    def get_dataframe(self):
+        return self.df if hasattr(self, 'df') else None
+
     def toggle_prerecorded(self, state):
         if self.ui.prerecorded_CB.isChecked():
             self.ui.prerecorded_LE.setEnabled(True)
@@ -202,11 +202,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def fill_form_and_continue(self):
         """Fill the form, process data, and switch to the next tab if successful."""
         if self.fill_form():
+            self.load_xml()  # Load and parse the XML file
             next_tab_index = self.ui.tabWidget.currentIndex() + 1
             if next_tab_index < self.ui.tabWidget.count():
-                self.ui.tabWidget.setTabEnabled(next_tab_index, True)
-            self.switch_to_next_tab()
-            self.show_custom_dialog()
+                self.switch_to_next_tab()
 
     def reset_combo(self):
         if self.original_df is not None:
