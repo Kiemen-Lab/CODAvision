@@ -124,6 +124,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
+        self.prerecorded_data = False
         self.combined_df = None  # Initialize combined_df
         self.update_styles()
 
@@ -181,9 +182,18 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             with open(file_path, 'rb') as file:
                 data = pickle.load(file)
-                self.df = data['df']
+                self.df = data['final_df']
+                self.original_df = self.df.copy()  # Set original_df in MainWindow
                 self.combined_df = data['combined_df']
-                self.populate_table_widget(self.df)
+                ws = data['WS']
+                self.prerecorded_data = True
+                self.switch_to_next_tab()
+                self.populate_table_widget(self.combined_df)
+
+                # Initialize combo boxes with chosen annotation classes from ws
+                self.ui.addws_CB.setCurrentIndex(ws[1][0])
+                self.ui.addnonws_CB.setCurrentIndex(ws[1][1])
+
                 print("Prerecorded data loaded successfully.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
@@ -298,7 +308,7 @@ class MainWindow(QtWidgets.QMainWindow):
         model.setColumnCount(1)
         model.setHorizontalHeaderLabels(["Layer Name"])
 
-        # Use combined classes or uncombined classes depending on the checkbox state
+        # Determine the source dataframe based on the checkbox state
         if self.ui.nesting_checkBox.isChecked():
             source_df = self.df
         else:
@@ -308,23 +318,48 @@ class MainWindow(QtWidgets.QMainWindow):
                 source_df['Deleted'] = False
             source_df = source_df[source_df['Deleted'] != True]
 
+        if self.prerecorded_data:
+            # Use the Nesting column from final_df to determine the order
+            nesting_order = self.df['Nesting'].tolist()
 
-        for index, row in source_df.iterrows():
-            item = QStandardItem(row['Layer Name'])
-            item.setBackground(QColor(*row['Color']))
-            item.setEditable(False)
+            # Create a mapping of combined indices to their respective names
+            combined_indices_to_names = {}
+            for idx, row in source_df.iterrows():
+                layer_indices = row['Layer idx']
+                if isinstance(layer_indices, list):
+                    if layer_indices:
+                        combined_indices_to_names[layer_indices[0]] = row['Layer Name']
+                else:
+                    combined_indices_to_names[layer_indices] = row['Layer Name']
 
-            # Convert the background color to greyscale
-            greyscale = 0.299 * row['Color'][0] + 0.587 * row['Color'][1] + 0.114 * row['Color'][2]
-            if greyscale > 128:  # If greyscale is above 50% grey, set text color to black
-                item.setForeground(QBrush(Qt.black))
-            else:  # Otherwise, set text color to white
-                item.setForeground(QBrush(Qt.white))
-
-            model.appendRow(item)
+            # Populate the table with the combined names in the correct order
+            for original_idx in nesting_order:
+                layer_name = combined_indices_to_names.get(original_idx)
+                if layer_name:
+                    color = self.combined_df[self.combined_df['Layer Name'] == layer_name]['Color'].values[0]
+                    self.add_item_to_model(model, layer_name, color)
+        else:
+            # Populate the table with the source dataframe
+            for index, row in source_df.iterrows():
+                self.add_item_to_model(model, row['Layer Name'], row['Color'])
 
         self.ui.nesting_TW.setModel(model)
         self.ui.nesting_TW.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    def add_item_to_model(self, model, layer_name, color):
+        item = QStandardItem(layer_name)
+        item.setBackground(QColor(*color))
+        item.setEditable(False)
+
+        # Convert the background color to greyscale
+        greyscale = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+        if greyscale > 128:  # If greyscale is above 50% grey, set text color to black
+            item.setForeground(QBrush(Qt.black))
+        else:  # Otherwise, set text color to white
+            item.setForeground(QBrush(Qt.white))
+
+        model.appendRow(item)
+
 
     def move_row_up(self):
         model = self.ui.nesting_TW.model()
