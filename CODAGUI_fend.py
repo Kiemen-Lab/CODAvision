@@ -13,37 +13,6 @@ import numpy as np
 from base import save_model_metadata_GUI
 
 
-class CustomDialog(QtWidgets.QDialog):
-    def __init__(self, training_folder, parent=None):
-        super().__init__(parent)
-        self.original_df = None
-        self.training_folder = training_folder
-        self.df = None
-        self.combined_df = None
-        self.add_ws_to = None
-        self.add_nonws_to = None
-        self.setWindowTitle("Load Data")
-        self.layout = QtWidgets.QVBoxLayout()
-
-        self.label = QtWidgets.QLabel("Would you like to load data from an .xml file or use prerecorded data?")
-        self.layout.addWidget(self.label)
-
-        self.xml_button = QtWidgets.QPushButton("Load from .xml")
-        self.prerecorded_button = QtWidgets.QPushButton("Use prerecorded data")
-
-        self.layout.addWidget(self.xml_button)
-        self.layout.addWidget(self.prerecorded_button)
-
-        self.setLayout(self.layout)
-
-        self.xml_button.clicked.connect(self.load_xml)
-        self.prerecorded_button.clicked.connect(self.use_prerecorded_data)
-
-
-
-    def get_dataframe(self):
-        return self.df if hasattr(self, 'df') else None
-
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -70,14 +39,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
         self.ui.delete_PB.clicked.connect(self.delete_annotation_class)
         self.ui.nesting_checkBox.stateChanged.connect(self.on_nesting_checkbox_state_changed)
-        self.ui.prerecorded_CB.stateChanged.connect(self.toggle_prerecorded)
         self.ui.prerecorded_PB.clicked.connect(self.browse_prerecorded_file)
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
         self.prerecorded_data = False
         self.combined_df = None  # Initialize combined_df
-        self.update_styles()
+
 
 
 
@@ -107,7 +75,6 @@ class MainWindow(QtWidgets.QMainWindow):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Prerecorded Data File", "",
                                                              "Data Files (*.pkl)")
         if file_path:
-            self.ui.prerecorded_LE.setText(file_path)
             self.load_prerecorded_data(file_path)
 
     def load_xml(self):
@@ -158,25 +125,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def get_dataframe(self):
         return self.df if hasattr(self, 'df') else None
-
-    def toggle_prerecorded(self, state):
-        if self.ui.prerecorded_CB.isChecked():
-            self.ui.prerecorded_LE.setEnabled(True)
-            self.ui.prerecorded_PB.setEnabled(True)
-        else:
-            self.ui.prerecorded_LE.setEnabled(False)
-            self.ui.prerecorded_PB.setEnabled(False)
-            self.ui.prerecorded_LE.clear()
-        self.update_styles()
-
-
-    def update_styles(self):
-        if self.ui.prerecorded_LE.isEnabled():
-            self.ui.prerecorded_LE.setStyleSheet("")
-            self.ui.prerecorded_PB.setStyleSheet("")
-        else:
-            self.ui.prerecorded_LE.setStyleSheet("color: gray;")
-            self.ui.prerecorded_PB.setStyleSheet("color: gray;")
 
     def load_prerecorded_data(self, file_path):
         try:
@@ -529,17 +477,6 @@ class MainWindow(QtWidgets.QMainWindow):
         print(
             f"Form filled with: \nTraining path: {pth}\nTesting path: {pthtest}\nModel name: {model_name}\nResolution: {resolution}")
         return True
-
-    def show_custom_dialog(self):
-        training_folder = self.ui.trianing_LE.text()
-        dialog = CustomDialog(training_folder, self)
-        if dialog.exec() == QtWidgets.QDialog.Accepted:
-            self.df = dialog.get_dataframe()
-            if self.df is not None:
-                self.original_df = self.df.copy()  # Set original_df in MainWindow
-                self.populate_table_widget()
-            if self.df is not None:
-                self.populate_table_widget()
 
     def populate_table_widget(self, df=None):
         if df is None:

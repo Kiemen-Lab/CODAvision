@@ -40,6 +40,29 @@ class Ui_MainWindow(object):
         self.tab.setObjectName(u"tab")
         self.gridLayout_3 = QGridLayout(self.tab)
         self.gridLayout_3.setObjectName(u"gridLayout_3")
+        self.horizontalLayout_3 = QHBoxLayout()
+        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
+        self.label_4 = QLabel(self.tab)
+        self.label_4.setObjectName(u"label_4")
+
+        self.horizontalLayout_3.addWidget(self.label_4)
+
+        self.resolution_CB = QComboBox(self.tab)
+        self.resolution_CB.addItem("")
+        self.resolution_CB.addItem("")
+        self.resolution_CB.addItem("")
+        self.resolution_CB.addItem("")
+        self.resolution_CB.setObjectName(u"resolution_CB")
+
+        self.horizontalLayout_3.addWidget(self.resolution_CB)
+
+
+        self.gridLayout_3.addLayout(self.horizontalLayout_3, 3, 0, 1, 1)
+
+        self.horizontalSpacer_3 = QSpacerItem(416, 17, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.gridLayout_3.addItem(self.horizontalSpacer_3, 3, 1, 1, 2)
+
         self.horizontalLayout_6 = QHBoxLayout()
         self.horizontalLayout_6.setObjectName(u"horizontalLayout_6")
         self.label_3 = QLabel(self.tab)
@@ -55,25 +78,23 @@ class Ui_MainWindow(object):
 
         self.gridLayout_3.addLayout(self.horizontalLayout_6, 4, 0, 1, 1)
 
-        self.horizontalLayout_2 = QHBoxLayout()
-        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
-        self.label_2 = QLabel(self.tab)
-        self.label_2.setObjectName(u"label_2")
+        self.verticalSpacer = QSpacerItem(20, 187, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.horizontalLayout_2.addWidget(self.label_2)
+        self.gridLayout_3.addItem(self.verticalSpacer, 5, 0, 1, 1)
 
-        self.testing_LE = QLineEdit(self.tab)
-        self.testing_LE.setObjectName(u"testing_LE")
+        self.horizontalLayout_9 = QHBoxLayout()
+        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
+        self.horizontalSpacer = QSpacerItem(348, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
-        self.horizontalLayout_2.addWidget(self.testing_LE)
+        self.horizontalLayout_9.addItem(self.horizontalSpacer)
 
-        self.testing_PB = QPushButton(self.tab)
-        self.testing_PB.setObjectName(u"testing_PB")
+        self.Save_FL_PB = QPushButton(self.tab)
+        self.Save_FL_PB.setObjectName(u"Save_FL_PB")
 
-        self.horizontalLayout_2.addWidget(self.testing_PB)
+        self.horizontalLayout_9.addWidget(self.Save_FL_PB)
 
 
-        self.gridLayout_3.addLayout(self.horizontalLayout_2, 2, 0, 1, 2)
+        self.gridLayout_3.addLayout(self.horizontalLayout_9, 6, 0, 1, 3)
 
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(u"horizontalLayout")
@@ -94,73 +115,33 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.trainin_PB)
 
 
-        self.gridLayout_3.addLayout(self.horizontalLayout, 1, 0, 1, 2)
+        self.gridLayout_3.addLayout(self.horizontalLayout, 1, 0, 1, 3)
 
-        self.verticalSpacer = QSpacerItem(20, 187, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.horizontalLayout_2 = QHBoxLayout()
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.label_2 = QLabel(self.tab)
+        self.label_2.setObjectName(u"label_2")
 
-        self.gridLayout_3.addItem(self.verticalSpacer, 6, 0, 1, 1)
+        self.horizontalLayout_2.addWidget(self.label_2)
 
-        self.horizontalLayout_9 = QHBoxLayout()
-        self.horizontalLayout_9.setObjectName(u"horizontalLayout_9")
-        self.horizontalSpacer = QSpacerItem(348, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.testing_LE = QLineEdit(self.tab)
+        self.testing_LE.setObjectName(u"testing_LE")
 
-        self.horizontalLayout_9.addItem(self.horizontalSpacer)
+        self.horizontalLayout_2.addWidget(self.testing_LE)
 
-        self.Save_FL_PB = QPushButton(self.tab)
-        self.Save_FL_PB.setObjectName(u"Save_FL_PB")
+        self.testing_PB = QPushButton(self.tab)
+        self.testing_PB.setObjectName(u"testing_PB")
 
-        self.horizontalLayout_9.addWidget(self.Save_FL_PB)
-
-
-        self.gridLayout_3.addLayout(self.horizontalLayout_9, 7, 0, 1, 2)
-
-        self.horizontalSpacer_3 = QSpacerItem(416, 17, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.gridLayout_3.addItem(self.horizontalSpacer_3, 3, 1, 1, 1)
-
-        self.horizontalLayout_3 = QHBoxLayout()
-        self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
-        self.label_4 = QLabel(self.tab)
-        self.label_4.setObjectName(u"label_4")
-
-        self.horizontalLayout_3.addWidget(self.label_4)
-
-        self.resolution_CB = QComboBox(self.tab)
-        self.resolution_CB.addItem("")
-        self.resolution_CB.addItem("")
-        self.resolution_CB.addItem("")
-        self.resolution_CB.addItem("")
-        self.resolution_CB.setObjectName(u"resolution_CB")
-
-        self.horizontalLayout_3.addWidget(self.resolution_CB)
+        self.horizontalLayout_2.addWidget(self.testing_PB)
 
 
-        self.gridLayout_3.addLayout(self.horizontalLayout_3, 3, 0, 1, 1)
-
-        self.horizontalLayout_10 = QHBoxLayout()
-        self.horizontalLayout_10.setObjectName(u"horizontalLayout_10")
-        self.prerecorded_CB = QCheckBox(self.tab)
-        self.prerecorded_CB.setObjectName(u"prerecorded_CB")
-        self.prerecorded_CB.setChecked(False)
-        self.prerecorded_CB.setTristate(False)
-
-        self.horizontalLayout_10.addWidget(self.prerecorded_CB)
-
-        self.prerecorded_LE = QLineEdit(self.tab)
-        self.prerecorded_LE.setObjectName(u"prerecorded_LE")
-        self.prerecorded_LE.setEnabled(False)
-        self.prerecorded_LE.setMaximumSize(QSize(16777215, 16777215))
-
-        self.horizontalLayout_10.addWidget(self.prerecorded_LE)
+        self.gridLayout_3.addLayout(self.horizontalLayout_2, 2, 0, 1, 3)
 
         self.prerecorded_PB = QPushButton(self.tab)
         self.prerecorded_PB.setObjectName(u"prerecorded_PB")
-        self.prerecorded_PB.setEnabled(False)
+        self.prerecorded_PB.setEnabled(True)
 
-        self.horizontalLayout_10.addWidget(self.prerecorded_PB)
-
-
-        self.gridLayout_3.addLayout(self.horizontalLayout_10, 0, 0, 1, 2)
+        self.gridLayout_3.addWidget(self.prerecorded_PB, 0, 2, 1, 1)
 
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
@@ -517,15 +498,20 @@ class Ui_MainWindow(object):
 #if QT_CONFIG(whatsthis)
         self.tabWidget.setWhatsThis("")
 #endif // QT_CONFIG(whatsthis)
+        self.label_4.setText(QCoreApplication.translate("MainWindow", u"Resolution", None))
+        self.resolution_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
+        self.resolution_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"1x", None))
+        self.resolution_CB.setItemText(2, QCoreApplication.translate("MainWindow", u"5x", None))
+        self.resolution_CB.setItemText(3, QCoreApplication.translate("MainWindow", u"10x", None))
+
+#if QT_CONFIG(tooltip)
+        self.resolution_CB.setToolTip(QCoreApplication.translate("MainWindow", u"Resolution of the images used for training ", None))
+#endif // QT_CONFIG(tooltip)
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"Model name", None))
 #if QT_CONFIG(tooltip)
         self.model_name.setToolTip(QCoreApplication.translate("MainWindow", u"Model name", None))
 #endif // QT_CONFIG(tooltip)
-        self.label_2.setText(QCoreApplication.translate("MainWindow", u"Testing annotations", None))
-#if QT_CONFIG(tooltip)
-        self.testing_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Path to testing annotations", None))
-#endif // QT_CONFIG(tooltip)
-        self.testing_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
+        self.Save_FL_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Training annotations", None))
 #if QT_CONFIG(tooltip)
         self.trianing_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Path to training annotations", None))
@@ -538,28 +524,12 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(whatsthis)
         self.trianing_LE.setInputMask("")
         self.trainin_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
-        self.Save_FL_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
-        self.label_4.setText(QCoreApplication.translate("MainWindow", u"Resolution", None))
-        self.resolution_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
-        self.resolution_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"1x", None))
-        self.resolution_CB.setItemText(2, QCoreApplication.translate("MainWindow", u"5x", None))
-        self.resolution_CB.setItemText(3, QCoreApplication.translate("MainWindow", u"10x", None))
-
+        self.label_2.setText(QCoreApplication.translate("MainWindow", u"Testing annotations", None))
 #if QT_CONFIG(tooltip)
-        self.resolution_CB.setToolTip(QCoreApplication.translate("MainWindow", u"Resolution of the images used for training ", None))
+        self.testing_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Path to testing annotations", None))
 #endif // QT_CONFIG(tooltip)
-        self.prerecorded_CB.setText(QCoreApplication.translate("MainWindow", u"Use prerecorded model settings", None))
-#if QT_CONFIG(tooltip)
-        self.prerecorded_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Browse .pkl file with prerecorded model settings", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(statustip)
-        self.prerecorded_LE.setStatusTip("")
-#endif // QT_CONFIG(statustip)
-#if QT_CONFIG(whatsthis)
-        self.prerecorded_LE.setWhatsThis("")
-#endif // QT_CONFIG(whatsthis)
-        self.prerecorded_LE.setInputMask("")
-        self.prerecorded_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
+        self.testing_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
+        self.prerecorded_PB.setText(QCoreApplication.translate("MainWindow", u"Load prerecorded data", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"File Location", None))
         self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class whitespace sesttings", None))
         self.wsoptions_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
