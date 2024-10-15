@@ -187,7 +187,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.combined_df = data['combined_df']
                 ws = data['WS']
                 self.prerecorded_data = True
-                self.switch_to_next_tab()
+                # self.switch_to_next_tab()
+
+                # Populate the training_LE, testing_LE, and resolution_CB fields
+                umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
+                pthim = data.get('pthim', '')
+                self.ui.trianing_LE.setText(os.sep.join(pthim.split(os.sep)[:-1]))
+                self.ui.testing_LE.setText(data.get('pthtest', ''))
+                umpix = data.get('umpix','')
+                self.ui.resolution_CB.setCurrentText(umpix_to_resolution.get(umpix, 'Select'))
+
                 self.populate_table_widget(self.combined_df)
 
                 # Initialize combo boxes with chosen annotation classes from ws
@@ -206,11 +215,11 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
 
-
     def fill_form_and_continue(self):
         """Fill the form, process data, and switch to the next tab if successful."""
         if self.fill_form():
-            self.load_xml()  # Load and parse the XML file
+            if not self.prerecorded_data:
+                self.load_xml()  # Load and parse the XML file only if not using prerecorded data
             next_tab_index = self.ui.tabWidget.currentIndex() + 1
             if next_tab_index < self.ui.tabWidget.count():
                 self.switch_to_next_tab()
@@ -939,7 +948,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pthDL = os.path.join(pth, model_name)
 
         # Tif resolution
-        resolution_to_umpix = {"10x": 1, "5x": 2, "16x": 4}
+        resolution_to_umpix = {"10x": 1, "5x": 2, "1x": 4}
         umpix = resolution_to_umpix.get(resolution, 2)  # Default to 2 if resolution not found
 
         # Get the dataframe with annotation information
@@ -987,7 +996,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print(WS)
 
         # Save model metadata onto pickle file
-        save_model_metadata_GUI(pthDL, pthim, WS, model_name, umpix, colormap, tile_size, classNames, ntrain, nvalidate,
+        save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap, tile_size, classNames, ntrain, nvalidate,
                                 final_df, combined_df)
 
     def load_saved_values(self):

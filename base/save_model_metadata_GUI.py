@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from .plot_cmap_legend import plot_cmap_legend
 import pickle
 
-def save_model_metadata_GUI(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, final_df, combined_df):
+def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, final_df, combined_df):
     """
       Saves model metadata to a pickle file and generates a color map legend plot.
 
@@ -90,7 +90,7 @@ def save_model_metadata_GUI(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, 
                 existing_data = {}
 
         existing_data.update(
-            {"pthim": pthim, "pthDL": pthDL, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
+            {"pthim": pthim, "pthDL": pthDL, "pthtest":pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
              "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
                          "combined_df": combined_df, "nvalidate": nvalidate})
 
@@ -99,7 +99,7 @@ def save_model_metadata_GUI(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, 
     else:
         print('Creating Net metadata file...')
         with open(datafile, 'wb') as f:
-            pickle.dump({"pthim": pthim, "pthDL": pthDL, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
+            pickle.dump({"pthim": pthim, "pthDL": pthDL, "pthtest": pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
                          "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
                          "combined_df": combined_df,"nvalidate": nvalidate}, f)
 
@@ -110,6 +110,7 @@ def save_model_metadata_GUI(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, 
 #Example usage
 
 if __name__ == '__main__':
+    import numpy as np
     # Inputs
     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\october_test_delete'
     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
