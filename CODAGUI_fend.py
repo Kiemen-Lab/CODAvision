@@ -194,6 +194,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.addws_CB.setCurrentIndex(ws[1][0])
                 self.ui.addnonws_CB.setCurrentIndex(ws[1][1])
 
+                # Initialize advanced settings
+                self.tile_size = data.get('sxy', 1024)
+                self.ntrain = data.get('ntrain', 15)
+                self.nval = data.get('nvalidate', 3)
+                self.TA = data.get('TA', 3)
+                self.load_saved_values()
+
+
                 print("Prerecorded data loaded successfully.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
@@ -702,10 +710,8 @@ class MainWindow(QtWidgets.QMainWindow):
             layer_name = self.combined_df.iloc[selected_row]['Layer Name']
             print(f"Color changed for {layer_name} to {new_rgb}")
 
-
-
     def initialize_advanced_settings(self):
-        #Cear table before populating
+        # Clear table before populating
         self.ui.component_TW.setRowCount(0)
         self.ui.component_TW.setColumnCount(0)
 
@@ -715,13 +721,24 @@ class MainWindow(QtWidgets.QMainWindow):
         # Configure component_TW
         self.ui.component_TW.setColumnCount(1)
         self.ui.component_TW.setHorizontalHeaderLabels(["Annotation layers"])
-        self.ui.component_TW.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch) #data matches the table width
+        self.ui.component_TW.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch)  # Data matches the table width
 
         for row, layer_name in enumerate(layer_names):
             self.ui.component_TW.insertRow(row)
             item = QtWidgets.QTableWidgetItem(layer_name)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Unchecked)
+
+            # Check the item if prerecorded data is loaded and Component analysis is True
+            if self.prerecorded_data:
+                component_analysis_value = self.df.loc[
+                    self.df['Layer Name'] == layer_name, 'Component analysis'].values
+                if component_analysis_value:
+                    item.setCheckState(Qt.Checked)
+                else:
+                    item.setCheckState(Qt.Unchecked)
+            else:
+                item.setCheckState(Qt.Unchecked)
 
             # Set background color to dark and text color to white
             item.setBackground(QColor(45, 45, 45))  # Dark color
@@ -934,12 +951,12 @@ class MainWindow(QtWidgets.QMainWindow):
         tile_size = self.tile_size
         # Number of training tiles
         ntrain = self.ntrain
-        nvalidate = self.nval
-        # Number of validations tiles
-        nval = self.nval
-        # Number of TA images to evaluate (coming soon)
-        # TA = self.TA
 
+        # Number of validations tiles
+        nvalidate = self.nval
+        # Number of TA images to evaluate (coming soon)
+        # TA = self.TA   #JAIME THIS IS YOUR LINEEEEEEE to modify the save_model_metadata_GUI function to include TA and
+        # use this value to choose the number of TA images to evaluate
         # Create WS
 
         layers_to_delete = final_df.index[final_df['Delete layer']==True].tolist()
@@ -972,6 +989,14 @@ class MainWindow(QtWidgets.QMainWindow):
         # Save model metadata onto pickle file
         save_model_metadata_GUI(pthDL, pthim, WS, model_name, umpix, colormap, tile_size, classNames, ntrain, nvalidate,
                                 final_df, combined_df)
+
+    def load_saved_values(self):
+        if self.prerecorded_data:
+            self.ui.tts_CB.setCurrentText(str(self.tile_size))
+            self.ui.ttn_SB.setValue(self.ntrain)
+            self.ui.vtn_SB.setValue(self.nval)
+            self.ui.TA_SB.setValue(self.TA)
+
     # Load paths
     def get_pthDL(self):
         pth = self.ui.trianing_LE.text()
