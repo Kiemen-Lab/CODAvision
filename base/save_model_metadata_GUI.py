@@ -111,6 +111,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
 
 if __name__ == '__main__':
     import numpy as np
+    import pandas as pd
     # Inputs
     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\october_test_delete'
     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
