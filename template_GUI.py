@@ -1,10 +1,11 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: October 03, 2024
+Date: October 21, 2024
 """
+import os.path
 
 from base import *
-from CODAGUI_fend import MainWindow
+from CODAGUI_bend import MainWindow
 import sys
 from PySide6 import QtWidgets
 
@@ -22,11 +23,15 @@ window.show()
 app.exec()
 
 # Load the paths from the GUI
-pth = window.ui.trianing_LE.text()
-pthDL = window.get_pthDL()
-pthim = window.get_pthim()
-pthtest = window.ui.testing_LE.text()
-pthtestim = window.get_pthtestim()
+pth = os.path.abspath(window.ui.trianing_LE.text())
+pthDL = os.path.abspath(window.get_pthDL())
+pthim = os.path.abspath(window.get_pthim())
+pthtest = os.path.abspath(window.ui.testing_LE.text())
+pthtestim = os.path.abspath(window.get_pthtestim())
+nTA = window.TA
+
+# Determine optimal TA
+determine_optimal_TA(pthim,nTA)
 
 # 2 load and format annotations from each annotated image
 [ctlist0, numann0] = load_annotation_data(pthDL, pth, pthim)
@@ -45,5 +50,3 @@ classify_images(pthim,pthDL)
 
 # 7 Quantify images
 quantify_images(pthDL, pthim)
-
-
