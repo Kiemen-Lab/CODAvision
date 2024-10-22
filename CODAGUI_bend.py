@@ -140,7 +140,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 print(self.combined_df)
                 ws = data['WS']
                 self.prerecorded_data = True
-                # self.switch_to_next_tab()
 
                 # Populate the training_LE, testing_LE, and resolution_CB fields
                 umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
@@ -153,8 +152,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.populate_table_widget(self.combined_df)
 
                 # Initialize combo boxes with chosen annotation classes from ws
-                self.ui.addws_CB.setCurrentIndex(ws[1][0])
-                self.ui.addnonws_CB.setCurrentIndex(ws[1][1])
+                addws_layer_name = self.df.iloc[ws[1][0] - 1]['Layer Name']
+                addnonws_layer_name = self.df.iloc[ws[1][1] - 1]['Layer Name']
+                self.ui.addws_CB.setCurrentText(addws_layer_name)
+                self.ui.addnonws_CB.setCurrentText(addnonws_layer_name)
 
                 # Initialize advanced settings
                 self.tile_size = data.get('sxy', 1024)
