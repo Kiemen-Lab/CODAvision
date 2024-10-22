@@ -23,7 +23,7 @@ def quantify_objects(pthDL, quantpath, tissue):
     - tissue (list of int): List of annotation class labels to be analyzed.
 
     Returns:
-    None
+    .csv files with the object analysis results for each annotation class in the tissue list.
     """
 
     # Load model data
