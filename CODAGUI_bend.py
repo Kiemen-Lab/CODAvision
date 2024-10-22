@@ -1,3 +1,7 @@
+"""
+Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: October 22, 2024
+"""
 
 from PySide6 import QtWidgets, QtCore
 from CODA import Ui_MainWindow
