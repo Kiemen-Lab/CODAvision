@@ -1,6 +1,6 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: October 22, 2024
+Date: October 23, 2024
 """
 
 from PySide6 import QtWidgets, QtCore
@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt
 import pickle
 import numpy as np
 from base import save_model_metadata_GUI
+pd.set_option('display.max_columns', None)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -158,14 +159,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 # Initialize combo boxes with chosen annotation classes from ws
                 addws_layer_name = self.df.iloc[ws[1][0] - 1]['Layer Name']
                 addnonws_layer_name = self.df.iloc[ws[1][1] - 1]['Layer Name']
+                count = 0
+                for i in self.combined_df['Layer idx']:
+                    if isinstance(i, list) and np.isin(ws[1][0], i):
+                        addws_layer_name = self.combined_df.iloc[count]['Layer Name']
+                    elif isinstance(i, list) and np.isin(ws[1][1], i):
+                        addnonws_layer_name = self.combined_df.iloc[count]['Layer Name']
+                    count += 1
                 self.ui.addws_CB.setCurrentText(addws_layer_name)
                 self.ui.addnonws_CB.setCurrentText(addnonws_layer_name)
 
                 # Initialize advanced settings
-                self.tile_size = data.get('sxy', 1024)
-                self.ntrain = data.get('ntrain', 15)
-                self.nval = data.get('nvalidate', 3)
-                self.TA = data.get('TA', 3)
+                self.tile_size = data['sxy']
+                self.ntrain = data['ntrain']
+                self.nval = data['nvalidate']
+                self.TA = data['nTA']
                 self.load_saved_values()
 
 
@@ -570,7 +578,7 @@ class MainWindow(QtWidgets.QMainWindow):
             f"Form filled with: \nTraining path: {pth}\nTesting path: {pthtest}\nModel name: {model_name}\nResolution: {resolution}")
         return True
 
-    def populate_table_widget(self, df=None):
+    def populate_table_widget(self, df=None, coloring = False):
         if df is None:
             df = self.df  # Populate the table with the original dataframe if no dataframe is passed
 
@@ -627,7 +635,8 @@ class MainWindow(QtWidgets.QMainWindow):
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Stretch columns to fit the table width
 
         # Populate combo boxes with layer names
-        self.populate_combo_boxes()
+        if not coloring:
+            self.populate_combo_boxes()
 
     def populate_combo_boxes(self):
         if self.combined_df is None:
@@ -765,7 +774,7 @@ class MainWindow(QtWidgets.QMainWindow):
             layer_name = self.combined_df.iloc[updated_selected_row]['Layer Name']
             print(f"Color changed for {layer_name} to {new_rgb}")
 
-        self.populate_table_widget(self.combined_df)
+        self.populate_table_widget(self.combined_df, coloring = True)
 
     def initialize_advanced_settings(self):
         # Clear table before populating
