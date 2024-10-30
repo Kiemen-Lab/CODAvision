@@ -1,6 +1,6 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: June 17, 2024
+Date: October 30, 2024
 """
 
 import cv2
@@ -111,6 +111,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
             _ = make_overlay(img_path, imclassify, colormap=cmap, save_path=save_path)
 
         if color_mask:
+            imclassify = imclassify - 1
             outpthcolor = os.path.join(outpth, 'color')
             os.makedirs(outpthcolor, exist_ok=True)
             red_channel = cmap[:, 0]
