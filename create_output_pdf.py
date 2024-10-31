@@ -88,11 +88,23 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.chapter_title('5. Pixel and Tissue Composition Quantifications')
     pdf.chapter_body(f'First 5 rows of the Pixel and tissue composition quantifications saved in the CSV file.\nPath: {quantifications_csv_path}')
     df = pd.read_csv(quantifications_csv_path)
-    quantifications = df.head(5).to_string(index=False)
-    pdf.set_font('Arial', '', 8)
-    pdf.multi_cell(0, 10, quantifications)
+    quantifications = df.head(5)
 
-    # Additional Explanatory Text
+    # Set font for table
+    pdf.set_font('Arial', '', 8)
+
+    # Add table header
+    header = quantifications.columns
+    for col in header:
+        pdf.cell(40, 10, col, 1)
+    pdf.ln()
+
+    # Add table rows
+    for index, row in quantifications.iterrows():
+        for item in row:
+            pdf.cell(40, 10, str(item), 1)
+        pdf.ln()
+
     # Additional Explanatory Text
     pdf.add_page()
     pdf.set_font('Arial', '', 10)  # Set the font to Arial, regular, size 10
