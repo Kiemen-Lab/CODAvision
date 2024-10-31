@@ -86,24 +86,79 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     # Quantifications
     pdf.add_page()
     pdf.chapter_title('5. Pixel and Tissue Composition Quantifications')
-    pdf.chapter_body(f'First 5 rows of the Pixel and tissue composition quantifications saved in the CSV file.\nPath: {quantifications_csv_path}')
+    pdf.chapter_body(
+        f'First 5 rows of the Pixel and tissue composition quantifications saved in the CSV file.\nPath: {quantifications_csv_path}')
     df = pd.read_csv(quantifications_csv_path)
     quantifications = df.head(5)
 
     # Set font for table
     pdf.set_font('Arial', '', 8)
 
-    # Add table header
-    header = quantifications.columns
-    for col in header:
-        pdf.cell(40, 10, col, 1)
-    pdf.ln()
+    # Calculate available width
+    page_width = pdf.w - 2 * pdf.l_margin
+    # cell_width = 50
+    # max_cols_per_row = int(page_width // cell_width)  # Convert to integer
 
-    # Add table rows
-    for index, row in quantifications.iterrows():
-        for item in row:
-            pdf.cell(40, 10, str(item), 1)
+    # Calculate the width of each header
+    header = quantifications.columns
+    cell_widths = [pdf.get_string_width(col) + 10 for col in header]  # Add padding
+
+    # Calculate the maximum number of columns per row
+    max_cols_per_row = 0
+    current_width = 0
+    for width in cell_widths:
+        if current_width + width > page_width:
+            break
+        current_width += width
+        max_cols_per_row += 1
+
+    # Add table header and rows
+    num_cols = len(header)
+    num_rows = len(quantifications)
+
+    for start_col in range(0, num_cols, max_cols_per_row):
+
+        # Reset current_width and max_cols_per_row for the next table
+        current_width = 0
+        max_cols_per_row = 0
+        for width in cell_widths:
+            if current_width + width > page_width:
+                break
+            current_width += width
+            max_cols_per_row += 1
+
+        end_col = min(start_col + max_cols_per_row, num_cols)
+
+        # Print image name header
+        pdf.set_font('Arial', 'B', 8)  # Set font to bold for image names
+        pdf.cell(cell_widths[0], 10, header[0], 1)
         pdf.ln()
+
+        # Print header
+        pdf.set_font('Arial', 'B', 8)  # Set font to bold for headers
+        for col in header[start_col:end_col]:
+            pdf.cell(cell_widths[header.get_loc(col)], 10, col, 1)
+        pdf.ln()
+
+        # Print rows
+        pdf.set_font('Arial', '', 8)  # Set font back to normal for rows
+        for index, row in quantifications.iterrows():
+            for col in header[start_col:end_col]:
+                try:
+                    if 'pixel' in col.lower():
+                        value = f"{int(row[col])}"
+                    else:
+                        value = f"{float(row[col]):.2f}"
+                except ValueError:
+                    value = str(row[col])
+                pdf.cell(cell_widths[header.get_loc(col)], 10, value, 1)
+            pdf.ln()
+
+        # Leave a space of 10 units between each table
+        pdf.ln(10)
+
+
+
 
     # Additional Explanatory Text
     pdf.add_page()
