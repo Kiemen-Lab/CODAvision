@@ -1,10 +1,8 @@
 import os
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
 from PIL import Image
+from fpdf import FPDF
 import pandas as pd
-
+import pickle
 
 def convert_to_png(image_path):
     img = Image.open(image_path)
@@ -12,88 +10,116 @@ def convert_to_png(image_path):
     img.save(png_path, 'PNG')
     return png_path
 
-def create_output_pdf(output_path, confusion_matrix_path, color_legend_path, check_annotations_path, check_classification_path, quantifications_csv_path):
-    c = canvas.Canvas(output_path, pagesize=letter)
-    width, height = letter
+class PDF(FPDF):
+    def __init__(self, model_name, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model_name = model_name
+
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, f'Performance report for model: {self.model_name}', 0, 1, 'C')
+
+    def chapter_title(self, title):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, title, 0, 1, 'L')
+
+    def chapter_body(self, body):
+        self.set_font('Arial', '', 10)
+        self.multi_cell(0, 10, body)
+        self.ln()
+        self.ln(5)
+
+    def add_image(self, image_path, x, y, w, h):
+        self.image(image_path, x, y, w, h)
+
+def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path, check_classification_path, quantifications_csv_path):
+    print('Generating model evaluation report...')
+
+    # Load model name from pickle file
+    with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
+        data = pickle.load(f)
+    model_name = data.get('nm', 'Unknown Model')
+
+    pdf = PDF(model_name)
+    pdf.add_page()
 
     # Title
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(1 * inch, height - 1 * inch, "Model Evaluation Report")
+    pdf.set_font('Arial', 'B', 16)
 
     # Confusion Matrix
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(1 * inch, height - 1.5 * inch, "1. Confusion Matrix")
-    c.setFont("Helvetica", 10)
-    c.drawString(1 * inch, height - 1.75 * inch, "Confusion matrix, encompassing precision, recall, and accuracy scores.")
-    img = Image.open(confusion_matrix_path)
-    img.verify()  # Verify that it is, in fact, an image
+    pdf.chapter_title('1. Confusion Matrix')
+    pdf.chapter_body(f'Confusion matrix, encompassing precision, recall, and accuracy scores.\nPath: {confusion_matrix_path}')
     if confusion_matrix_path.lower().endswith('.jpg'):
         confusion_matrix_path = convert_to_png(confusion_matrix_path)
-    c.drawImage(confusion_matrix_path, 1 * inch, height - 5 * inch, width=4 * inch, preserveAspectRatio=True,
-                mask='auto')
+
+    # Calculate the width of the image to fit the page width excluding margins
+    page_width = pdf.w - 2 * pdf.l_margin
+    pdf.add_image(confusion_matrix_path, pdf.l_margin, 60, page_width, 0)
 
     # Color Legend
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(1 * inch, height - 5.5 * inch, "2. Color Legend")
-    c.setFont("Helvetica", 10)
-    c.drawString(1 * inch, height - 5.75 * inch, "Color legend associated with the trained model situated in the same path as the confusion matrix.")
-    c.drawImage(color_legend_path, 1 * inch, height - 8 * inch, width=4 * inch, preserveAspectRatio=True, mask='auto')
-
-    # Check Annotations
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(1 * inch, height - 8.5 * inch, "3. Check Annotations")
-    c.setFont("Helvetica", 10)
-    c.drawString(1 * inch, height - 8.75 * inch, "A folder named 'Check annotations,' found in the same path as the 'training annotations'.")
-    c.drawString(1 * inch, height - 9 * inch, "These images facilitate the visualization of annotations employed in training the model.")
-    check_annotations_image = os.path.join(check_annotations_path, os.listdir(check_annotations_path)[0])
-    c.drawImage(check_annotations_image, 1 * inch, height - 12 * inch, width=4 * inch, preserveAspectRatio=True, mask='auto')
+    pdf.add_page()
+    pdf.chapter_title('2. Color Legend')
+    pdf.chapter_body(f'Color legend associated with the trained model situated in the same path as the confusion matrix.\nPath: {color_legend_path}')
+    pdf.add_image(color_legend_path, 10, 60, 100, 0)
 
     # Check Classification
-    c.showPage()
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(1 * inch, height - 1 * inch, "4. Check Classification")
-    c.setFont("Helvetica", 10)
-    c.drawString(1 * inch, height - 1.25 * inch, "Classified images by the model will be stored in a folder named 'Classification_model_name'.")
-    c.drawString(1 * inch, height - 1.5 * inch, "This folder includes a 'check_classification' subfolder containing JPG images.")
+    pdf.add_page()
+    pdf.chapter_title('4. Check Classification')
+    parent_classification_path = os.path.dirname(check_classification_path)
+    pdf.chapter_body(f"Classified images by the model will be stored in the following folder: {parent_classification_path}. "
+                     f"This folder contains grayscale images with labels of the segmented annotation classes. "
+                     f"A subfolder in this path, 'check_classification', contains JPG images like the one shown on this page, "
+                     f"with a mask overlay using the chosen color map for the classification.")
     check_classification_image = os.path.join(check_classification_path, os.listdir(check_classification_path)[0])
-    c.drawImage(check_classification_image, 1 * inch, height - 4.5 * inch, width=4 * inch, preserveAspectRatio=True, mask='auto')
+    pdf.add_image(check_classification_image, pdf.l_margin, 70, page_width, 0)
+
+    # Check Annotations
+    pdf.add_page()
+    pdf.chapter_title('3. Check Annotations')
+    pdf.chapter_body(
+        f"Annotated images used for model training can be found in the following folder: {check_annotations_path}. "
+        f"These images, including the one shown on this page, facilitate the visualization of annotation layout for the "
+        f"annotations employed in training the model.")
+    check_annotations_image = os.path.join(check_annotations_path, os.listdir(check_annotations_path)[0])
+    pdf.add_image(check_annotations_image, pdf.l_margin, 60, page_width, 0)
 
     # Quantifications
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(1 * inch, height - 5 * inch, "5. Pixel and Tissue Composition Quantifications")
-    c.setFont("Helvetica", 10)
-    c.drawString(1 * inch, height - 5.25 * inch, "First 5 rows of the Pixel and tissue composition quantifications saved in the CSV file.")
+    pdf.add_page()
+    pdf.chapter_title('5. Pixel and Tissue Composition Quantifications')
+    pdf.chapter_body(f'First 5 rows of the Pixel and tissue composition quantifications saved in the CSV file.\nPath: {quantifications_csv_path}')
     df = pd.read_csv(quantifications_csv_path)
     quantifications = df.head(5).to_string(index=False)
-    text_object = c.beginText(1 * inch, height - 6 * inch)
-    text_object.setFont("Helvetica", 8)
-    text_object.textLines(quantifications)
-    c.drawText(text_object)
+    pdf.set_font('Arial', '', 8)
+    pdf.multi_cell(0, 10, quantifications)
 
     # Additional Explanatory Text
-    c.showPage()
-    c.setFont("Helvetica", 10)
+    # Additional Explanatory Text
+    pdf.add_page()
+    pdf.set_font('Arial', '', 10)  # Set the font to Arial, regular, size 10
+    pdf.chapter_title('6. Annex')
+    pdf.set_font('Arial', 'U', 10)  # Set the font to Arial, underline, size 10
+    pdf.cell(0, 10, 'Understanding the Confusion Matrix', 0, 1, 'L')
+    pdf.set_font('Arial', '', 10)  # Reset the font to Arial, regular, size 10
     explanatory_text = """
-    Within the code workflow, a quantitative evaluation of the model is conducted using the specified annotation testing dataset specified on the 'File location' page of the Excel GUI. This evaluation yields a confusion matrix, providing a detailed analysis of the model's classification performance for each annotated class. In the presented example (Figure 33), the confusion matrix is structured with precision scores for predicted annotation classes in the bottom row and sensitivity (recall) values for each annotated class in the final right column. The overall accuracy score of the model is situated at the bottom right corner of the confusion matrix table.
+    Within the code workflow, a quantitative evaluation of the model is conducted using the specified annotation testing dataset on the 'File location' page of the Excel GUI. This evaluation yields a confusion matrix, providing a detailed analysis of the model's classification performance for each annotated class. As shown on the first page, the confusion matrix is structured with precision scores for predicted annotation classes in the bottom row and sensitivity (recall) values for each annotated class in the final right column. The overall accuracy score of the model is situated at the bottom right corner of the confusion matrix table.
 
-    The confusion matrix table employs a color-coded scheme, where classes that are prone to misclassification are visually highlighted by a darker shade of red. In the provided example, the misclassification of some stroma with Epithelium is evident through the intensified red coloring of those squares in the table.
+    The confusion matrix table employs a color-coded scheme, where classes that are prone to misclassification are colored following a yellow-to-red gradient, with scores over 90 colored in green.
 
     It is crucial to note that, for a model to be deemed decent, it should exhibit an overall accuracy score exceeding 85%, and each annotated class should have a precision score surpassing 85%. These metrics serve as benchmarks to guide the addition of more annotations to improve the model's performance and achieve a higher overall accuracy score.
     """
-    text_object = c.beginText(1 * inch, height - 1 * inch)
-    text_object.setFont("Helvetica", 10)
-    text_object.textLines(explanatory_text)
-    c.drawText(text_object)
+    pdf.chapter_body(explanatory_text)
 
-    c.save()
+    pdf.output(output_path)
+    print(f'PDF report saved at: {output_path}')
 
 # Example usage
 if __name__ == '__main__':
     create_output_pdf(
-        output_path=r"\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report.pdf",
-        confusion_matrix_path=r"\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\confusion_matrix.jpg",
-        color_legend_path=r"\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_color_legend.png",
-        check_annotations_path=r"\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\check_annotations",
-        check_classification_path=r"\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\check_classification",
-        quantifications_csv_path=r"\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\image_quantifications.csv"
+        output_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report.pdf',
+        confusion_matrix_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\confusion_matrix.jpg',
+        color_legend_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_color_legend.png',
+        check_annotations_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\check_annotations',
+        check_classification_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\check_classification',
+        quantifications_csv_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\image_quantifications.csv',
+        pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024'
     )
