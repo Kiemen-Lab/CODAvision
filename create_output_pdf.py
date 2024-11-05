@@ -168,7 +168,7 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.cell(0, 10, 'Understanding the Confusion Matrix', 0, 1, 'L')
     pdf.set_font('Arial', '', 10)  # Reset the font to Arial, regular, size 10
     explanatory_text = """
-    Within the code workflow, a quantitative evaluation of the model is conducted using the specified annotation testing dataset on the 'File location' page of the Excel GUI. This evaluation yields a confusion matrix, providing a detailed analysis of the model's classification performance for each annotated class. As shown on the first page, the confusion matrix is structured with precision scores for predicted annotation classes in the bottom row and sensitivity (recall) values for each annotated class in the final right column. The overall accuracy score of the model is situated at the bottom right corner of the confusion matrix table.
+    Within the code workflow, a quantitative evaluation of the model is conducted using the specified annotation testing dataset on the 'File location' page of the GUI. This evaluation yields a confusion matrix, providing a detailed analysis of the model's classification performance for each annotated class. As shown on the first page, the confusion matrix is structured with precision scores for predicted annotation classes in the bottom row and sensitivity (recall) values for each annotated class in the final right column. The overall accuracy score of the model is situated at the bottom right corner of the confusion matrix table.
 
     The confusion matrix table employs a color-coded scheme, where classes that are prone to misclassification are colored following a yellow-to-red gradient, with scores over 90 colored in green.
 
