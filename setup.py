@@ -33,7 +33,7 @@ setup(
         'openslide-python==1.3.1',
         'openpyxl==3.1.2',
         'GPUtil==1.4.0',
-        'PySide6==6.5.1'
+        'PySide6==6.5.1.1'
     ],
     package_data={
         '': ['*.ipynb', '*.qss'],
