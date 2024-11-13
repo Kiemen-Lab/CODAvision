@@ -1,13 +1,9 @@
 # https://keras.io/examples/vision/deeplabv3_plus/
 """
-Author: Arrun Sivasubramanian (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 07, 2024
+Author: Valentina Matos Romero (Johns Hopkins - Wirtz/Kiemen Lab)
+Date: November 13, 2024
 """
 
-import time
-import pickle
-import keras
-from keras import layers, models
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import os
@@ -27,7 +23,7 @@ import GPUtil
 warnings.filterwarnings('ignore')
 
 
-def train_segmentation_model(pthDL,name): #ADDED NAME
+def train_segmentation_model_cnns(pthDL,name): #ADDED NAME
     #Start training time
     start_time = time.time()
 
@@ -68,7 +64,6 @@ def train_segmentation_model(pthDL,name): #ADDED NAME
         if 'model' in f:
             raise ValueError(f'A network has already been trained for model {nm}. Choose a new model name to retrain.')
 
-
     # Define paths to training and validation directories
     pthTrain = os.path.join(pthDL, 'training')
     pthValidation = os.path.join(pthDL, 'validation')
@@ -81,19 +76,8 @@ def train_segmentation_model(pthDL,name): #ADDED NAME
     val_images = sorted(glob(os.path.join(pthValidation, 'im', "*.png")))
     val_masks = sorted(glob(os.path.join(pthValidation, 'label', "*.png")))
 
-    # Define constants
-    #Dynamic batch size based on available memory (work in progress)
-    # if available_memory<5:
-    #     BATCH_SIZE = 3
-    # elif available_memory<25 and available_memory>5:
-    #     BATCH_SIZE = 4
-    # elif available_memory<40 and available_memory>25:
-    #     BATCH_SIZE = 5
-    # elif available_memory<55 and available_memory>40:
-    #     BATCH_SIZE = 6
-    # print(f'The batch size is {BATCH_SIZE}')
-
-    BATCH_SIZE = 3
+    # BATCH_SIZE = 3
+    BATCH_SIZE = 2 #11/13/2024
     NUM_CLASSES = len(classNames)  # Number of classes
 
     # Create TensorFlow dataset
@@ -123,76 +107,9 @@ def train_segmentation_model(pthDL,name): #ADDED NAME
     train_dataset = data_generator(train_images, train_masks)
     val_dataset = data_generator(val_images, val_masks)
 
-    print("Shape of data",np.shape(train_dataset),np.shape(val_dataset))
-
-    # #_____________________Build DeepLabV3+ model_____________________
 
     # Define loss function
     loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
-
-    # def convolution_block(
-    #         block_input,
-    #         num_filters=256,
-    #         kernel_size=3,
-    #         dilation_rate=1,
-    #         use_bias=False,
-    # ):
-    #     x = layers.Conv2D(
-    #         num_filters,
-    #         kernel_size=kernel_size,
-    #         dilation_rate=dilation_rate,
-    #         padding="same",
-    #         use_bias=use_bias,
-    #         kernel_initializer=keras.initializers.HeNormal(),
-    #     )(block_input)
-    #     x = layers.BatchNormalization()(x)
-    #     return tf.nn.relu(x)
-
-    # def DilatedSpatialPyramidPooling(dspp_input):
-    #     dims = dspp_input.shape
-    #     x = layers.AveragePooling2D(pool_size=(dims[-3], dims[-2]))(dspp_input)
-    #     x = convolution_block(x, kernel_size=1, use_bias=True)
-    #     out_pool = layers.UpSampling2D(
-    #         size=(dims[-3] // x.shape[1], dims[-2] // x.shape[2]),
-    #         interpolation="bilinear",
-    #     )(x)
-
-    #     out_1 = convolution_block(dspp_input, kernel_size=1, dilation_rate=1)
-    #     out_6 = convolution_block(dspp_input, kernel_size=3, dilation_rate=6)
-    #     out_12 = convolution_block(dspp_input, kernel_size=3, dilation_rate=12)
-    #     out_18 = convolution_block(dspp_input, kernel_size=3, dilation_rate=18)
-
-    #     x = layers.Concatenate(axis=-1)([out_pool, out_1, out_6, out_12, out_18])
-    #     output = convolution_block(x, kernel_size=1)
-    #     return output
-
-    # def DeeplabV3Plus(image_size, num_classes):
-    #     model_input = keras.Input(shape=(image_size, image_size, 3))
-    #     preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
-    #     resnet50 = tf.keras.applications.ResNet50(
-    #         weights="imagenet", include_top=False, input_tensor=preprocessed
-    #     )
-    #     x = resnet50.get_layer("conv4_block6_2_relu").output
-    #     x = DilatedSpatialPyramidPooling(x)
-
-    #     input_a = layers.UpSampling2D(
-    #         size=(image_size // 4 // x.shape[1], image_size // 4 // x.shape[2]),
-    #         interpolation="bilinear",
-    #     )(x)
-    #     input_b = resnet50.get_layer("conv2_block3_2_relu").output
-    #     input_b = convolution_block(input_b, num_filters=48, kernel_size=1)
-
-    #     x = layers.Concatenate(axis=-1)([input_a, input_b])
-    #     x = convolution_block(x)
-    #     x = convolution_block(x)
-    #     x = layers.UpSampling2D(
-    #         size=(image_size // x.shape[1], image_size // x.shape[2]),
-    #         interpolation="bilinear",
-    #     )(x)
-    #     model_output = layers.Conv2D(num_classes, kernel_size=(1, 1), padding="same")(x)
-    #     return keras.Model(inputs=model_input, outputs=model_output)
-
-
 
     class BatchAccCall(keras.callbacks.Callback):
         def __init__(self, model, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
@@ -380,7 +297,7 @@ def train_segmentation_model(pthDL,name): #ADDED NAME
 
     # Save model
     print('Saving model...')
-    mod_name = f"{name}.keras" 
+    mod_name = f"{name}.keras"
     model.save(os.path.join(pthDL, mod_name))
     # data['model'] = model
     data['history'] = history.history  # Get the model history

@@ -20,7 +20,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 
-def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
+def classify_images(pthim, pthDL, cnn_name, color_overlay_HE=True, color_mask=False):
     start_time = time.time()
     # Load the model weights and other relevant data
     model = load_model(os.path.join(pthDL, 'best_model_net.keras'))
@@ -33,7 +33,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         nm = data['nm']
         sxy = data['sxy']
 
-    outpth = os.path.join(pthim, 'classification_' + nm)
+    outpth = os.path.join(pthim, 'classification_' + nm + '_' + cnn_name)
     os.makedirs(outpth, exist_ok=True)
 
     b = 100

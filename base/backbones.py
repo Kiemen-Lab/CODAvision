@@ -54,9 +54,11 @@ class DeepLabV3Plus:
         return output
 
     def build_model(self):
-        inputs = layers.Input(self.input_size)
+        # inputs = layers.Input(self.input_size) ARRUN
+        model_input = keras.Input(shape=(self.input_size, self.input_size, 3))
+        preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
         #preprocessed = applications.resnet50.preprocess_input(inputs)
-        resnet50 = applications.ResNet50(weights="imagenet", include_top=False, input_tensor=inputs)
+        resnet50 = applications.ResNet50(weights="imagenet", include_top=False, input_tensor=preprocessed)
         
         x = resnet50.get_layer("conv4_block6_2_relu").output
         x = self.dilated_spatial_pyramid_pooling(x)
@@ -107,7 +109,8 @@ class UNet:
         return x
 
     def build_model(self):
-        inputs = layers.Input(self.input_size)
+        # inputs = layers.Input(self.input_size) #ARRUN
+        inputs = keras.Input(shape=(self.input_size, self.input_size, 3))
 
         s1, p1 = self.encoder_block(inputs, 64)
         s2, p2 = self.encoder_block(p1, 128)
@@ -196,11 +199,13 @@ class UNet3Plus:
         if(drop):
             drop = layers.Dropout(drop, dtype='float32',name = f'dropout-b-{layer}')(layer_norma)
             return drop
-        return batch_norma
+        return layer_norma
 
 
     def build_model(self):
-        input_layer = layers.Input(self.input_size)
+        # input_layer = layers.Input(self.input_size) #ARRUN
+        input_layer = keras.Input(shape=(self.input_size, self.input_size, 3))
+
         e1 = self.encoder_block(input_layer,32,str(1))
         e2 = self.encoder_block(e1,64,str(2))
         e3 = self.encoder_block(e2,128,str(3))
@@ -269,7 +274,8 @@ class TransUNet:
         return x
 
     def build_model(self):
-        inputs = layers.Input(shape=self.input_size)
+        # inputs = layers.Input(shape=self.input_size) #ARRUN
+        inputs = keras.Input(shape=(self.input_size, self.input_size, 3))
 
         skip1, p1 = self.encoder_block(inputs, self.num_filters)
         skip2, p2 = self.encoder_block(p1, self.num_filters * 2)
@@ -425,6 +431,7 @@ class CASe_UNet:
     
 # Instantiate and build
 def model_call(name, IMAGE_SIZE, NUM_CLASSES):
+
     if(name == "UNet"):
         model = UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()    
     elif(name == "DeepLabV3+"):

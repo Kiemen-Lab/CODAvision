@@ -24,7 +24,7 @@ def read_image_as_double(file_path):
     except Exception as e:
         raise RuntimeError(f"Error reading image file {file_path}: {e}")
 
-def test_segmentation_model(pthDL,pthtest, pthtestim):
+def test_segmentation_model(pthDL,pthtest, pthtestim, cnn_name):
 
     print("Testing segmentation model......")
 
@@ -148,6 +148,6 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
 
     confusion_data[np.isnan(confusion_data)] = 0
 
-    _ = plot_confusion_matrix(confusion_data, classNames, pthDL)
+    _ = plot_confusion_matrix(confusion_data, classNames, pthDL, cnn_name)
     return
 
