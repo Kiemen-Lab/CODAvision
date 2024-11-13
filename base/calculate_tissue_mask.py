@@ -1,3 +1,4 @@
+
 """
 Author: Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: April 24, 2024
@@ -6,7 +7,7 @@ import os
 import numpy as np
 from skimage import morphology
 import cv2
-import scipy
+import pickle as pkl
 
 def calculate_tissue_mask(pth, imnm):
     """
@@ -47,18 +48,18 @@ def calculate_tissue_mask(pth, imnm):
         return im0, TA, outpth
 
     print('  Calculating TA image')
-    if os.path.isfile(os.path.join(outpth, 'TA_cutoff.mat')): # Check if the TA value has already been calculated
-        data = scipy.io.loadmat(os.path.join(outpth, 'TA_cutoff.mat'))
-
-
-        cts = data['cts']
+    if os.path.isfile(os.path.join(outpth, 'TA_cutoff.pkl')): # Check if the TA value has already been calculated
+        with open(os.path.join(outpth, 'TA_cutoff.pkl'), 'rb') as f:  #
+            data = pkl.load(f)  #
+            cts = data['cts']
         ct=0
         for i in cts:
             for j in i:
                 ct += j
             ct = ct/len(i)
     else:
-        ct = 205 #If there is no previous TA value, use 205
+        # ct = 210 #If there is no previous TA value, use 210
+        ct = 205
 
     TA = im0[:, :, 1] < ct # Threshold the image green values
     kernel_size = 3
@@ -68,4 +69,3 @@ def calculate_tissue_mask(pth, imnm):
     TA = morphology.remove_small_objects(TA.astype(bool), min_size=10)
     cv2.imwrite(os.path.join(outpth, imnm + '.tif'), TA.astype(np.uint8))
     return im0, TA, outpth
-
