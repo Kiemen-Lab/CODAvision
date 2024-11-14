@@ -82,7 +82,7 @@ class DeepLabV3Plus:
         
         outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
         
-        model = Model(inputs, outputs, name='DeepLabV3+')
+        model = Model(preprocessed, outputs, name='DeepLabV3+')
         return model
 
 class UNet:

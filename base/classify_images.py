@@ -23,7 +23,7 @@ Image.MAX_IMAGE_PIXELS = None
 def classify_images(pthim, pthDL, cnn_name, color_overlay_HE=True, color_mask=False):
     start_time = time.time()
     # Load the model weights and other relevant data
-    model = load_model(os.path.join(pthDL, 'best_model_net.keras'))
+    model = load_model(os.path.join(pthDL, 'best_model_' + cnn_name + '.keras'))
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         classNames = data['classNames']

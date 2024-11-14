@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore")
 
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: June 22, 2024
+Date: November 14, 2024
 """
 
 def read_image_as_double(file_path):
@@ -37,7 +37,7 @@ def test_segmentation_model(pthDL,pthtest, pthtestim, cnn_name):
     pthtestdata = os.path.join(pthtest, 'data py')
     load_annotation_data(pthDL, pthtest, pthtestim)
 
-    pthclassifytest = classify_images(pthtestim, pthDL, color_overlay_HE=True, color_mask=False)
+    pthclassifytest = classify_images(pthtestim, pthDL,cnn_name, color_overlay_HE=True, color_mask=False)
 
     classNames = classNames[:-1]
     numClasses = nblack - 1
