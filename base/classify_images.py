@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 from scipy.ndimage import binary_fill_holes
-from tensorflow.keras.models import load_model
+# from tensorflow.keras.models import load_model
+from keras.models import load_model
 import keras
 from .Semanticseg import semantic_seg
 from .make_overlay import make_overlay, decode_segmentation_masks
@@ -24,6 +25,7 @@ def classify_images(pthim, pthDL, cnn_name, color_overlay_HE=True, color_mask=Fa
     start_time = time.time()
     # Load the model weights and other relevant data
     model = load_model(os.path.join(pthDL, 'best_model_' + cnn_name + '.keras'))
+
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         classNames = data['classNames']

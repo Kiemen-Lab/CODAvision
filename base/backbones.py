@@ -64,7 +64,7 @@ class DeepLabV3Plus:
         x = self.dilated_spatial_pyramid_pooling(x)
 
         input_a = layers.UpSampling2D(
-            size=(self.input_size[0] // 4 // x.shape[1], self.input_size[1] // 4 // x.shape[2]),
+            size=(self.input_size // 4 // x.shape[1], self.input_size // 4 // x.shape[2]),
             interpolation="bilinear",
         )(x)
         
@@ -76,13 +76,13 @@ class DeepLabV3Plus:
         x = self.convolution_block(x)
 
         x = layers.UpSampling2D(
-            size=(self.input_size[0] // x.shape[1], self.input_size[1] // x.shape[2]),
+            size=(self.input_size // x.shape[1], self.input_size // x.shape[2]),
             interpolation="bilinear",
         )(x)
         
         outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
         
-        model = Model(preprocessed, outputs, name='DeepLabV3+')
+        model = Model(preprocessed, outputs, name='DeepLabV3_plus')
         return model
 
 class UNet:
@@ -221,7 +221,7 @@ class UNet3Plus:
         d_intout3 = layers.Conv2D(16,3,padding = 'same',activation = layers.LeakyReLU(),name = 'feature_smoothen_2')(d_intout2)
         d_out = layers.Conv2D(self.num_classes, kernel_size = 1, padding = 'same', activation = 'softmax',name = 'segmaps')(d_intout3)
 
-        model = Model(inputs = input_layer, outputs = [d_out],name = "UNet3+")
+        model = Model(inputs = input_layer, outputs = [d_out],name = "UNet3_plus")
         return model
         
 class TransUNet:
@@ -261,7 +261,7 @@ class TransUNet:
             x = layers.LayerNormalization(epsilon=1e-6)(x)
             x = x + layers.Dense(self.transformer_units, activation="relu")(x)
 
-        new_h, new_w = self.input_size[0] // 16, self.input_size[1] // 16
+        new_h, new_w = self.input_size // 16, self.input_size // 16
         x = layers.Reshape((new_h, new_w, num_channels))(x)
         return x
 
@@ -298,49 +298,38 @@ class CASe_UNet:
     def __init__(self, input_size, num_classes):
         self.input_size = (input_size,input_size,3)
         self.num_classes = num_classes
-
     def downsampler(self, fmap, count):
         for i in range(count):
             fmap = layers.MaxPool2D(2, dtype='float32')(fmap)
         return fmap
-    
     def upsampler(self, fmap, count):
         for i in range(count):
             fmap = layers.UpSampling2D(2, dtype='float32')(fmap)
         return fmap
-    
     def encoder_block(self, input_features, num_filters, layer, filter_size=[3, 5, 7]):
         conv1_1 = layers.Conv2D(num_filters, filter_size[0], padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_1_1')(input_features)
         conv1_2 = layers.Conv2D(num_filters, filter_size[1], padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_1_2')(input_features)
         conv1_3 = layers.Conv2D(num_filters, filter_size[2], padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_1_3')(input_features)
-
         concat_12 = layers.Concatenate(dtype='float32', name=f'conc-e-{layer}_12')([conv1_1, conv1_2])
         concat_13 = layers.Concatenate(dtype='float32', name=f'conc-e-{layer}_13')([conv1_1, conv1_3])
         concat_23 = layers.Concatenate(dtype='float32', name=f'conc-e-{layer}_23')([conv1_2, conv1_3])
-
-        conv2_1 = layers.Conv2D(num_filters, 3, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_2_1')(concat_12)
-        conv2_2 = layers.Conv2D(num_filters, 3, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_2_2')(concat_23)
-        conv2_3 = layers.Conv2D(num_filters, 3, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_2_3')(concat_13)
-
+        conv2_1 = layers.Conv2D(num_filters, 1, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_2_1')(concat_12)
+        conv2_2 = layers.Conv2D(num_filters, 1, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_2_2')(concat_23)
+        conv2_3 = layers.Conv2D(num_filters, 1, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv-e-{layer}_2_3')(concat_13)
         concat_123 = layers.Concatenate(dtype='float32', name=f'conc-e-{layer}_123')([conv2_1, conv2_2, conv2_3])
-
-        conv_fin = layers.Conv2D(num_filters, 3, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv_fin-e-{layer}_123')(concat_123)
+        conv_fin = layers.Conv2D(num_filters, 1, padding='same', activation=layers.LeakyReLU(alpha=0.1), dtype='float32', name=f'conv_fin-e-{layer}_123')(concat_123)
         maxpool_fin = layers.MaxPooling2D(2, dtype='float32', name=f'maxpool_fin-{layer}')(conv_fin)
         return maxpool_fin
-    
     def decoder_block(self,input_layer,down_skip_connection, up_skip_connection, num_filters, layer, filter_size=[3,5,7]):
         convt1_1 = layers.Conv2DTranspose(num_filters, filter_size[0], padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'convt-d-{layer}_1_1')(input_layer)
         convt1_2 = layers.Conv2DTranspose(num_filters, filter_size[1], padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'convt-d-{layer}_1_2')(input_layer)
         convt1_3 = layers.Conv2DTranspose(num_filters, filter_size[2], padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'convt-d-{layer}_1_3')(input_layer)
-
         concat_12 = layers.Concatenate(dtype='float32',name = f'conc-d-{layer}_12')([convt1_1,convt1_2])
         concat_13 = layers.Concatenate(dtype='float32',name = f'conc-d-{layer}_23')([convt1_2,convt1_3])
         concat_23 = layers.Concatenate(dtype='float32',name = f'conc-d-{layer}_13')([convt1_1,convt1_3])
-
-        conv2_1 = layers.Conv2D(num_filters,3, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv-d-{layer}_2_1')(concat_12)
-        conv2_2 = layers.Conv2D(num_filters,3, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv-d-{layer}_2_2')(concat_23)
-        conv2_3 = layers.Conv2D(num_filters,3, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv-d-{layer}_2_3')(concat_13)
-
+        conv2_1 = layers.Conv2D(num_filters,1, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv-d-{layer}_2_1')(concat_12)
+        conv2_2 = layers.Conv2D(num_filters,1, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv-d-{layer}_2_2')(concat_23)
+        conv2_3 = layers.Conv2D(num_filters,1, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv-d-{layer}_2_3')(concat_13)
         if(len(down_skip_connection) == 5):
             skip_connection_d = layers.Concatenate(dtype='float32',name = f'conc-down-d-{layer}')([self.downsampler(down_skip_connection[0],4),self.downsampler(down_skip_connection[1],3),self.downsampler(down_skip_connection[2],2),self.downsampler(down_skip_connection[3],1),down_skip_connection[4]])
         elif(len(down_skip_connection) == 4):
@@ -353,8 +342,6 @@ class CASe_UNet:
             skip_connection_d = layers.Concatenate(dtype='float32',name = f'conc-down-d-{layer}')([down_skip_connection[0]])
         else:
             print("ERROR INITIALIZING DOWN SKIPS!!")
-
-
         if(len(up_skip_connection) == 4):
             skip_connection_u = layers.Concatenate(dtype='float32',name = f'conc-up-d-{layer}')([self.upsampler(up_skip_connection[0],4),self.upsampler(up_skip_connection[1],3),self.upsampler(up_skip_connection[2],2),self.upsampler(up_skip_connection[3],1)])
         elif(len(up_skip_connection) == 3):
@@ -363,18 +350,13 @@ class CASe_UNet:
             skip_connection_u = layers.Concatenate(dtype='float32',name = f'conc-up-d-{layer}')([self.upsampler(up_skip_connection[0],2),self.upsampler(up_skip_connection[1],1)])
         elif(len(up_skip_connection) == 1):
             skip_connection_u = layers.Concatenate(dtype='float32',name = f'conc-up-d-{layer}')([self.upsampler(up_skip_connection[0],1)])
-
         if(len(up_skip_connection) == 0):
             concat_123 = layers.Concatenate(dtype='float32',name = f'conc-ud-{layer}_123')([conv2_1,conv2_2,conv2_3,skip_connection_d])
         else:
             concat_123 = layers.Concatenate(dtype='float32',name = f'conc-ud-{layer}_123')([conv2_1,conv2_2,conv2_3,skip_connection_d,skip_connection_u])
-
-        conv_fin = layers.Conv2D(num_filters,3, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv_fin-ud-{layer}_123')(concat_123)
+        conv_fin = layers.Conv2D(num_filters,1, padding = 'same',activation = layers.LeakyReLU(alpha=0.1), dtype='float32',name = f'conv_fin-ud-{layer}_123')(concat_123)
         upsampling_fin = layers.UpSampling2D(2, dtype='float32',name = f'upsampling_fin-{layer}')(conv_fin)
-
         return upsampling_fin
-
-
         if(len(up_skip_connection) == 4):
             skip_connection_u = layers.Concatenate(dtype='float32',name = f'conc-up-d-{layer}')([self.upsampler(up_skip_connection[0],4),self.upsampler(up_skip_connection[1],3),self.upsampler(up_skip_connection[2],2),self.upsampler(up_skip_connection[3],1)])
         elif(len(up_skip_connection) == 3):
@@ -383,33 +365,25 @@ class CASe_UNet:
             skip_connection_u = layers.Concatenate(dtype='float32',name = f'conc-up-d-{layer}')([self.upsampler(up_skip_connection[0],2),self.upsampler(up_skip_connection[1],1)])
         elif(len(up_skip_connection) == 1):
             skip_connection_u = layers.Concatenate(dtype='float32',name = f'conc-up-d-{layer}')([self.upsampler(up_skip_connection[0],1)])
-
         if(len(up_skip_connection) == 0):
             concat_123 = layers.Concatenate(dtype='float32',name = f'conc-ud-{layer}_123')([conv2_1,conv2_2,conv2_3,skip_connection_d])
         else:
             concat_123 = layers.Concatenate(dtype='float32',name = f'conc-ud-{layer}_123')([conv2_1,conv2_2,conv2_3,skip_connection_d,skip_connection_u])
-
-        conv_fin = layers.Conv2D(num_filters,3, padding = 'same',activation = layers.LeakyReLU(), dtype='float32',name = f'conv_fin-ud-{layer}_123')(concat_123)
+        conv_fin = layers.Conv2D(num_filters,1, padding = 'same',activation = layers.LeakyReLU(), dtype='float32',name = f'conv_fin-ud-{layer}_123')(concat_123)
         upsampling_fin = layers.UpSampling2D(2, dtype='float32',name = f'upsampling_fin-{layer}')(conv_fin)
-
         return upsampling_fin
-
-    
     def bottleneck(self,input_layer,layer,drop = 0.2):
-
         feature_layer = layers.Conv2D(512,3,padding = 'same',activation = 'linear', dtype='float32',name = f'feature_layer-b-{layer}')(input_layer)
         attention_layer = layers.Conv2D(512,3,padding = 'same',activation = 'sigmoid', dtype='float32',name = f'attention_layer-b-{layer}')(feature_layer)
         new_input_features = layers.MultiHeadAttention(num_heads=3, key_dim=3, attention_axes=(2, 3), dtype='float32',name = f'MHSA_layer-b-{layer}')(input_layer,attention_layer)
-
         layer_norma = layers.LayerNormalization(dtype='float32',name = f'LN-b-{layer}')(new_input_features)
         if(drop):
             drop = layers.Dropout(drop, dtype='float32',name = f'dropout-b-{layer}')(layer_norma)
             return drop
         return layer_norma
-
     def build_model(self):
-        
         inputs = layers.Input(self.input_size)
+        # inputs = keras.Input(shape=(self.input_size, self.input_size, 3))
         e1 = self.encoder_block(inputs,32,str(1))
         e2 = self.encoder_block(e1,64,str(2))
         e3 = self.encoder_block(e2,128,str(3))
@@ -424,9 +398,7 @@ class CASe_UNet:
         d_intout2 = layers.Conv2D(16,3,padding = 'same',activation = layers.LeakyReLU(),name = 'feature_smoothen_1')(d_intout1)
         d_intout3 = layers.Conv2D(16,3,padding = 'same',activation = layers.LeakyReLU(),name = 'feature_smoothen_2')(d_intout2)
         d_out = layers.Conv2D(self.num_classes, kernel_size = 1, padding = 'same', activation = 'softmax',name = 'segmaps')(d_intout3)
-
         model = Model(inputs = inputs, outputs = [d_out], name="CASe_UNet")
-        
         return model
     
 # Instantiate and build
@@ -434,14 +406,15 @@ def model_call(name, IMAGE_SIZE, NUM_CLASSES):
 
     if(name == "UNet"):
         model = UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()    
-    elif(name == "DeepLabV3+"):
+    elif(name == "DeepLabV3_plus"):
         model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif(name == "UNet3+"):
+    elif(name == "UNet3_plus"):
         model = UNet3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()   
     elif(name == "TransUNet"):
         model = TransUNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model() 
     elif(name == "CASe_UNet"):
         model = CASe_UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
+        model.summary()
     else:
         raise ValueError(f'Incorrect Model Name / Pretrained model of {name} does not exist')
                                                    
