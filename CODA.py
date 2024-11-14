@@ -16,7 +16,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
-    QGroupBox, QHBoxLayout, QHeaderView, QLabel,
+    QGroupBox, QHBoxLayout, QHeaderView, QLabel, QMessageBox,
     QLineEdit, QMainWindow, QPushButton, QSizePolicy,
     QSpacerItem, QSpinBox, QStatusBar, QTabWidget,
     QTableView, QTableWidget, QTableWidgetItem, QVBoxLayout,
@@ -46,6 +46,7 @@ class Ui_MainWindow(object):
         self.label_4.setObjectName(u"label_4")
 
         self.horizontalLayout_3.addWidget(self.label_4)
+
 
         self.resolution_CB = QComboBox(self.tab)
         self.resolution_CB.addItem("")
@@ -140,8 +141,14 @@ class Ui_MainWindow(object):
         self.prerecorded_PB = QPushButton(self.tab)
         self.prerecorded_PB.setObjectName(u"prerecorded_PB")
         self.prerecorded_PB.setEnabled(True)
-
         self.gridLayout_3.addWidget(self.prerecorded_PB, 0, 2, 1, 1)
+
+        self.classify_PB = QPushButton(self.tab)
+        self.classify_PB.setObjectName(u"classify_PB")
+        self.classify_PB.setEnabled(False)
+        self.classify_PB.setStyleSheet("background-color: green; color: white;")
+        self.classify_PB.setGeometry(QRect(253, 9, 205, 28))
+        self.classify_PB.setVisible(False)
 
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
@@ -151,6 +158,8 @@ class Ui_MainWindow(object):
         self.tissue_segmentation_TW = QTableWidget(self.tab_2)
         self.tissue_segmentation_TW.setObjectName(u"tissue_segmentation_TW")
         self.tissue_segmentation_TW.setEnabled(True)
+        self.tissue_segmentation_TW.horizontalHeader().setSectionsClickable(False)
+        self.tissue_segmentation_TW.verticalHeader().setSectionsClickable(False)
 
         self.gridLayout_7.addWidget(self.tissue_segmentation_TW, 0, 0, 2, 1)
 
@@ -412,6 +421,7 @@ class Ui_MainWindow(object):
         self.ttn_SB.setMaximum(100)
         self.ttn_SB.setSingleStep(1)
         self.ttn_SB.setValue(15)
+        self.ttn_SB.lineEdit().setReadOnly(True)
 
         self.horizontalLayout_12.addWidget(self.ttn_SB)
 
@@ -430,6 +440,7 @@ class Ui_MainWindow(object):
         self.vtn_SB.setMaximum(100)
         self.vtn_SB.setSingleStep(1)
         self.vtn_SB.setValue(3)
+        self.vtn_SB.lineEdit().setReadOnly(True)
 
         self.horizontalLayout_13.addWidget(self.vtn_SB)
 
@@ -449,6 +460,7 @@ class Ui_MainWindow(object):
         self.TA_SB.setSingleStep(1)
         self.TA_SB.setValue(3)
         self.TA_SB.setDisplayIntegerBase(15)
+        self.TA_SB.lineEdit().setReadOnly(True)
 
         self.horizontalLayout_14.addWidget(self.TA_SB)
 
@@ -466,6 +478,8 @@ class Ui_MainWindow(object):
         self.verticalLayout_9.setObjectName(u"verticalLayout_9")
         self.component_TW = QTableWidget(self.groupBox_3)
         self.component_TW.setObjectName(u"component_TW")
+        self.component_TW.horizontalHeader().setSectionsClickable(False)
+        self.component_TW.verticalHeader().setSectionsClickable(False)
 
         self.verticalLayout_9.addWidget(self.component_TW)
 
@@ -486,7 +500,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         self.tts_CB.setCurrentIndex(4)
 
 
@@ -530,8 +544,9 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.testing_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
         self.prerecorded_PB.setText(QCoreApplication.translate("MainWindow", u"Load prerecorded data", None))
+        self.classify_PB.setText(QCoreApplication.translate("MainWindow", u"Classify images", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"File Location", None))
-        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class whitespace settings", None))
+        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class whitespace sesttings", None))
         self.wsoptions_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
         self.wsoptions_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"Remove whitespace", None))
         self.wsoptions_CB.setItemText(2, QCoreApplication.translate("MainWindow", u"Keep only whitespace", None))
@@ -576,4 +591,3 @@ class Ui_MainWindow(object):
         self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Advanced Settings", None))
     # retranslateUi
-
