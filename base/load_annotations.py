@@ -26,7 +26,7 @@ def load_annotations(xml_file):
 
     xyout = []
 
-    reduced_annotations = my_dict['Annotations'].get('@MicronsPerPixel')
+    reduced_annotations = my_dict['Annotations'].get('@MicronsPerPixel', 1)
     reduced_annotations = float(reduced_annotations)
 
     annotations = my_dict.get("Annotations", {}).get("Annotation", [])
