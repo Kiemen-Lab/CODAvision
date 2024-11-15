@@ -79,7 +79,7 @@ def plot_confusion_matrix(confusion_data, classNames, pthDL, cnn_name):
     plt.savefig(os.path.join(pthDL, cm_name))
     plt.show()
 
-    print(f"\nConfusion matrix saved to {os.path.join(pthDL, 'confusion_matrix.jpg')}")
+    print(f"\nConfusion matrix saved to {os.path.join(pthDL, 'confusion_matrix' + cnn_name + '.jpg')}")
 
     print(f"\nOverall Accuracy: {accuracy}%")
 

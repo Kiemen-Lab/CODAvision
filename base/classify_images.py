@@ -37,7 +37,7 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
     model.load_weights(os.path.join(pthDL, model_filename))#ARRUN
 
     
-    outpth = os.path.join(pthim, 'classification_' + nm)
+    outpth = os.path.join(pthim, 'classification_' + nm + '_' + name)
     os.makedirs(outpth, exist_ok=True)
 
     b = 100
