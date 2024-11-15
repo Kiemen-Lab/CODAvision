@@ -1,7 +1,7 @@
 # https://keras.io/examples/vision/deeplabv3_plus/
 """
 Author: Valentina Matos Romero (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 13, 2024
+Date: November 15, 2024
 """
 
 import tensorflow as tf
@@ -23,7 +23,7 @@ import GPUtil
 warnings.filterwarnings('ignore')
 
 
-def train_segmentation_model_cnns(pthDL,name): #ADDED NAME
+def train_segmentation_model_cnns(pthDL): #ADDED NAME
     #Start training time
     start_time = time.time()
 
@@ -60,7 +60,9 @@ def train_segmentation_model_cnns(pthDL,name): #ADDED NAME
         data = pickle.load(f)
         classNames = data['classNames']
         IMAGE_SIZE = data['sxy']
+        model_type = data['model_type']
         nm = data['nm']
+        BATCH_SIZE = data['batch_size']
         if 'model' in f:
             raise ValueError(f'A network has already been trained for model {nm}. Choose a new model name to retrain.')
 
@@ -77,7 +79,7 @@ def train_segmentation_model_cnns(pthDL,name): #ADDED NAME
     val_masks = sorted(glob(os.path.join(pthValidation, 'label', "*.png")))
 
     # BATCH_SIZE = 3
-    BATCH_SIZE = 2 #11/13/2024
+    #BATCH_SIZE = 3 #11/13/2024
     NUM_CLASSES = len(classNames)  # Number of classes
 
     # Create TensorFlow dataset
@@ -278,7 +280,7 @@ def train_segmentation_model_cnns(pthDL,name): #ADDED NAME
                 #plt.show()
 
     # Train the model
-    model = model_call(name,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
+    model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
     #model.summary()
 
     print('Starting model training...')
@@ -289,7 +291,7 @@ def train_segmentation_model_cnns(pthDL,name): #ADDED NAME
         metrics=["accuracy"],
     )
     num_validations = 3
-    best_mod_name = f"best_model_{name}.keras"
+    best_mod_name = f"best_model_{model_type}.keras"
     plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
                             filepath=os.path.join(pthDL, best_mod_name), RLRoP_patience=1, factor=0.75)
 
@@ -297,7 +299,7 @@ def train_segmentation_model_cnns(pthDL,name): #ADDED NAME
 
     # Save model
     print('Saving model...')
-    mod_name = f"{name}.keras"
+    mod_name = f"{model_type}.keras"
     model.save(os.path.join(pthDL, mod_name))
     # data['model'] = model
     data['history'] = history.history  # Get the model history

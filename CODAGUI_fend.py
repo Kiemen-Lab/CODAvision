@@ -66,7 +66,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(1, self.ui.tabWidget.count()):
             self.ui.tabWidget.setTabEnabled(i, False)
 
-        self.setWindowTitle("ANACODA")
+        self.setWindowTitle("CODA Vision")
 
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""
@@ -148,11 +148,16 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.df = data['final_df']
                 self.original_df = self.df.copy()  # Set original_df in MainWindow
                 self.combined_df = data['combined_df']
+                self.ui.batch_size_SB.setValue(data['batch_size'])
                 print(self.combined_df)
                 ws = data['WS']
                 nm = data['nm']
                 self.nm = nm
                 self.prerecorded_data = True
+                try:
+                    model_type = data['model_type']
+                except:
+                    model_type = None
 
                 # Populate the training_LE, testing_LE, and resolution_CB fields
                 umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
@@ -163,6 +168,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 umpix = data.get('umpix','')
                 self.resolution = umpix_to_resolution.get(umpix, 'Select')
                 self.ui.resolution_CB.setCurrentText(self.resolution)
+                if model_type:
+                    self.ui.model_type_CB.setCurrentText(model_type)
 
 
                 self.populate_table_widget(self.combined_df)
@@ -1102,6 +1109,10 @@ class MainWindow(QtWidgets.QMainWindow):
         nvalidate = self.nval
         # Number of TA images to evaluate (coming soon)
         nTA = self.TA
+        #Type of model
+        model_type = self.ui.model_type_CB.currentText()
+        # Batch size
+        batch_size = self.ui.batch_size_SB.value()
         # Create WS
 
         layers_to_delete = final_df.index[final_df['Delete layer']==True].tolist()
@@ -1133,7 +1144,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Save model metadata onto pickle file
         save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
-                                                        tile_size, classNames, ntrain, nvalidate, nTA, final_df, combined_df)
+                                                        tile_size, classNames, ntrain, nvalidate, nTA, final_df, combined_df, model_type, batch_size)
 
     def load_saved_values(self):
         if self.prerecorded_data:

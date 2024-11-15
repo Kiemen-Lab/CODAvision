@@ -57,7 +57,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_3.addWidget(self.resolution_CB)
 
-
         self.gridLayout_3.addLayout(self.horizontalLayout_3, 3, 0, 1, 1)
 
         self.horizontalSpacer_3 = QSpacerItem(416, 17, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
@@ -459,14 +458,42 @@ class Ui_MainWindow(object):
         self.TA_SB.setMaximum(10)
         self.TA_SB.setSingleStep(1)
         self.TA_SB.setValue(3)
-        self.TA_SB.setDisplayIntegerBase(15)
+        self.TA_SB.setDisplayIntegerBase(10)
         self.TA_SB.lineEdit().setReadOnly(True)
 
         self.horizontalLayout_14.addWidget(self.TA_SB)
-
-
         self.verticalLayout_10.addLayout(self.horizontalLayout_14)
 
+        self.horizontalLayout_15 = QHBoxLayout()
+        self.horizontalLayout_15.setObjectName(u"horizontalLayout_15")
+        self.model_name_label = QLabel(self.tab_4)
+        self.model_name_label.setObjectName(u"model_name_label")
+        self.horizontalLayout_15.addWidget(self.model_name_label)
+        self.model_type_CB = QComboBox(self.tab_4)
+        self.model_type_CB.addItem("DeepLabV3+")
+        self.model_type_CB.addItem("UNet")
+        self.model_type_CB.addItem("UNet3+")
+        self.model_type_CB.addItem("TransUNet")
+        self.model_type_CB.addItem("CASe_UNet")
+        self.model_type_CB.setObjectName(u"model_type_CB")
+        self.horizontalLayout_15.addWidget(self.model_type_CB)
+        self.verticalLayout_10.addLayout(self.horizontalLayout_15)
+
+        self.horizontalLayout_16 = QHBoxLayout()
+        self.horizontalLayout_16.setObjectName(u"horizontalLayout_16")
+        self.batch_label = QLabel(self.tab_4)
+        self.batch_label.setObjectName(u"batch_label")
+        self.horizontalLayout_16.addWidget(self.batch_label)
+        self.batch_size_SB = QSpinBox(self.tab_4)
+        self.batch_size_SB.setObjectName(u"batch_size")
+        self.batch_size_SB.setMaximum(10)
+        self.batch_size_SB.setSingleStep(1)
+        self.batch_size_SB.setValue(3)
+        self.batch_size_SB.setDisplayIntegerBase(10)
+        self.batch_size_SB.lineEdit().setReadOnly(True)
+        self.batch_size_SB.setObjectName(u"batch_size_SB")
+        self.horizontalLayout_16.addWidget(self.batch_size_SB)
+        self.verticalLayout_10.addLayout(self.horizontalLayout_16)
 
         self.gridLayout_9.addLayout(self.verticalLayout_10, 0, 0, 1, 1)
 
@@ -588,6 +615,8 @@ class Ui_MainWindow(object):
         self.label_10.setText(QCoreApplication.translate("MainWindow", u"Training tiles number:", None))
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Validation tiles number:", None))
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"TA average count:", None))
+        self.model_name_label.setText(QCoreApplication.translate("MainWindow", u"Model architecture", None))
+        self.batch_label.setText(QCoreApplication.translate("MainWindow", u"Batch size", None))
         self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Advanced Settings", None))
     # retranslateUi

@@ -1,6 +1,6 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: October 21, 2024
+Date: November 15, 2024
 """
 
 import os
@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from .plot_cmap_legend import plot_cmap_legend
 import pickle
 
-def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, nTA, final_df, combined_df):
+def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, nTA, final_df, combined_df, model_type, batch_size):
     """
       Saves model metadata to a pickle file and generates a color map legend plot.
 
@@ -97,7 +97,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
         existing_data.update(
             {"pthim": pthim, "pthDL": pthDL, "pthtest":pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
              "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
-                         "combined_df": combined_df, "nvalidate": nvalidate, "nTA": nTA})
+                         "combined_df": combined_df, "nvalidate": nvalidate, "nTA": nTA, "model_type": model_type, "batch_size": batch_size})
 
         with open(datafile, 'wb') as f:
             pickle.dump(existing_data, f)
@@ -106,7 +106,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
         with open(datafile, 'wb') as f:
             pickle.dump({"pthim": pthim, "pthDL": pthDL, "pthtest": pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
                          "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
-                         "combined_df": combined_df,"nvalidate": nvalidate, "nTA": nTA}, f)
+                         "combined_df": combined_df,"nvalidate": nvalidate, "nTA": nTA, "model_type":model_type, "batch_size": batch_size}, f)
 
     # plot color legend
     plot_cmap_legend(cmap, classNames)

@@ -1,14 +1,13 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: October 22, 2024
+Date: November 15, 2024
 """
 import os.path
 import pickle
 from base import *
-from CODAGUI_bend import MainWindow
+from CODAGUI_fend import MainWindow
 import sys
 from PySide6 import QtWidgets
-from base.quantify_objects import quantify_objects
 
 # 1 Execute the GUI
 app = QtWidgets.QApplication.instance()
@@ -41,7 +40,7 @@ determine_optimal_TA(pthim, nTA)
 create_training_tiles(pthDL, numann0, ctlist0)
 
 # 4 Train model
-train_segmentation_model(pthDL)
+train_segmentation_model_cnns(pthDL)
 
 # 5 Test model
 test_segmentation_model(pthDL, pthtest, pthtestim)
@@ -50,7 +49,7 @@ test_segmentation_model(pthDL, pthtest, pthtestim)
 classify_images(pthim, pthDL)
 
 # 7 Quantify images
-quantify_images(pthDL, pthim)
+#quantify_images(pthDL, pthim)
 
 # 8 Object count analysis if annotation classes were selected
 pickle_path = os.path.join(pthDL, 'net.pkl')
