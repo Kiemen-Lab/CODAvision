@@ -85,6 +85,11 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
 
     datafile = os.path.join(pthDL.rstrip('\\'), 'net.pkl')
 
+    #if model_type has a '+' in it replaceit with '_plus'
+    if '+' in model_type:
+        model_type = model_type.replace('+', '_plus')
+
+
     # Save the data to a pickle file
     if os.path.exists(datafile):
         print('Net file already exists, updating data...')
