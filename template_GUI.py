@@ -1,6 +1,6 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 15, 2024
+Date: October 22, 2024
 """
 import os.path
 import pickle
@@ -40,7 +40,7 @@ determine_optimal_TA(pthim, nTA)
 create_training_tiles(pthDL, numann0, ctlist0)
 
 # 4 Train model
-train_segmentation_model_cnns(pthDL)
+train_segmentation_model(pthDL)
 
 # 5 Test model
 test_segmentation_model(pthDL, pthtest, pthtestim)
