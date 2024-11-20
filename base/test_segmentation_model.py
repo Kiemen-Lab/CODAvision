@@ -24,7 +24,7 @@ def read_image_as_double(file_path):
     except Exception as e:
         raise RuntimeError(f"Error reading image file {file_path}: {e}")
 
-def test_segmentation_model(pthDL,pthtest, pthtestim, cnn_name):
+def test_segmentation_model(pthDL,pthtest, pthtestim):
 
     print("Testing segmentation model......")
 
@@ -33,11 +33,12 @@ def test_segmentation_model(pthDL,pthtest, pthtestim, cnn_name):
         nblack = data['nblack']
         nwhite = data['nwhite']
         classNames = data['classNames']
+        model_type = data['model_type']
 
     pthtestdata = os.path.join(pthtest, 'data py')
     load_annotation_data(pthDL, pthtest, pthtestim)
 
-    pthclassifytest = classify_images(pthtestim, pthDL,cnn_name, color_overlay_HE=True, color_mask=False)
+    pthclassifytest = classify_images(pthtestim, pthDL,model_type, color_overlay_HE=True, color_mask=False)
 
     classNames = classNames[:-1]
     numClasses = nblack - 1
@@ -148,5 +149,5 @@ def test_segmentation_model(pthDL,pthtest, pthtestim, cnn_name):
 
     confusion_data[np.isnan(confusion_data)] = 0
 
-    _ = plot_confusion_matrix(confusion_data, classNames, pthDL, cnn_name)
+    _ = plot_confusion_matrix(confusion_data, classNames, pthDL, model_type)
     return

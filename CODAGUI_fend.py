@@ -158,7 +158,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     model_type = data['model_type']
                 except:
                     model_type = None
-
                 # Populate the training_LE, testing_LE, and resolution_CB fields
                 umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
                 pthim = data.get('pthim', '')
@@ -199,7 +198,13 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
 
-        if os.path.isfile(os.path.join(os.sep.join(pthim.split(os.sep)[:-1]),nm,'best_model_net.keras')):
+        model_exists = False
+        if os.path.isdir(os.sep.join(pthim.split(os.sep)[:-1])+os.sep+nm):
+            for file in os.listdir(os.sep.join(pthim.split(os.sep)[:-1])+os.sep+nm):
+                if 'best_model' in file and file.endswith('.keras'):
+                    model_exists = True
+
+        if model_exists:
             self.ui.classify_PB.setVisible(True)
             self.ui.classify_PB.setEnabled(True)
         else:
@@ -207,12 +212,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.classify_PB.setEnabled(False)
 
     def check_for_trained_model(self):
-        if os.path.isfile(os.path.join(self.ui.trianing_LE.text(),self.ui.model_name.text(),'best_model_net.keras')) and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.resolution_CB.currentText())):
+        model_exists = False
+        if os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.model_name.text())):
+            for file in os.listdir(os.path.join(self.ui.trianing_LE.text(),self.ui.model_name.text())):
+                if 'best_model' in file and file.endswith('.keras'):
+                    model_exists = True
+        if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.resolution_CB.currentText())):
             self.ui.classify_PB.setVisible(True)
             self.ui.classify_PB.setEnabled(True)
             self.pthim = self.ui.trianing_LE.text()
             self.resolution = self.ui.resolution_CB.currentText()
             self.nm = self.ui.model_name.text()
+            with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
+                data = pickle.load(file)
+                self.model_type = data['model_type']
         else:
             self.ui.classify_PB.setVisible(False)
             self.ui.classify_PB.setEnabled(False)
@@ -1112,6 +1125,7 @@ class MainWindow(QtWidgets.QMainWindow):
         nTA = self.TA
         #Type of model
         model_type = self.ui.model_type_CB.currentText()
+        self.model_type = model_type
         # Batch size
         batch_size = self.ui.batch_size_SB.value()
         # Create WS

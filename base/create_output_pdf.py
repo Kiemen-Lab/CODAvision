@@ -201,7 +201,7 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
 # Example usage
 if __name__ == '__main__':
     create_output_pdf(
-        output_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report1.pdf',
+        output_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report.pdf',
         confusion_matrix_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\confusion_matrix.jpg',
         color_legend_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_color_legend.png',
         check_annotations_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\check_annotations',
