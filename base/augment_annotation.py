@@ -114,4 +114,3 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
     imh = imh * tmp
 
     return imh, imlabel
-

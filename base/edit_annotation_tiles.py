@@ -62,5 +62,3 @@ def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, 
     TA = TA.astype(np.uint8)
 
     return im, TA, kpout
-
-

@@ -32,8 +32,7 @@ def plot_cmap_legend(cmap, titles):
         plt.xticks([])
         plt.tick_params(axis='y', length=0)
         plt.tick_params(axis='both', labelsize=15)
-        #plt.show() # Uncomment this line to display the plot. It might unable save_model_metadata to save the plot.
+        #plt.show() # Uncomment this line to display the plot. It might be unable save_model_metadata to save the plot.
     else:
         plt.figure()
         plt.imshow(im)
-

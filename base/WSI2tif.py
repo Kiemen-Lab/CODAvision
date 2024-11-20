@@ -8,6 +8,7 @@ from PIL import Image
 import numpy as np
 import os
 import glob
+# from openslide import OpenSlide
 
 # Add the OpenSlide DLL directory
 try:
@@ -25,7 +26,6 @@ else:
     if openslide_path not in os.environ['PATH']:
         os.environ['PATH'] = openslide_path + os.pathsep + os.environ['PATH']
     from openslide import OpenSlide
-
 
 def process_missing_images(pth, pthim, missing_images, umpix):
     """Process missing images by converting .ndpi or .svs files to .tif."""
@@ -88,11 +88,3 @@ if __name__ == '__main__':
     resolution = '5x'
     umpix = 2
     WSI2tif(path, resolution, umpix)
-
-
-
-
-
-
-
-

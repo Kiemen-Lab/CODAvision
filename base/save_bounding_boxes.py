@@ -130,4 +130,3 @@ def save_bounding_boxes(I0, outpth, model_name, numclass):
             pickle.dump(data, f)
             f.close()
     return numann, ctlist
-

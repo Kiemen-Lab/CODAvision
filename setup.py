@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='ANACODA',
+    name='CODA Vision',
     version='0.1.0',
-    description='ANACODA is an open-source Python package designed for microanatomical tissue labeling.',
+    description='CODA Vision is an open-source Python package designed for microanatomical tissue labeling.',
     author='Valentina Matos',
     url='https://github.com/Valentinamatos/CODA_python',
     packages=find_packages(),
@@ -32,13 +32,16 @@ setup(
         'zipp==3.20.1',
         'openslide-python==1.3.1',
         'openpyxl==3.1.2',
-        'GPUtil==1.4.0'
+        'GPUtil==1.4.0',
+        'PySide6==6.5.1.1'
     ],
     package_data={
         '': ['*.ipynb', '*.qss'],
     },
     classifiers=[
         'Programming Language :: Python :: 3.9',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
     ],
     python_requires='>=3.9',
 )

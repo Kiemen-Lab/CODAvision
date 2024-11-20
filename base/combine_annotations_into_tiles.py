@@ -40,9 +40,9 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     kpall = 1
 
     # Define folder locations
-    outpthim = os.path.join(pthDL, outpth, 'im/')
-    outpthlabel = os.path.join(pthDL, outpth, 'label/')
-    outpthbg = os.path.join(pthDL, outpth, 'big_tiles/')
+    outpthim = os.path.join(pthDL, outpth, 'im')
+    outpthlabel = os.path.join(pthDL, outpth, 'label')
+    outpthbg = os.path.join(pthDL, outpth, 'big_tiles')
 
     os.makedirs(outpthim, exist_ok=True)
     os.makedirs(outpthlabel, exist_ok=True)
@@ -100,7 +100,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         tile_name = imlist['tile_name'][num[0]]
 
         tile_path = os.path.join(imlist['tile_pth'][num[0]], tile_name)
-        pf = tile_path.rfind('\\', 0, tile_path.rfind('\\'))
+        pf = tile_path.rfind(os.path.sep, 0, tile_path.rfind(os.path.sep))
         pthlabel = os.path.join(tile_path[0:pf], 'label')
 
         im = cv2.imread(tile_path)

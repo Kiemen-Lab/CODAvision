@@ -12,18 +12,18 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 from scipy.ndimage import binary_fill_holes
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Model
 import keras
 from .Semanticseg import semantic_seg
 from .make_overlay import make_overlay, decode_segmentation_masks
 Image.MAX_IMAGE_PIXELS = None
+from base.backbones import *
 
 
 
-def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
+def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
     start_time = time.time()
     # Load the model weights and other relevant data
-    model = load_model(os.path.join(pthDL, 'best_model_net.keras'))
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         classNames = data['classNames']
@@ -33,7 +33,12 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         nm = data['nm']
         sxy = data['sxy']
 
-    outpth = os.path.join(pthim, 'classification_' + nm)
+    model_filename = f'best_model_{name}.keras' #ARRUN
+    model = model_call(name,IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))#ARRUN
+    model.load_weights(os.path.join(pthDL, model_filename))#ARRUN
+
+
+    outpth = os.path.join(pthim, 'classification_' + nm + '_' + name)
     os.makedirs(outpth, exist_ok=True)
 
     b = 100
@@ -148,5 +153,3 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         plt.pause(0.2)
 
     return outpth
-
-

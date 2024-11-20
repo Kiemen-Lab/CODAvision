@@ -1,10 +1,11 @@
-import xmltodict
-import pandas as pd
-
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: May 05, 2024
 """
+
+import xmltodict
+import pandas as pd
+
 
 def load_annotations(xml_file):
     """

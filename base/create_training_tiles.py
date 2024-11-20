@@ -1,3 +1,4 @@
+
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: May 22, 2024
@@ -58,8 +59,8 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     percann = np.double(numann0 > 0)
     percann = np.dstack((percann, percann))
     percann0 = percann.copy()
-    ty = 'training\\'
-    obg = os.path.join(pthDL, ty, 'big_tiles\\')
+    ty = 'training'
+    obg = os.path.join(pthDL, ty, 'big_tiles')
     # Generate tiles until enough are made
     train_start = time.time()
     if len(glob.glob(os.path.join(obg, 'HE*.jpg'))) >= ntrain:
@@ -90,8 +91,8 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     print('')
 
     # Build validation tiles
-    ty = 'validation\\'
-    obg = os.path.join(pthDL, ty, 'big_tiles\\')
+    ty = 'validation'
+    obg = os.path.join(pthDL, ty, 'big_tiles')
     numann = numann0.copy()
     percann = (numann0 > 0).astype(float)
     percann = np.dstack((percann, percann))
