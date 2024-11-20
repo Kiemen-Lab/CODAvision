@@ -38,6 +38,7 @@ else:
     nTA = window.TA
     umpix = window.umpix
     resolution = window.resolution
+    model_type = window.model_type
 
     # Create tiff images if they don't exist
     print(' ')
@@ -56,7 +57,7 @@ else:
     train_segmentation_model_cnns(pthDL)
 
     # 5 Test model
-    test_segmentation_model(pthDL, pthtest, pthtestim)
+    test_segmentation_model(pthDL, pthtest, pthtestim, model_type)
 
     # 6 Classify images with pretrained model
     classify_images(pthim, pthDL)
