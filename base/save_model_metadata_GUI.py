@@ -83,7 +83,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
         classNames.append("black")
     nblack = len(classNames)
 
-    datafile = os.path.join(pthDL.rstrip('\\'), 'net.pkl')
+    datafile = os.path.join(pthDL.rstrip(os.path.sep), 'net.pkl')
 
     #if model_type has a '+' in it replaceit with '_plus'
     if '+' in model_type:

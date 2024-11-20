@@ -51,12 +51,12 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         nm = data['nm']
         nwhite = data['nwhite']
 
-    # Make PNG images if they don't exist
-    print(' ')
-    print(' Making downsampled images...')
-    resolution = pthim.split('\\')[-1]
-    # WSI2png(pth, resolution, umpix)
-    WSI2tif(pth, resolution, umpix)
+    # # Make PNG images if they don't exist
+    # print(' ')
+    # print(' Making downsampled images...')
+    # resolution = pthim.split('\\')[-1]
+    # # WSI2png(pth, resolution, umpix)
+    # WSI2tif(pth, resolution, umpix)
 
 
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255

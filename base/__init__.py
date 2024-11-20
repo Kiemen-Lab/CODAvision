@@ -10,6 +10,7 @@ from .classify_images import classify_images
 from .quantify_images import quantify_images
 from .quantify_objects import quantify_objects
 from .create_output_pdf import create_output_pdf
+from .WSI2tif import WSI2tif
 
 #
 # Package version
