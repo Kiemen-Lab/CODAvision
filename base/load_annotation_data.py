@@ -51,12 +51,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         nm = data['nm']
         nwhite = data['nwhite']
 
-    # # Make PNG images if they don't exist
-    # print(' ')
-    # resolution = os.path.basename(pthim)
-    # # WSI2png(pth, resolution, umpix)
-    # WSI2tif(pth, resolution, umpix)
-
 
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
     numclass = np.max(WS[2])

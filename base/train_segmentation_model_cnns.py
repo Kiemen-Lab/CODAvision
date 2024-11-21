@@ -122,7 +122,7 @@ def train_segmentation_model_cnns(pthDL): #ADDED NAME
                          monitor='val_accuracy', ES_patience=6, RLRoP_patience=1, factor=0.75, verbose=0,
                          save_best_model=True, filepath='best_model.h5'):
                 super(BatchAccCall, self).__init__()
-                self.model = model
+                self._model = model
                 self.batch_accuracies = []
                 self.batch_numbers = []
                 self.batch_losses = []
@@ -153,6 +153,15 @@ def train_segmentation_model_cnns(pthDL): #ADDED NAME
                 self.stopped_epoch = 0
                 self.factor = factor
 
+            @property
+
+            def model(self):
+                return self._model
+
+            @model.setter
+            def model(self, value):
+                self._model = value
+
             def on_epoch_begin(self, epoch, logs=None):
                 self.current_epoch = epoch
                 self.epoch_indices.append(self.current_epoch)
@@ -178,9 +187,9 @@ def train_segmentation_model_cnns(pthDL): #ADDED NAME
             def on_epoch_end(self, epoch, logs=None):
                 self.epoch_wait += 1
                 if self.epoch_wait > self.RLRoP_patience and self.RLRoP:
-                    old_lr = float(tf.keras.backend.get_value(self.model.optimizer.lr))
+                    old_lr = float(self._model.optimizer.learning_rate.numpy())
                     new_lr = old_lr * self.factor
-                    tf.keras.backend.set_value(self.model.optimizer.lr, new_lr)
+                    self._model.optimizer.learning_rate.assign(new_lr)
                     self.epoch_wait = 0
 
             def run_validation(self):
@@ -190,7 +199,7 @@ def train_segmentation_model_cnns(pthDL): #ADDED NAME
 
                 for x_val, y_val in self.val_data:
                     y_val = tf.cast(y_val, dtype=tf.int32)
-                    val_logits = self.model(x_val, training=False)
+                    val_logits = self._model(x_val, training=False)
                     num_classes = val_logits.shape[-1]
                     val_logits_flat = tf.reshape(val_logits, [-1, num_classes])
                     y_val_flat = tf.reshape(y_val, [-1])
@@ -224,14 +233,14 @@ def train_segmentation_model_cnns(pthDL): #ADDED NAME
                         self.wait = 0
                         # Save the model if the `save_best_model` flag is set
                         if self.save_best_model:
-                            self.model.save(self.save_path)
+                            self._model.save(self.save_path)
                             if self.verbose > 0:
                                 print(f'\nEpoch {self.current_epoch + 1}: Model saved to {self.save_path}')
                     else:
                         self.wait += 1
                         if self.wait >= self.ES_patience and self.early_stopping:
                             self.stopped_epoch = self.current_epoch
-                            self.model.stop_training = True
+                            self._model.stop_training = True
                             if self.verbose > 0:
                                 print(f'\nEpoch {self.current_epoch + 1}: early stopping')
 

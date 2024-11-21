@@ -22,7 +22,7 @@ def calculate_tissue_mask(pth, imnm):
             - TA (np.ndarray): The binary copy of the image's green value after it has been thresholded.
             - outpth (str): The path where TA has been saved.
            """
-    outpth = os.path.join(pth.rstrip('\\'), 'TA')
+    outpth = os.path.join(pth.rstrip(os.path.sep), 'TA')
     if not os.path.isdir(outpth): #Check if the path to the image exists
         os.mkdir(outpth)
     try:
