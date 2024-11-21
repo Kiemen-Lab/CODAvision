@@ -1,5 +1,5 @@
 # Import  modules or functions
-from .save_model_metadata import save_model_metadata
+from .save_model_metadata_GUI import save_model_metadata_GUI
 from .determine_optimal_TA import determine_optimal_TA
 from .load_annotation_data import load_annotation_data
 from .create_training_tiles import create_training_tiles

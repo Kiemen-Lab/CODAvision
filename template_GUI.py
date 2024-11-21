@@ -24,7 +24,7 @@ window.show()
 app.exec()
 
 if window.classify:
-    window2 = MainWindowClassify(window.pthim, window.resolution, window.nm)
+    window2 = MainWindowClassify(window.pthim, window.resolution, window.nm, window.model_type)
     window2.show()
     app.exec()
 
@@ -38,10 +38,12 @@ else:
     nTA = window.TA
     umpix = window.umpix
     resolution = window.resolution
+    model_type = window.model_type
 
     # Create tiff images if they don't exist
     print(' ')
     WSI2tif(pth, resolution, umpix)
+
 
     # Determine optimal TA
     determine_optimal_TA(pthim, nTA)
@@ -56,13 +58,13 @@ else:
     train_segmentation_model_cnns(pthDL)
 
     # 5 Test model
-    test_segmentation_model(pthDL, pthtest, pthtestim)
+    test_segmentation_model(pthDL, pthtest, pthtestim, model_type)
 
     # 6 Classify images with pretrained model
-    classify_images(pthim, pthDL)
+    classify_images(pthim, pthDL, model_type)
 
     # 7 Quantify images
-    quantify_images(pthDL, pthim)
+    #quantify_images(pthDL, pthim)
 
     # 8 Object count analysis if annotation classes were selected
     pickle_path = os.path.join(pthDL, 'net.pkl')
@@ -71,7 +73,7 @@ else:
 
     final_df = data['final_df']
     model_name = data['nm']
-    quantpath = os.path.join(pthim, model_name)
+    quantpath = os.path.join(pthim, 'classification_'+model_name+'_'+model_type)
 
     # Identify annotation classes for component analysis
     tissue = [index + 1 for index, row in final_df.iterrows() if row['Component analysis']]
@@ -80,3 +82,11 @@ else:
     if tissue:
         # Call the quantify_objects function
         quantify_objects(pthDL, quantpath, tissue)
+
+    output_path = os.path.join(pthDL, model_type+ 'evaluation_report.pdf')
+    confusion_matrix_path = os.path.join(pthDL, 'confusion_matrix_'+model_type+'.jpg')
+    color_legend_path = os.path.join(pthDL, 'model_color_legend.jpg')
+    check_annotations_path = os.path.join(pth, 'check_annotations')
+    check_classification_path = os.path.join(pth, resolution,'classification_'+model_name+'_'+model_type, 'check_classification')
+    create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path,
+                      check_classification_path, quantpath)

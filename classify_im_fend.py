@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 pd.set_option('display.max_columns', None)
 
 class MainWindowClassify(QtWidgets.QMainWindow):
-    def __init__(self, train_fold, resolution, nm):
+    def __init__(self, train_fold, resolution, nm, model_type):
         super(MainWindowClassify,self).__init__()  # Use super() to initialize the parent clasz
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)  # Pass the MainWindow instance itself as the parent
@@ -38,14 +38,22 @@ class MainWindowClassify(QtWidgets.QMainWindow):
         self.pathDL = os.path.join(train_fold, nm)
         self.resolution = resolution
         self.nm = nm
+        self.model_type = model_type
         self.path_first_img = ''
         self.name_first_img =''
-        for filename in os.listdir(os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm)):
-            # Check if the file has a .tiff or .tif extension (case insensitive)
-            if filename.lower().endswith(('.tiff', '.tif')):
-                self.path_first_img = os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm, filename)
-                self.name_first_img = filename
-                continue
+        if os.path.isdir(os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm+'_'+self.model_type)):
+            for filename in os.listdir(os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm+'_'+self.model_type)):
+                # Check if the file has a .tiff or .tif extension (case insensitive)
+                if filename.lower().endswith(('.tiff', '.tif')):
+                    self.path_first_img = os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm+'_'+self.model_type, filename)
+                    self.name_first_img = filename
+                    continue
+        if self.path_first_img == '' or self.name_first_img == '':
+            self.image_displayed = False
+            QtWidgets.QMessageBox.warning(self, 'Warning',
+                                          'The selected model has no classified images yet.')
+        else:
+            self.image_displayed = True
         self.ui.change_color_PB.clicked.connect(self.change_color)
         self.ui.reset_PB.clicked.connect(self.reset_cmap)
         self.ui.browseCl_PB.clicked.connect(self.select_imagedir)
@@ -196,7 +204,7 @@ class MainWindowClassify(QtWidgets.QMainWindow):
 
     def show_image(self):
         path_image = os.path.join(self.train_fold,self.resolution,self.name_first_img)
-        self.loader = ImageLoader(self.path_first_img, path_image, self.cmap, self.classNames)
+        self.loader = ImageLoader(self.path_first_img, path_image, self.cmap, self.classNames, self.image_displayed)
         self.process_thread = ProcessThread(self.loader)
         self.loader.started.connect(self.on_processing_started)
         self.loader.finished.connect(self.on_processing_finished)
@@ -323,34 +331,42 @@ class ImageLoader(QObject):
     started = Signal()
     finished = Signal()
 
-    def __init__(self, pth_im0, pth_im, cmap, classNames):
+    def __init__(self, pth_im0, pth_im, cmap, classNames, image_displayed):
         super().__init__()
         self.pth_im0 = pth_im0
         self.pth_im = pth_im
         self.cmap = cmap
         self.classNames = classNames
+        self.image_displayed = image_displayed
 
     def load_image(self):
         self.started.emit()
-        im0 = cv2.imread(self.pth_im0, cv2.IMREAD_GRAYSCALE)  # Mask
-        im0 = im0[::10, ::10]
-        im = cv2.imread(self.pth_im)  # Image
-        im = im[:, :, ::-1]
-        im = im[::10, ::10, :]
-        r = np.zeros_like(im0).astype(np.uint8)
-        g = np.zeros_like(im0).astype(np.uint8)
-        b = np.zeros_like(im0).astype(np.uint8)
-        for l in range(1, len(self.classNames)):
-            idx = im0 == l
-            r[idx] = self.cmap[l - 1, 0]
-            g[idx] = self.cmap[l - 1, 1]
-            b[idx] = self.cmap[l - 1, 2]
-        prediction_cmap = np.stack([r, g, b], axis=2)
-        overlay = cv2.addWeighted(im, 0.65, prediction_cmap, 0.35, 0)
-        overlay = np.ascontiguousarray(overlay.astype(np.uint8))
-        height, width = overlay.shape[:2]
-        bytes_per_line = 3 * width
-        qimage = QImage(overlay.data, width, height, bytes_per_line, QImage.Format_RGB888)
+        if self.image_displayed:
+            im0 = cv2.imread(self.pth_im0, cv2.IMREAD_GRAYSCALE)  # Mask
+            im0 = im0[::10, ::10]
+            im = cv2.imread(self.pth_im)  # Image
+            im = im[:, :, ::-1]
+            im = im[::10, ::10, :]
+            r = np.zeros_like(im0).astype(np.uint8)
+            g = np.zeros_like(im0).astype(np.uint8)
+            b = np.zeros_like(im0).astype(np.uint8)
+            for l in range(1, len(self.classNames)):
+                idx = im0 == l
+                r[idx] = self.cmap[l - 1, 0]
+                g[idx] = self.cmap[l - 1, 1]
+                b[idx] = self.cmap[l - 1, 2]
+            prediction_cmap = np.stack([r, g, b], axis=2)
+            overlay = cv2.addWeighted(im, 0.65, prediction_cmap, 0.35, 0)
+            overlay = np.ascontiguousarray(overlay.astype(np.uint8))
+            height, width = overlay.shape[:2]
+            bytes_per_line = 3 * width
+            qimage = QImage(overlay.data, width, height, bytes_per_line, QImage.Format_RGB888)
+        else:
+            overlay = np.zeros([1,1])
+            overlay = np.ascontiguousarray(overlay.astype(np.uint8))
+            height, width = overlay.shape
+            bytes_per_line = width
+            qimage = QImage(overlay.data, width, height, bytes_per_line, QImage.Format_Grayscale8)
         self.loaded.emit(qimage)
         self.finished.emit()
 
