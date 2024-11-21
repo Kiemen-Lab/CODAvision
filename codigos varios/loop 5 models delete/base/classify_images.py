@@ -1,6 +1,6 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: October 30, 2024
+Date: November 20, 2024
 """
 
 import cv2
@@ -21,7 +21,7 @@ from base.backbones import *
 
 
 
-def classify_images(pthim, pthDL,name,color_overlay_HE=True, color_mask=False):
+def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
     start_time = time.time()
     # Load the model weights and other relevant data
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
