@@ -80,7 +80,6 @@ def plot_confusion_matrix(confusion_data, classNames, pthDL, cnn_name):
     plt.show()
 
     print(f"\nConfusion matrix saved to {os.path.join(pthDL, 'confusion_matrix' + cnn_name + '.jpg')}")
-
-    print(f"\nOverall Accuracy: {accuracy}%")
+    print(f"Overall Accuracy: {accuracy}%")
 
     return confusion_with_metrics

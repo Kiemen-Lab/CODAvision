@@ -30,7 +30,7 @@ else:
 def process_missing_images(pth, pthim, missing_images, umpix):
     """Process missing images by converting .ndpi or .svs files to .tif."""
     for idx, missing_image in enumerate(missing_images):
-        print(f"{idx + 1} / {len(missing_images)} processing: {missing_image}")
+        print(f"  {idx + 1} / {len(missing_images)} processing: {missing_image}")
         try:
             # Open the slide
             slide_path = os.path.join(pth, missing_image + '.ndpi')
@@ -56,7 +56,7 @@ def process_missing_images(pth, pthim, missing_images, umpix):
 
 
 def WSI2tif(pth, resolution, umpix):
-    print(' Making down-sampled images...')
+    print('Making down-sampled images...')
 
     pthim = os.path.join(pth, f'{resolution}')
 
@@ -80,7 +80,7 @@ def WSI2tif(pth, resolution, umpix):
         missing_images = images_names_wsi - images_names_tif
         process_missing_images(pth, pthim, missing_images, umpix)
     else:
-        print("All down-sampled images already exist in the directory.")
+        print("  All down-sampled images already exist in the directory.")
 
 
 if __name__ == '__main__':

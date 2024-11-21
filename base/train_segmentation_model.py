@@ -27,7 +27,10 @@ warnings.filterwarnings('ignore')
 
 
 def train_segmentation_model(pthDL):
-    if not (os.path.isfile(os.path.join(pthDL, 'best_model_net.keras'))):
+    with open(os.path.join(pthDL,'net.pkl'), 'rb') as f:
+        data = pickle.load(f)
+        model_type = data['model_type']
+    if not (os.path.isfile(os.path.join(pthDL, 'best_model_'+model_type+'.keras'))):
         #Start training time
         start_time = time.time()
 
@@ -351,4 +354,5 @@ def train_segmentation_model(pthDL):
     else:
         print('Model already trained with the same name')
 
+    print('')
     return

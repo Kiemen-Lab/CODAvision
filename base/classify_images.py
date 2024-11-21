@@ -21,7 +21,7 @@ from base.backbones import *
 
 
 
-def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
+def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, disp = True):
     start_time = time.time()
     # Load the model weights and other relevant data
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
@@ -63,7 +63,7 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
     for i, img_path in enumerate(imlist):
         classification_st = time.time()
         img_name = os.path.basename(img_path)
-        print(f'  Starting classification of image {i + 1} of {len(imlist)}: {img_name}')
+        print(f'Starting classification of image {i + 1} of {len(imlist)}: {img_name}')
         if os.path.isfile(os.path.join(outpth, img_name[:-4] + ".tif")):
             print(f'  Image {img_name} already classified by this model')
             continue
@@ -142,7 +142,7 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
     print(f'  Total time for classification: {hours}h {minutes}m {seconds}s')
 
     # Only show images if im_array was actually assigned
-    if first_img is not None:
+    if first_img is not None and disp:
         fig, axs = plt.subplots(1, 2)
         axs[0].imshow(first_img)
         axs[1].imshow(keras.utils.array_to_img(prediction_colormap))

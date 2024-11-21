@@ -292,8 +292,8 @@ class MainWindowClassify(QtWidgets.QMainWindow):
         for index in range(self.ui.classify_LW.count()):
             item = self.ui.classify_LW.item(index)
             image_path = item.text()
-            classification_path = os.path.join(item.text(),'classification_'+self.nm)
-            classify_images(os.path.normpath(item.text()),os.path.join(self.train_fold,self.nm),disp=False)
+            classification_path = os.path.join(item.text(),'classification_'+self.nm+'_'+self.model_type)
+            classify_images(os.path.normpath(item.text()),os.path.join(self.train_fold,self.nm), self.model_type,disp=False)
             datafile = os.path.join(classification_path, 'cmap.pkl')
             try:
                 with open(datafile, 'rb') as file:

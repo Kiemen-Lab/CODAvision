@@ -88,8 +88,6 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     minutes, seconds = divmod(rem, 60)
     print(f'  Elapsed time to create training big tiles: {hours}h {minutes}m {seconds}s')
 
-    print('')
-
     # Build validation tiles
     ty = 'validation'
     obg = os.path.join(pthDL, ty, 'big_tiles')
@@ -99,16 +97,15 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     percann0 = percann.copy()
     validation_start_time = time.time()
 
-    print('')
     print('Building validation tiles...')
     if len(glob.glob(os.path.join(obg, 'HE*.jpg'))) >= nvalidate:
-        print('Already done.')
+        print('  Already done.')
     else:
         while len(glob.glob(os.path.join(obg, 'HE*.jpg'))) < nvalidate:
             numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, ty, sxy)
             elapsed_time = time.time() - validation_start_time
             print(
-                f'{len(glob.glob(os.path.join(obg, "HE*.jpg")))} of {nvalidate} validation images completed in {int(elapsed_time / 60)} minutes')
+                f'{  len(glob.glob(os.path.join(obg, "HE*.jpg")))} of {nvalidate} validation images completed in {int(elapsed_time / 60)} minutes')
 
             baseclass1 = np.sum(percann0[:, :, 0], axis=0)
             usedclass1 = np.sum(percann[:, :, 0], axis=0)
@@ -119,9 +116,10 @@ def create_training_tiles(pthDL, numann0, ctlist0):
             tmp2 = usedclass2 / baseclass2 * 100
 
             for b, class_name in enumerate(classNames):
-                print(f'Used {tmp1[b]:.1f}% counts and {tmp2[b]:.1f}% unique annotations of {class_name}')
+                print(f'  Used {tmp1[b]:.1f}% counts and {tmp2[b]:.1f}% unique annotations of {class_name}')
 
     total_time_validation_bigtiles = time.time() - validation_start_time
     hours, rem = divmod(total_time_validation_bigtiles, 3600)
     minutes, seconds = divmod(rem, 60)
-    print(f'Elapsed time to create validation big tiles: {hours}h {minutes}m {seconds}s')
+    print(f'  Elapsed time to create validation big tiles: {hours}h {minutes}m {seconds}s')
+    print('')

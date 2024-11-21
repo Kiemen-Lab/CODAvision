@@ -24,9 +24,25 @@ window.show()
 app.exec()
 
 if window.classify:
-    window2 = MainWindowClassify(window.pthim, window.resolution, window.nm, window.model_type)
-    window2.show()
-    app.exec()
+    if window.classification_source == 1:
+        with open(window.pth_net, 'rb') as f:
+            data = pickle.load(f)
+            pthim = data['pthim']
+            umpix = data['umpix']
+            nm = data['nm']
+            model_type = data['model_type']
+        umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
+        resolution = umpix_to_resolution[umpix]
+        pth = ''
+        for element in pthim.split(os.sep)[:-1]:
+            pth = os.path.join(pth, element)
+        window2 = MainWindowClassify(pth, resolution, nm, model_type)
+        window2.show()
+        app.exec()
+    else:
+        window2 = MainWindowClassify(window.pthim, window.resolution, window.nm, window.model_type)
+        window2.show()
+        app.exec()
 
 else:
     # Load the paths from the GUI
@@ -64,7 +80,7 @@ else:
     classify_images(pthim, pthDL, model_type)
 
     # 7 Quantify images
-    #quantify_images(pthDL, pthim)
+    quantify_images(pthDL, pthim)
 
     # 8 Object count analysis if annotation classes were selected
     pickle_path = os.path.join(pthDL, 'net.pkl')
@@ -73,20 +89,25 @@ else:
 
     final_df = data['final_df']
     model_name = data['nm']
+    classNames = data['classNames']
     quantpath = os.path.join(pthim, 'classification_'+model_name+'_'+model_type)
 
     # Identify annotation classes for component analysis
-    tissue = [index + 1 for index, row in final_df.iterrows() if row['Component analysis']]
+    tissues = [index + 1 for index, row in final_df.iterrows() if row['Component analysis']]
 
     # Check if the tissue list has elements
-    if tissue:
-        # Call the quantify_objects function
-        quantify_objects(pthDL, quantpath, tissue)
+    for tissue in tissues:
+        if not os.path.isfile(os.path.join(quantpath, classNames[tissue-1]+'_count_analysis.csv')):
+            # Call the quantify_objects function
+            quantify_objects(pthDL, quantpath, tissue)
+        else:
+            print(f'Object quantification already done for {classNames[tissue-1]}')
 
     output_path = os.path.join(pthDL, model_type+ 'evaluation_report.pdf')
     confusion_matrix_path = os.path.join(pthDL, 'confusion_matrix_'+model_type+'.jpg')
     color_legend_path = os.path.join(pthDL, 'model_color_legend.jpg')
     check_annotations_path = os.path.join(pth, 'check_annotations')
+    check_quant = os.path.join(quantpath, 'image_quantifications.csv')
     check_classification_path = os.path.join(pth, resolution,'classification_'+model_name+'_'+model_type, 'check_classification')
     create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path,
-                      check_classification_path, quantpath)
+                      check_classification_path, check_quant)

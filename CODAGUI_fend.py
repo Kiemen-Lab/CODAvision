@@ -145,6 +145,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             with open(file_path, 'rb') as file:
                 data = pickle.load(file)
+                self.pth_net = file_path
                 self.df = data['final_df']
                 self.original_df = self.df.copy()  # Set original_df in MainWindow
                 self.combined_df = data['combined_df']
@@ -207,6 +208,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if model_exists:
             self.ui.classify_PB.setVisible(True)
             self.ui.classify_PB.setEnabled(True)
+            self.classification_source = 1
         else:
             self.ui.classify_PB.setVisible(False)
             self.ui.classify_PB.setEnabled(False)
@@ -226,6 +228,7 @@ class MainWindow(QtWidgets.QMainWindow):
             with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
                 data = pickle.load(file)
                 self.model_type = data['model_type']
+            self.classification_source = 2
         else:
             self.ui.classify_PB.setVisible(False)
             self.ui.classify_PB.setEnabled(False)
