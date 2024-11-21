@@ -59,6 +59,7 @@ def calculate_tissue_mask(pth, imnm):
             ct = ct/len(i)
     else:
         # ct = 210 #If there is no previous TA value, use 210
+        print('   No TA cutoff found, using default value')
         ct = 205
 
     TA = im0[:, :, 1] < ct # Threshold the image green values
