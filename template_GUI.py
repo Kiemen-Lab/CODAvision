@@ -3,6 +3,7 @@ Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: November 15, 2024
 """
 import os.path
+import shutil
 import pickle
 from base import *
 from CODAGUI_fend import MainWindow
@@ -74,6 +75,15 @@ else:
     train_segmentation_model_cnns(pthDL)
 
     # 5 Test model
+    print(' ')
+    WSI2tif(pthtest, resolution, umpix)
+    if not os.path.isfile(os.path.join(pthtest,resolution,'TA','TA_cutoff.pkl')):
+        try:
+            os.makedirs(os.path.join(pthtest,resolution,'TA'), exist_ok=True)
+            shutil.copy(os.path.join(pthim,'TA','TA_cutoff.pkl'),os.path.join(pthtest,resolution,'TA','TA_cutoff.pkl'))
+        except:
+            print('No TA cutoff file found, using default value')
+
     test_segmentation_model(pthDL, pthtest, pthtestim)
 
     # 6 Classify images with pretrained model

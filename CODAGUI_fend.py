@@ -1129,6 +1129,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #Type of model
         model_type = self.ui.model_type_CB.currentText()
         self.model_type = model_type
+        self.resolution = self.ui.resolution_CB.currentText()
         # Batch size
         batch_size = self.ui.batch_size_SB.value()
         # Create WS
