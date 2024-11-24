@@ -908,7 +908,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         combo_name, ok = QtWidgets.QInputDialog.getText(self, "Combo Name", "Enter a name for the combined class:")
-        print(all(char.isalnum() or char in ' _' for char in combo_name))
         if not ok or not combo_name or not all(char.isalnum() or char in ' _' for char in combo_name):
             print('Enter valid combo name')
             return
@@ -937,7 +936,10 @@ class MainWindow(QtWidgets.QMainWindow):
                         upd_idx = np.where(position == -1)[0][0]
                         position[upd_idx] = 0
                         updated_selected_rows[upd_idx] = idx
-            selected_layer_names = [self.combined_df.iloc[idx]['Layer Name'] for idx in updated_selected_rows]
+            selected_layer_index = [self.combined_df.iloc[idx]['Layer idx'] for idx in updated_selected_rows]
+            selected_layer_index = [item for sublist in selected_layer_index for item in
+                         (sublist if isinstance(sublist, list) else [sublist])]
+            selected_layer_names = [self.df.iloc[idx-1]['Layer Name'] for idx in selected_layer_index]
 
         # Create the combined class with original indices
         layer_indices = sorted([original_indices[name] for name in selected_layer_names])
