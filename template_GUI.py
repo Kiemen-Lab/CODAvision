@@ -67,10 +67,10 @@ else:
     determine_optimal_TA(pthim, nTA)
 
     # 2 load and format annotations from each annotated image
-    [ctlist0, numann0] = load_annotation_data(pthDL, pth, pthim)
+    [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
 
     # 3 Make training & validation tiles for model training
-    create_training_tiles(pthDL, numann0, ctlist0)
+    create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles)
 
     # 4 Train model
     train_segmentation_model_cnns(pthDL)

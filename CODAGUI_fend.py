@@ -10,9 +10,9 @@ import os
 from datetime import datetime
 import xmltodict
 import pandas as pd
-from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush
+from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush,QRegularExpressionValidator
 from PySide6.QtWidgets import QColorDialog, QHeaderView
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt,QRegularExpression
 import pickle
 import numpy as np
 from base import save_model_metadata_GUI
@@ -908,7 +908,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         combo_name, ok = QtWidgets.QInputDialog.getText(self, "Combo Name", "Enter a name for the combined class:")
-        if not ok or not combo_name:
+        print(all(char.isalnum() or char in ' _' for char in combo_name))
+        if not ok or not combo_name or not all(char.isalnum() or char in ' _' for char in combo_name):
+            print('Enter valid combo name')
             return
 
         color_dialog = QColorDialog(self)

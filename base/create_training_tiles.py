@@ -5,13 +5,14 @@ Date: May 22, 2024
 """
 
 import glob
+import shutil
 import numpy as np
 import time
 from .combine_annotations_into_tiles import combine_annotations_into_tiles
 import os
 import pickle
 
-def create_training_tiles(pthDL, numann0, ctlist0):
+def create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles):
     """
     Builds training and validation tiles using the annotation bounding boxes and saves them to the model name folder
 
@@ -60,6 +61,8 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     percann = np.dstack((percann, percann))
     percann0 = percann.copy()
     ty = 'training'
+    if create_new_tiles:
+        shutil.rmtree(os.path.join(pthDL, ty))
     obg = os.path.join(pthDL, ty, 'big_tiles')
     # Generate tiles until enough are made
     train_start = time.time()
@@ -90,6 +93,8 @@ def create_training_tiles(pthDL, numann0, ctlist0):
 
     # Build validation tiles
     ty = 'validation'
+    if create_new_tiles:
+        shutil.rmtree(os.path.join(pthDL, ty))
     obg = os.path.join(pthDL, ty, 'big_tiles')
     numann = numann0.copy()
     percann = (numann0 > 0).astype(float)

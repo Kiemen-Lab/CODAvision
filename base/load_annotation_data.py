@@ -92,6 +92,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         modification_time = os.path.getmtime(os.path.join(pth, f'{imnm}.xml'))
         date_modified = time.ctime(modification_time)
 
+        create_new_tiles = True
         if dm == str(date_modified) and bb == 1 and not reload_xml:
             print(' annotation data previously loaded')
             with open(annotations_file, 'rb') as f:
@@ -102,6 +103,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             #ctlist0 is now a dictionary
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
+            create_new_tiles = False
             continue
 
 
@@ -155,4 +157,4 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         ctlist0['tile_pth'].extend(ctlist['tile_pth'])
 
         print(f' Finished image in {round(time.time() - image_time)} seconds.')
-    return ctlist0, numann0
+    return ctlist0, numann0, create_new_tiles
