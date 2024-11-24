@@ -319,8 +319,10 @@ class MainWindowClassify(QtWidgets.QMainWindow):
                 item = self.ui.component_TW.item(row, 0)
                 if item.checkState() == Qt.Checked and (not os.path.isfile(os.path.join(classification_path,item.text()+'_count_analysis.csv'))):
                     quantify_tissues.append(row+1)
+            quantify_tissues = list(set(quantify_tissues))
             if len(quantify_tissues) > 0:
-                quantify_objects(self.pathDL,classification_path,quantify_tissues)
+                for tissue in quantify_tissues:
+                    quantify_objects(self.pathDL,classification_path,tissue)
             data = {'cmap':self.cmap.copy()}
             with open(datafile, 'wb') as f:
                 pickle.dump(data, f)

@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import cv2
+import matplotlib.pyplot as plt
 from skimage.measure import label
 from skimage.morphology import remove_small_objects
 warnings.filterwarnings("ignore")
@@ -35,41 +36,40 @@ def quantify_objects(pthDL, quantpath, tissue):
     files = [os.path.join(quantpath, f) for f in os.listdir(quantpath) if f.endswith('.tif')]
     print('_______Starting object analysis________')
 
-    for annotation_class in tissue:
-        all_props = []
-        class_name = classNames[annotation_class - 1]
-        csv_file = os.path.join(quantpath, f'{class_name}_count_analysis.csv')
+    class_name = classNames[tissue-1]
+    csv_file = os.path.join(quantpath, f'{class_name}_count_analysis.csv')
+    all_props = []
 
-        for im_path in files:
-            print(f'Processing image {os.path.basename(im_path)}')
-            # Load image
-            img = cv2.imread(im_path, cv2.IMREAD_GRAYSCALE)
+    for im_path in files:
+        print(f'Processing image {os.path.basename(im_path)}')
+        # Load image
+        img = cv2.imread(im_path, cv2.IMREAD_GRAYSCALE)
 
-            print(f'  Analyzing annotation class: {class_name}')
-            label_mask = img == annotation_class
-            # Label objects
-            labeled = label(label_mask, connectivity=1)
-            labeled = remove_small_objects(labeled, min_size=500, connectivity=1)
+        print(f'  Analyzing annotation class: {class_name}')
+        label_mask = img == tissue
+        # Label objects
+        labeled = label(label_mask, connectivity=1)
+        labeled = remove_small_objects(labeled, min_size=500, connectivity=1)
 
-            # Get object sizes using np.bincount
-            object_sizes = np.bincount(labeled.ravel())[1:]  # Exclude background (label 0)
-            for object_ID, size in enumerate(object_sizes, start=1):
-                if size >= 500:  # Ensure only objects larger than 500 pixels are included
-                    all_props.append([os.path.basename(im_path), f"{class_name} {object_ID}", size])
+        # Get object sizes using np.bincount
+        object_sizes = np.bincount(labeled.ravel())[1:]  # Exclude background (label 0)
+        for object_ID, size in enumerate(object_sizes, start=1):
+            if size >= 500:  # Ensure only objects larger than 500 pixels are included
+                all_props.append([os.path.basename(im_path), f"{class_name} {object_ID}", size])
 
-        # Convert to DataFrame
-        props_df = pd.DataFrame(all_props, columns=["Image", "Object ID", "Object Size (pixels)"])
-        print(f'DataFrame to be written for {class_name}:\n{props_df}')
+    # Convert to DataFrame
+    props_df = pd.DataFrame(all_props, columns=["Image", "Object ID", "Object Size (pixels)"])
+    print(f'DataFrame to be written for {class_name}:\n{props_df}')
 
-        # Write to CSV
-        try:
-            props_df.to_csv(csv_file, mode='w', header=True, index=False)
-        except PermissionError as e:
-            print(f"PermissionError: {e}")
-            return
-        except ValueError as e:
-            print(f"ValueError: {e}")
-            return
+    # Write to CSV
+    try:
+        props_df.to_csv(csv_file, mode='w', header=True, index=False)
+    except PermissionError as e:
+        print(f"PermissionError: {e}")
+        return
+    except ValueError as e:
+        print(f"ValueError: {e}")
+        return
 
     print('_______Object analysis completed________')
 

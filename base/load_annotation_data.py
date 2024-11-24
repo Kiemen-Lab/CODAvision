@@ -144,7 +144,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         J3 = J3.reshape(J.shape)
         mask = np.dstack((J1, J2, J3))
         I = (I * 0.5) + (mask * 0.5)
-        io.imsave(os.path.join(outim, f'{imnm}.tif'), (I * 255).astype(np.uint8))
+        io.imsave(os.path.join(outim, f'{imnm}.png'), (I * 255).astype(np.uint8))
 
         # create annotation bounding boxes and update data to annotation.pkl file
         numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)

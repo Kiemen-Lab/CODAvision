@@ -31,6 +31,7 @@ if window.classify:
             pthim = data['pthim']
             umpix = data['umpix']
             nm = data['nm']
+            final_df = data['final_df']
             model_type = data['model_type']
         umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
         resolution = umpix_to_resolution[umpix]
@@ -103,7 +104,15 @@ else:
     quantpath = os.path.join(pthim, 'classification_'+model_name+'_'+model_type)
 
     # Identify annotation classes for component analysis
-    tissues = [index + 1 for index, row in final_df.iterrows() if row['Component analysis']]
+    tissues = []
+    count = 0
+    print(final_df)
+    for index, row in final_df.iterrows():
+        if final_df['Delete layer'][index]:
+            count += 1
+        if row['Component analysis']:
+            tissues.append(final_df['Combined layers'][index]-count)
+    tissues = list(set(tissues))
 
     # Check if the tissue list has elements
     for tissue in tissues:
