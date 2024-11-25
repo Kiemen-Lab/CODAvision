@@ -106,7 +106,6 @@ else:
     # Identify annotation classes for component analysis
     tissues = []
     count = 0
-    print(final_df)
     for index, row in final_df.iterrows():
         if final_df['Delete layer'][index]:
             count += 1

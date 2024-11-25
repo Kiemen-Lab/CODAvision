@@ -58,7 +58,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     numann0 = []
     ctlist0 = {'tile_name': [], 'tile_pth': []}
     outim = os.path.join(pth, 'check_annotations')
-    os.makedirs(outim, exist_ok=True)
+
 
     # Check that all images exist for all the .cml files contained in the folder
     for imnm in imlist:
@@ -146,6 +146,9 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         J3 = J3.reshape(J.shape)
         mask = np.dstack((J1, J2, J3))
         I = (I * 0.5) + (mask * 0.5)
+        if create_new_tiles and os.path.isdir(outim):
+            shutil.rmtree(outim)
+        os.makedirs(outim, exist_ok=True)
         io.imsave(os.path.join(outim, f'{imnm}.png'), (I * 255).astype(np.uint8))
 
         # create annotation bounding boxes and update data to annotation.pkl file

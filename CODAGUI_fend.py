@@ -909,7 +909,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         combo_name, ok = QtWidgets.QInputDialog.getText(self, "Combo Name", "Enter a name for the combined class:")
         if not ok or not combo_name or not all(char.isalnum() or char in ' _' for char in combo_name):
-            print('Enter valid combo name')
+            QtWidgets.QMessageBox.warning(self, "Invalid Combo Name",
+                                          "Please introduce a combo name that does not contain any especial characters.")
             return
 
         color_dialog = QColorDialog(self)

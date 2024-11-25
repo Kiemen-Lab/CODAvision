@@ -61,7 +61,7 @@ def create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles):
     percann = np.dstack((percann, percann))
     percann0 = percann.copy()
     ty = 'training'
-    if create_new_tiles:
+    if create_new_tiles and os.path.isdir(os.path.join(pthDL, ty)):
         shutil.rmtree(os.path.join(pthDL, ty))
     obg = os.path.join(pthDL, ty, 'big_tiles')
     # Generate tiles until enough are made
@@ -93,7 +93,7 @@ def create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles):
 
     # Build validation tiles
     ty = 'validation'
-    if create_new_tiles:
+    if create_new_tiles and os.path.isdir(os.path.join(pthDL, ty)):
         shutil.rmtree(os.path.join(pthDL, ty))
     obg = os.path.join(pthDL, ty, 'big_tiles')
     numann = numann0.copy()
