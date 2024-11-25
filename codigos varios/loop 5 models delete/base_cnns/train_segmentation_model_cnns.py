@@ -15,16 +15,25 @@ from base.backbones import * #ADDED IMPORT
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 os.system("nvcc --version")
 from glob import glob
+import pickle
 from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
 import warnings
 import GPUtil
+import time
 warnings.filterwarnings('ignore')
 
 
 def train_segmentation_model_cnns(pthDL, model_type, iteration): #ADDED NAME
     #Start training time
+
+
+    #continue if there is a model already trained
+    if os.path.exists(os.path.join(pthDL, f"best_model_{model_type}_{iteration}.keras")):
+        print(f"Model {model_type}_{iteration} already trained")
+        return
+
     start_time = time.time()
 
 
@@ -291,7 +300,7 @@ def train_segmentation_model_cnns(pthDL, model_type, iteration): #ADDED NAME
         metrics=["accuracy"],
     )
     num_validations = 3
-    best_mod_name = f"best_model_{model_type}.keras"
+    best_mod_name = f"best_model_{model_type}_{iteration}.keras"
     plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
                             filepath=os.path.join(pthDL, best_mod_name), RLRoP_patience=1, factor=0.75)
 
