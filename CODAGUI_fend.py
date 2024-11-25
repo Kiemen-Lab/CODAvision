@@ -720,6 +720,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.addnonws_CB.addItems(layer_names)
 
     def apply_whitespace_setting(self):
+
         ws_option = self.ui.wsoptions_CB.currentText()
         ws_map = {
             'Remove whitespace': 0,
@@ -739,14 +740,27 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         selected_row = selected_items[0].row()
+        updated_selected_row = selected_row
+        print('selected_row', selected_row)
+
+        delete_count = 0
+        # Mark the selected rows as deleted
+        for idx in self.combined_df.index:
+            print('idx', idx)
+            if self.combined_df.at[idx, 'Deleted'] == True:
+                print(idx)
+                delete_count += 1
+            elif idx - delete_count == selected_row:
+                updated_selected_row = idx
         ws_value = ws_map[ws_option]
+        print(updated_selected_row)
 
         if self.combined_df is  None:
-            self.df.at[selected_row, 'Whitespace Settings'] = ws_value
+            self.df.at[updated_selected_row, 'Whitespace Settings'] = ws_value
             print('changing ws df')        ###delete
             print(self.df) ###delete
         else:
-            self.combined_df.at[selected_row, 'Whitespace Settings'] = ws_value
+            self.combined_df.at[updated_selected_row, 'Whitespace Settings'] = ws_value
             print('changing ws combined df')        ###delete
             print(self.combined_df) ###delete
 
