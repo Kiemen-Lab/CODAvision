@@ -53,6 +53,7 @@ class Ui_MainWindow(object):
         self.resolution_CB.addItem("")
         self.resolution_CB.addItem("")
         self.resolution_CB.addItem("")
+        self.resolution_CB.addItem("")
         self.resolution_CB.setObjectName(u"resolution_CB")
 
         self.horizontalLayout_3.addWidget(self.resolution_CB)
@@ -127,6 +128,7 @@ class Ui_MainWindow(object):
         self.testing_LE = QLineEdit(self.tab)
         self.testing_LE.setObjectName(u"testing_LE")
 
+
         self.horizontalLayout_2.addWidget(self.testing_LE)
 
         self.testing_PB = QPushButton(self.tab)
@@ -136,6 +138,42 @@ class Ui_MainWindow(object):
 
 
         self.gridLayout_3.addLayout(self.horizontalLayout_2, 2, 0, 1, 3)
+
+        self.label_42 = QLabel(self.tab)
+        self.label_42.setObjectName(u"label_42")
+        self.label_42.setGeometry(QRect(9, 168, 200, 24))
+        self.custom_img_LE = QLineEdit(self.tab)
+        self.custom_img_LE.setObjectName(u"custom_img_LE")
+        self.custom_img_LE.setGeometry(QRect(180, 170, 440, 20))
+        self.custom_img_PB = QPushButton(self.tab)
+        self.custom_img_PB.setObjectName(u"custom_img_PB")
+        self.custom_img_PB.setGeometry(QRect(626, 167, 51, 28))
+        self.label_42.setVisible(False)
+        self.custom_img_LE.setVisible(False)
+        self.custom_img_PB.setVisible(False)
+
+        self.label_44 = QLabel(self.tab)
+        self.label_44.setObjectName(u"label_44")
+        self.label_44.setGeometry(QRect(9, 202, 200, 24))
+        self.custom_test_img_LE = QLineEdit(self.tab)
+        self.custom_test_img_LE.setObjectName(u"custom_test_img_LE")
+        self.custom_test_img_LE.setGeometry(QRect(176, 204, 444, 20))
+        self.custom_test_img_PB = QPushButton(self.tab)
+        self.custom_test_img_PB.setObjectName(u"custom_test_img_PB")
+        self.custom_test_img_PB.setGeometry(QRect(626, 201, 51, 28))
+        self.label_44.setVisible(False)
+        self.custom_test_img_LE.setVisible(False)
+        self.custom_test_img_PB.setVisible(False)
+
+        self.label_43 = QLabel(self.tab)
+        self.label_43.setObjectName(u"label_43")
+        self.label_43.setGeometry(QRect(9, 234, 100, 24))
+        self.custom_scale_LE = QLineEdit(self.tab)
+        self.custom_scale_LE.setObjectName(u"custom_scale_LE")
+        self.custom_scale_LE.setGeometry(QRect(135, 238, 120, 20))
+        self.label_43.setVisible(False)
+        self.custom_scale_LE.setVisible(False)
+
 
         self.prerecorded_PB = QPushButton(self.tab)
         self.prerecorded_PB.setObjectName(u"prerecorded_PB")
@@ -544,6 +582,7 @@ class Ui_MainWindow(object):
         self.resolution_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"1x", None))
         self.resolution_CB.setItemText(2, QCoreApplication.translate("MainWindow", u"5x", None))
         self.resolution_CB.setItemText(3, QCoreApplication.translate("MainWindow", u"10x", None))
+        self.resolution_CB.setItemText(4, QCoreApplication.translate("MainWindow", u"Custom", None))
 
 #if QT_CONFIG(tooltip)
         self.resolution_CB.setToolTip(QCoreApplication.translate("MainWindow", u"Resolution of the images used for training ", None))
@@ -565,6 +604,8 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(whatsthis)
         self.trianing_LE.setInputMask("")
         self.trainin_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
+        self.custom_img_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
+        self.custom_test_img_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"Testing annotations", None))
 #if QT_CONFIG(tooltip)
         self.testing_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Path to testing annotations", None))
@@ -615,6 +656,9 @@ class Ui_MainWindow(object):
         self.label_10.setText(QCoreApplication.translate("MainWindow", u"Training tiles number:", None))
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Validation tiles number:", None))
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"TA average count:", None))
+        self.label_42.setText(QCoreApplication.translate("MainWindow", u"Uncompressed training images", None))
+        self.label_44.setText(QCoreApplication.translate("MainWindow", u"Uncompressed testing images", None))
+        self.label_43.setText(QCoreApplication.translate("MainWindow", u"Scaling factor", None))
         self.model_name_label.setText(QCoreApplication.translate("MainWindow", u"Model architecture", None))
         self.batch_label.setText(QCoreApplication.translate("MainWindow", u"Batch size", None))
         self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))

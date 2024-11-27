@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from .plot_cmap_legend import plot_cmap_legend
 import pickle
 
-def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, nTA, final_df, combined_df, model_type, batch_size):
+def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, nTA, final_df, combined_df, model_type, batch_size, uncomp_train_pth = '', uncomp_test_pth = '', scale = ''):
     """
       Saves model metadata to a pickle file and generates a color map legend plot.
 
@@ -99,17 +99,36 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
             except EOFError:
                 existing_data = {}
 
-        existing_data.update(
-            {"pthim": pthim, "pthDL": pthDL, "pthtest":pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
-             "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
-                         "combined_df": combined_df, "nvalidate": nvalidate, "nTA": nTA, "model_type": model_type, "batch_size": batch_size})
+        if umpix == 'TBD':
+            existing_data.update(
+                {"pthim": pthim, "pthDL": pthDL, "pthtest":pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
+                 "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
+                 "combined_df": combined_df, "nvalidate": nvalidate, "nTA": nTA, "model_type": model_type,
+                 "batch_size": batch_size, "uncomp_train_pth" : uncomp_train_pth, "uncomp_test_pth" : uncomp_test_pth,
+                 "scale": scale})
+        else:
+            existing_data.update(
+                {"pthim": pthim, "pthDL": pthDL, "pthtest": pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap,
+                 "sxy": sxy,
+                 "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
+                 "combined_df": combined_df, "nvalidate": nvalidate, "nTA": nTA, "model_type": model_type,
+                 "batch_size": batch_size})
 
         with open(datafile, 'wb') as f:
             pickle.dump(existing_data, f)
     else:
         print('Creating Net metadata file...')
         with open(datafile, 'wb') as f:
-            pickle.dump({"pthim": pthim, "pthDL": pthDL, "pthtest": pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
+            if umpix == 'TBD':
+                pickle.dump({"pthim": pthim, "pthDL": pthDL, "pthtest": pthtest, "WS": WS, "nm": nm, "umpix": umpix,
+                             "cmap": cmap, "sxy": sxy,
+                             "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite,
+                             "final_df": final_df,
+                             "combined_df": combined_df, "nvalidate": nvalidate, "nTA": nTA, "model_type": model_type,
+                             "batch_size": batch_size, "uncomp_train_pth": uncomp_train_pth, "uncomp_test_pth": uncomp_test_pth,
+                             "scale": scale}, f)
+            else:
+                pickle.dump({"pthim": pthim, "pthDL": pthDL, "pthtest": pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
                          "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
                          "combined_df": combined_df,"nvalidate": nvalidate, "nTA": nTA, "model_type":model_type, "batch_size": batch_size}, f)
 

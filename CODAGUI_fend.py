@@ -47,6 +47,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.classify_PB.clicked.connect(self.open_classify)
         self.ui.prerecorded_PB.clicked.connect(self.browse_prerecorded_file)
         self.ui.trianing_LE.textChanged.connect(self.check_for_trained_model)
+        self.ui.custom_img_LE.textChanged.connect(self.check_for_trained_model)
+        self.ui.custom_test_img_LE.textChanged.connect(self.check_for_trained_model)
+        self.ui.custom_scale_LE.textChanged.connect(self.check_for_trained_model)
+        self.ui.custom_img_PB.clicked.connect(lambda: self.browse_image_folder('training'))
+        self.ui.custom_test_img_PB.clicked.connect(lambda: self.browse_image_folder('testing'))
         self.ui.model_name.textChanged.connect(self.check_for_trained_model)
         self.ui.resolution_CB.currentIndexChanged.connect(self.check_for_trained_model)
         self.combo_colors = {}
@@ -91,6 +96,18 @@ class MainWindow(QtWidgets.QMainWindow):
                                                              "Data Files (*.pkl)")
         if file_path:
             self.load_prerecorded_data(file_path)
+
+    def browse_image_folder(self, purpose):
+        dialog_title = f'Select Uncompressed {purpose.capitalize()} Image Directory'
+        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, os.getcwd())
+        if folder_path:
+            if os.path.isdir(folder_path):
+                if purpose == 'training':
+                    self.ui.custom_img_LE.setText(folder_path)
+                elif purpose == 'testing':
+                    self.ui.custom_test_img_LE.setText(folder_path)
+            else:
+                self.ui.path_check.exec_()
 
     def load_xml(self):
         xml_file = None
@@ -150,7 +167,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.original_df = self.df.copy()  # Set original_df in MainWindow
                 self.combined_df = data['combined_df']
                 self.ui.batch_size_SB.setValue(data['batch_size'])
-                print(self.combined_df)
                 ws = data['WS']
                 nm = data['nm']
                 self.nm = nm
@@ -166,7 +182,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.trianing_LE.setText(self.pthim)
                 self.ui.testing_LE.setText(data.get('pthtest', ''))
                 umpix = data.get('umpix','')
-                self.resolution = umpix_to_resolution.get(umpix, 'Select')
+                self.resolution = umpix_to_resolution.get(umpix, 'Custom')
+                if self.resolution == 'Custom':
+                    self.ui.custom_img_LE.setText(data['uncomp_train_pth'])
+                    self.ui.custom_test_img_LE.setText(data['uncomp_test_pth'])
+                    self.ui.custom_scale_LE.setText(data['scale'])
                 self.ui.resolution_CB.setCurrentText(self.resolution)
                 if model_type:
                     self.ui.model_type_CB.setCurrentText(model_type)
@@ -219,19 +239,51 @@ class MainWindow(QtWidgets.QMainWindow):
             for file in os.listdir(os.path.join(self.ui.trianing_LE.text(),self.ui.model_name.text())):
                 if 'best_model' in file and file.endswith('.keras'):
                     model_exists = True
-        if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.resolution_CB.currentText())):
-            self.ui.classify_PB.setVisible(True)
-            self.ui.classify_PB.setEnabled(True)
-            self.pthim = self.ui.trianing_LE.text()
-            self.resolution = self.ui.resolution_CB.currentText()
-            self.nm = self.ui.model_name.text()
-            with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
-                data = pickle.load(file)
-                self.model_type = data['model_type']
-            self.classification_source = 2
+
+        if self.ui.resolution_CB.currentText() == 'Custom':
+            self.ui.label_42.setVisible(True)
+            self.ui.custom_img_LE.setVisible(True)
+            self.ui.custom_img_PB.setVisible(True)
+            self.ui.label_44.setVisible(True)
+            self.ui.custom_test_img_LE.setVisible(True)
+            self.ui.custom_test_img_PB.setVisible(True)
+            self.ui.label_43.setVisible(True)
+            self.ui.custom_scale_LE.setVisible(True)
+            if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),'Custom_'+self.custom_scale_LE.text()+'x')):
+                self.ui.classify_PB.setVisible(True)
+                self.ui.classify_PB.setEnabled(True)
+                self.pthim = self.ui.trianing_LE.text()
+                self.resolution = 'Custom_'+self.custom_scale_LE.text()+'x'
+                self.nm = self.ui.model_name.text()
+                with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
+                    data = pickle.load(file)
+                    self.model_type = data['model_type']
+                self.classification_source = 2
+            else:
+                self.ui.classify_PB.setVisible(False)
+                self.ui.classify_PB.setEnabled(False)
         else:
-            self.ui.classify_PB.setVisible(False)
-            self.ui.classify_PB.setEnabled(False)
+            self.ui.label_42.setVisible(False)
+            self.ui.custom_img_LE.setVisible(False)
+            self.ui.custom_img_PB.setVisible(False)
+            self.ui.label_44.setVisible(False)
+            self.ui.custom_test_img_LE.setVisible(False)
+            self.ui.custom_test_img_PB.setVisible(False)
+            self.ui.label_43.setVisible(False)
+            self.ui.custom_scale_LE.setVisible(False)
+            if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.resolution_CB.currentText())):
+                self.ui.classify_PB.setVisible(True)
+                self.ui.classify_PB.setEnabled(True)
+                self.pthim = self.ui.trianing_LE.text()
+                self.resolution = self.ui.resolution_CB.currentText()
+                self.nm = self.ui.model_name.text()
+                with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
+                    data = pickle.load(file)
+                    self.model_type = data['model_type']
+                self.classification_source = 2
+            else:
+                self.ui.classify_PB.setVisible(False)
+                self.ui.classify_PB.setEnabled(False)
 
     def fill_form_and_continue(self):
         """Fill the form, process data, and switch to the next tab if successful."""
@@ -622,6 +674,39 @@ class MainWindow(QtWidgets.QMainWindow):
         if resolution == "Select":
             QtWidgets.QMessageBox.warning(self, 'Warning', 'Please chose a resolution from the drop down box')
             return False
+        elif resolution == "Custom":
+            custom_train = self.ui.custom_img_LE.text()
+            custom_test = self.ui.custom_test_img_LE.text()
+            if not os.path.isdir(custom_train):
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'The folder selected for the training images does not exist.')
+                return False
+
+            if not os.path.isdir(custom_test):
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'The folder selected for the testing images does not exist.')
+                return False
+            if any(f.endswith(('.ndpi')) for f in os.listdir(custom_train)):
+                self.img_type = '.ndpi'
+            elif any(f.endswith(('.dcm')) for f in os.listdir(custom_train)):
+                self.img_type = '.dcm'
+            elif any(f.endswith(('.tif')) for f in os.listdir(custom_train)):
+                self.img_type = '.tif'
+            else:
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'The selected uncompressed training images path does not contain .ndpi, .dcm or .tif files')
+                return False
+
+            if any(f.endswith(('.ndpi')) for f in os.listdir(custom_test)):
+                self.test_img_type = '.ndpi'
+            elif any(f.endswith(('.dcm')) for f in os.listdir(custom_test)):
+                self.test_img_type = '.dcm'
+            elif any(f.endswith(('.tif')) for f in os.listdir(custom_test)):
+                self.test_img_type = '.tif'
+            else:
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'The selected uncompressed training images path does not contain .ndpi, .dcm or .tif files')
+                return False
 
         # Check if resolution is selected
         if pth == pthtest:
@@ -741,28 +826,20 @@ class MainWindow(QtWidgets.QMainWindow):
 
         selected_row = selected_items[0].row()
         updated_selected_row = selected_row
-        print('selected_row', selected_row)
 
         delete_count = 0
         # Mark the selected rows as deleted
         for idx in self.combined_df.index:
-            print('idx', idx)
             if self.combined_df.at[idx, 'Deleted'] == True:
-                print(idx)
                 delete_count += 1
             elif idx - delete_count == selected_row:
                 updated_selected_row = idx
         ws_value = ws_map[ws_option]
-        print(updated_selected_row)
 
         if self.combined_df is  None:
             self.df.at[updated_selected_row, 'Whitespace Settings'] = ws_value
-            print('changing ws df')        ###delete
-            print(self.df) ###delete
         else:
             self.combined_df.at[updated_selected_row, 'Whitespace Settings'] = ws_value
-            print('changing ws combined df')        ###delete
-            print(self.combined_df) ###delete
 
 
         ws_item = table.item(selected_row, 1)
@@ -1059,8 +1136,6 @@ class MainWindow(QtWidgets.QMainWindow):
         print(self.df)
 
         # Populate the table with the updated DataFrame
-        # print("Combined DataFrame after deletion:")
-        # print(self.combined_df)
         self.populate_table_widget(self.combined_df)
 
         # Update the add whitespace/non whitespace comboboxes
@@ -1095,7 +1170,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.df['Component analysis'] = self.df['Layer Name'].map(component_layers)
         self.combined_df['Component analysis'] = self.combined_df['Layer Name'].map(combined_component)
-        print(self.combined_df)
         for idx in self.df.index:
             if np.isnan(self.df['Component analysis'][idx]):
                 self.df.at[idx, 'Component analysis'] = False
@@ -1129,7 +1203,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Tif resolution
         resolution_to_umpix = {"10x": 1, "5x": 2, "1x": 4}
-        umpix = resolution_to_umpix.get(resolution, 2)  # Default to 2 if resolution not found
+        if resolution == 'Custom':
+            umpix = 'TBD'
+        else:
+            umpix = resolution_to_umpix.get(resolution, 2)  # Default to 2 if resolution not found
         self.umpix = umpix
 
         # Get the dataframe with annotation information
@@ -1178,11 +1255,19 @@ class MainWindow(QtWidgets.QMainWindow):
         # Final Parameters
         print('Classnames: ', classNames)
         print('Colormap: ', colormap)
-        print(WS)
+        print('WS', WS)
 
         # Save model metadata onto pickle file
-        save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
-                                                        tile_size, classNames, ntrain, nvalidate, nTA, final_df, combined_df, model_type, batch_size)
+        if self.resolution == 'Custom':
+            self.uncomp_train_pth = self.ui.custom_img_LE.text()
+            self.uncomp_test_pth = self.ui.custom_test_img_LE.text()
+            self.scale = self.ui.custom_scale_LE.text()
+            save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+                                                            tile_size, classNames, ntrain, nvalidate, nTA, final_df,
+                                                            combined_df, model_type, batch_size,
+                                                            uncomp_train_pth = self.uncomp_train_pth,
+                                                            uncomp_test_pth = self.uncomp_test_pth, scale = self.scale)
+
 
     def load_saved_values(self):
         if self.prerecorded_data:
@@ -1200,12 +1285,18 @@ class MainWindow(QtWidgets.QMainWindow):
     def get_pthim(self):
         pth = self.ui.trianing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
-        return os.path.join(pth, f'{resolution}')
+        if resolution == 'Custom':
+            return os.path.join(pth, 'Custom_'+self.ui.custom_scale_LE.text()+'x')
+        else:
+            return os.path.join(pth, f'{resolution}')
 
     def get_pthtestim(self):
         pthtest = self.ui.testing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
-        return os.path.join(pthtest, f'{resolution}')
+        if resolution == 'Custom':
+            return os.path.join(pthtest, 'Custom_'+self.ui.custom_scale_LE.text()+'x')
+        else:
+            return os.path.join(pthtest, f'{resolution}')
 
     def open_classify(self):
         self.classify = True

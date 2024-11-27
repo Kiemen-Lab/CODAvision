@@ -60,7 +60,11 @@ else:
 
     # Create tiff images if they don't exist
     print(' ')
-    WSI2tif(pth, resolution, umpix)
+    if resolution == 'Custom':
+        print('To be done')
+        1/0
+    else:
+        WSI2tif(pth, resolution, umpix)
 
 
     # Determine optimal TA
