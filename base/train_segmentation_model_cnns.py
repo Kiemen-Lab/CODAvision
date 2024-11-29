@@ -23,11 +23,11 @@ import GPUtil
 warnings.filterwarnings('ignore')
 
 
-def train_segmentation_model_cnns(pthDL): #ADDED NAME
+def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         model_type = data['model_type']
-    if not (os.path.isfile(os.path.join(pthDL, 'best_model_'+model_type+'.keras'))):
+    if not (os.path.isfile(os.path.join(pthDL, 'best_model_'+model_type+'.keras'))) or retrain_model:
         #Start training time
         start_time = time.time()
 

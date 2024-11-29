@@ -86,7 +86,7 @@ else:
     create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles)
 
     # 4 Train model
-    train_segmentation_model_cnns(pthDL)
+    train_segmentation_model_cnns(pthDL, create_new_tiles)
 
     # 5 Test model
     print(' ')
