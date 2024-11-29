@@ -44,7 +44,7 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0, scale = None):
             if scale is None:
                 xyout[:,2:4] = np.round(xyout[:,2:4]/umpix) # Round the vertices coordinates for the annotations after converting them to pixels
             else:
-                xyout[:, 2:4] = np.round(xyout[:, 2:4]*scale)
+                xyout[:, 2:4] = np.round(xyout[:, 2:4]/scale)
             if TA.size > 0: # if TA is not empty, remove small objects and invert it
                 TA = TA > 0
                 TA = remove_small_objects(TA.astype(bool), min_size=30, connectivity=2)

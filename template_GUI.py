@@ -58,6 +58,7 @@ else:
     resolution = window.resolution
     model_type = window.model_type
 
+    already_scaled = True
     # Create tiff images if they don't exist
     print(' ')
     if resolution == 'Custom':
@@ -66,7 +67,11 @@ else:
         scale = float(window.scale)
         uncomp_pth = window.uncomp_train_pth
         uncomp_test_pth = window.uncomp_test_pth
-        WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
+        if already_scaled:
+            pthim = uncomp_pth
+            pthtestim = uncomp_test_pth
+        if not already_scaled: # Additional function i accidentally added, might include it in the future
+            WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
     else:
         WSI2tif(pth, resolution, umpix)
 
@@ -86,12 +91,37 @@ else:
     # 5 Test model
     print(' ')
     WSI2tif(pthtest, resolution, umpix)
-    if not os.path.isfile(os.path.join(pthtest,resolution,'TA','TA_cutoff.pkl')):
-        try:
-            os.makedirs(os.path.join(pthtest,resolution,'TA'), exist_ok=True)
-            shutil.copy(os.path.join(pthim,'TA','TA_cutoff.pkl'),os.path.join(pthtest,resolution,'TA','TA_cutoff.pkl'))
-        except:
-            print('No TA cutoff file found, using default value')
+    if resolution == 'Custom':
+        train_img_type = window.img_type
+        test_img_type = window.test_img_type
+        scale = float(window.scale)
+        uncomp_pth = window.uncomp_train_pth
+        uncomp_test_pth = window.uncomp_test_pth
+        if already_scaled:
+            if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
+                try:
+                    os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
+                    shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
+                                os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
+                except:
+                    print('No TA cutoff file found, using default value')
+        if not already_scaled: # Additional function i accidentally added, might include it in the future
+            WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
+            if not os.path.isfile(os.path.join(pthtest,'Custom_scale_'+scale, 'TA', 'TA_cutoff.pkl')):
+                try:
+                    os.makedirs(os.path.join(pthtest,'Custom_Scale_'+scale, 'TA'), exist_ok=True)
+                    shutil.copy(os.path.join(pth, 'Custom_Scale_'+scale, 'TA', 'TA_cutoff.pkl'),
+                                os.path.join(pthtest,'Custom_Scale_'+scale, 'TA', 'TA_cutoff.pkl'))
+                except:
+                    print('No TA cutoff file found, using default value')
+    else:
+        WSI2tif(pthtest, resolution, umpix)
+        if not os.path.isfile(os.path.join(pthtest,resolution,'TA','TA_cutoff.pkl')):
+            try:
+                os.makedirs(os.path.join(pthtest,resolution,'TA'), exist_ok=True)
+                shutil.copy(os.path.join(pthim,'TA','TA_cutoff.pkl'),os.path.join(pthtest,resolution,'TA','TA_cutoff.pkl'))
+            except:
+                print('No TA cutoff file found, using default value')
 
     test_segmentation_model(pthDL, pthtest, pthtestim)
 

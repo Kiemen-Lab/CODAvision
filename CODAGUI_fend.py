@@ -49,7 +49,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.trianing_LE.textChanged.connect(self.check_for_trained_model)
         self.ui.custom_img_LE.textChanged.connect(self.check_for_trained_model)
         self.ui.custom_test_img_LE.textChanged.connect(self.check_for_trained_model)
-        self.ui.custom_scale_LE.textChanged.connect(self.check_for_trained_model)
         self.ui.custom_img_PB.clicked.connect(lambda: self.browse_image_folder('training'))
         self.ui.custom_test_img_PB.clicked.connect(lambda: self.browse_image_folder('testing'))
         self.ui.model_name.textChanged.connect(self.check_for_trained_model)
@@ -235,6 +234,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.classify_PB.setVisible(False)
             self.ui.classify_PB.setEnabled(False)
 
+
     def check_for_trained_model(self):
         model_exists = False
         if os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.model_name.text())):
@@ -251,11 +251,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.custom_test_img_PB.setVisible(True)
             self.ui.label_43.setVisible(True)
             self.ui.custom_scale_LE.setVisible(True)
-            if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),'Custom_'+self.custom_scale_LE.text()+'x')):
+
+            if model_exists and os.path.isdir(self.ui.custom_img_LE.text()):
                 self.ui.classify_PB.setVisible(True)
                 self.ui.classify_PB.setEnabled(True)
                 self.pthim = self.ui.trianing_LE.text()
-                self.resolution = 'Custom_'+self.custom_scale_LE.text()+'x'
+                self.resolution = 'Custom'
                 self.nm = self.ui.model_name.text()
                 with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
                     data = pickle.load(file)
@@ -694,9 +695,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.img_type = '.dcm'
             elif any(f.endswith(('.tif')) for f in os.listdir(custom_train)):
                 self.img_type = '.tif'
+            elif any(f.endswith(('.jpg')) for f in os.listdir(custom_train)):
+                self.img_type = '.jpg'
+            elif any(f.endswith(('.png')) for f in os.listdir(custom_train)):
+                self.img_type = '.png'
             else:
                 QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The selected uncompressed training images path does not contain .ndpi, .dcm or .tif files')
+                                              'The selected uncompressed training images path does not contain'
+                                              ' .ndpi, .dcm, .tif, .png or .jpg files')
                 return False
 
             if any(f.endswith(('.ndpi')) for f in os.listdir(custom_test)):
@@ -705,10 +711,30 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.test_img_type = '.dcm'
             elif any(f.endswith(('.tif')) for f in os.listdir(custom_test)):
                 self.test_img_type = '.tif'
+            elif any(f.endswith(('.jpg')) for f in os.listdir(custom_test)):
+                self.img_type = '.jpg'
+            elif any(f.endswith(('.png')) for f in os.listdir(custom_test)):
+                self.img_type = '.png'
             else:
                 QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The selected uncompressed training images path does not contain .ndpi, .dcm or .tif files')
+                                              'The selected uncompressed testing images path does not contain'
+                                              ' .ndpi, .dcm, .tif, .png or .jpg files')
                 return False
+
+            scale = self.ui.custom_scale_LE.text()
+            try:
+                scale = float(scale)
+                if scale < 1:
+                    QtWidgets.QMessageBox.warning(self, 'Warning',
+                                          'Introduce a valid scaling factor')
+                    self.ui.custom_scale_LE.setText('1')
+                    return False
+            except:
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'Introduce a valid scaling factor')
+                self.ui.custom_scale_LE.setText('1')
+                return False
+
 
         # Check if resolution is selected
         if pth == pthtest:
