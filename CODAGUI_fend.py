@@ -62,6 +62,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.delete_count = 0
         self.combo_count = 0
         self.classify = False
+        self.img_type = '.ndpi'
+        self.test_img_type = '.ndpi'
 
 
 
@@ -1286,7 +1288,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pth = self.ui.trianing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
         if resolution == 'Custom':
-            return os.path.join(pth, 'Custom_'+self.ui.custom_scale_LE.text()+'x')
+            return os.path.join(pth, 'Custom_Scale_'+self.ui.custom_scale_LE.text())
         else:
             return os.path.join(pth, f'{resolution}')
 
@@ -1294,7 +1296,8 @@ class MainWindow(QtWidgets.QMainWindow):
         pthtest = self.ui.testing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
         if resolution == 'Custom':
-            return os.path.join(pthtest, 'Custom_'+self.ui.custom_scale_LE.text()+'x')
+            print('fix when determine relation between scale and resolution at line 1299')
+            return os.path.join(pthtest, 'Custom_Scale_'+self.ui.custom_scale_LE.text())
         else:
             return os.path.join(pthtest, f'{resolution}')
 

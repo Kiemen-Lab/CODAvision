@@ -11,7 +11,7 @@ from skimage.morphology import remove_small_objects
 import pickle
 import time
 
-def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
+def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0, scale = None):
     """
     Creates and saves the annotation mask of an image
 
@@ -33,11 +33,6 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
     elif umpix==400:
         umpix = 4
     print(' 2. of 4. Interpolating annotated regions and saving mask image')
-    num = len(WS[0])
-
-    maxsize = 0
-    minsize = 10000000
-    avgsize = 0
 
     try:    # Try to load 'xyout' from 'annotations.pkl' if the pkl file exists
         with open(os.path.join(outpth, 'annotations.pkl'), 'rb') as f:
@@ -46,7 +41,10 @@ def save_annotation_mask(I,outpth,WS,umpix,TA,kpb=0):
         if xyout.size == 0: # If xyout is empty, return a black image
             J = np.zeros(I.size)
         else:
-            xyout[:,2:4] = np.round(xyout[:,2:4]/umpix) # Round the vertices coordinates for the annotations after converting them to pixels
+            if scale is None:
+                xyout[:,2:4] = np.round(xyout[:,2:4]/umpix) # Round the vertices coordinates for the annotations after converting them to pixels
+            else:
+                xyout[:, 2:4] = np.round(xyout[:, 2:4]*scale)
             if TA.size > 0: # if TA is not empty, remove small objects and invert it
                 TA = TA > 0
                 TA = remove_small_objects(TA.astype(bool), min_size=30, connectivity=2)

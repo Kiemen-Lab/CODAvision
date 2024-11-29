@@ -24,11 +24,13 @@ def load_annotations(xml_file):
     with open(xml_file, 'r', encoding='utf-8') as file:
         my_xml = file.read()
         my_dict = xmltodict.parse(my_xml)
-
     xyout = []
 
-    reduced_annotations = my_dict['Annotations'].get('@MicronsPerPixel')
-    reduced_annotations = float(reduced_annotations)
+    try:
+        reduced_annotations = my_dict['Annotations'].get('@MicronsPerPixel')
+        reduced_annotations = float(reduced_annotations)
+    except:
+        reduced_annotations = 1
 
     annotations = my_dict.get("Annotations", {}).get("Annotation", [])
 

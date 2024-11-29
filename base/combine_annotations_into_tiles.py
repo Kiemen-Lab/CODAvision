@@ -161,6 +161,9 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
             sf = cv2.countNonZero(imT)/nL
             #print(f' Bigtile occupancy rate: {sf * 100:.2e} %')
 
+        if count %1000 == 0:
+            Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_a.jpg"))
+
         for p in range(numann.shape[1]):
             # print(f'p numann idx: {p}')
             ct[p] += np.sum(tmpT == p+1)

@@ -40,7 +40,6 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
         if ra == 1:
             reduced_annotations = ra
         xyout_df.iloc[:, 2:4] = xyout_df.iloc[:, 2:4] * reduced_annotations
-
         # Create the necessary directories if they don't exist
         annotations_dir = os.path.dirname(annotations_file)
         if not os.path.exists(annotations_dir):

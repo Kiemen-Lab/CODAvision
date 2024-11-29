@@ -8,6 +8,7 @@ from PIL import Image
 import numpy as np
 import os
 import glob
+import pydicom as dicom
 # from openslide import OpenSlide
 
 # Add the OpenSlide DLL directory
@@ -55,32 +56,116 @@ def process_missing_images(pth, pthim, missing_images, umpix):
             print(f"Error processing {missing_image}: {e}")
 
 
-def WSI2tif(pth, resolution, umpix):
+def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth =''):
     print('Making down-sampled images...')
+    if scale == 0:
+        pthim = os.path.join(pth, f'{resolution}')
 
-    pthim = os.path.join(pth, f'{resolution}')
+        # Ensure the image directory exists
+        if not os.path.isdir(pthim):
+            os.makedirs(pthim)
 
-    # Ensure the image directory exists
-    if not os.path.isdir(pthim):
-        os.makedirs(pthim)
+        # Get the .tif image names
+        image_files_tif = glob.glob(os.path.join(pthim, '*.tif'))
+        images_names_tif = {os.path.splitext(os.path.basename(image))[0] for image in image_files_tif}
 
-    # Get the .tif image names
-    image_files_tif = glob.glob(os.path.join(pthim, '*.tif'))
-    images_names_tif = {os.path.splitext(os.path.basename(image))[0] for image in image_files_tif}
+        # Get the .ndpi and .svs image names
+        image_files_wsi = glob.glob(os.path.join(pth, '*.ndpi')) + glob.glob(os.path.join(pth, '*.svs'))
+        if not image_files_wsi:
+            print("No .ndpi or .svs files found in the directory.")
+            return
+        images_names_wsi = {os.path.splitext(os.path.basename(image))[0] for image in image_files_wsi}
 
-    # Get the .ndpi and .svs image names
-    image_files_wsi = glob.glob(os.path.join(pth, '*.ndpi')) + glob.glob(os.path.join(pth, '*.svs'))
-    if not image_files_wsi:
-        print("No .ndpi or .svs files found in the directory.")
-        return
-    images_names_wsi = {os.path.splitext(os.path.basename(image))[0] for image in image_files_wsi}
-
-    # Compare image names and process missing images
-    if images_names_tif != images_names_wsi:
-        missing_images = images_names_wsi - images_names_tif
-        process_missing_images(pth, pthim, missing_images, umpix)
+        # Compare image names and process missing images
+        if images_names_tif != images_names_wsi:
+            missing_images = images_names_wsi - images_names_tif
+            process_missing_images(pth, pthim, missing_images, umpix)
+        else:
+            print("  All down-sampled images already exist in the directory.")
     else:
-        print("  All down-sampled images already exist in the directory.")
+        pthim = os.path.join(outpth, 'Custom_Scale_'+str(scale))
+
+        # Ensure the image directory exists
+        if not os.path.isdir(pthim):
+            os.makedirs(pthim)
+
+        # Get the .tif image names
+        image_files_tif = glob.glob(os.path.join(pthim, '*.tif'))
+        images_names_tif = {os.path.splitext(os.path.basename(image))[0] for image in image_files_tif}
+        if image_format == '.ndpi':
+            # Get the .ndpi and .svs image names
+            image_files_wsi = glob.glob(os.path.join(pth, '*.ndpi')) + glob.glob(os.path.join(pth, '*.svs'))
+            if not image_files_wsi:
+                print("No .ndpi or .svs files found in the directory.")
+                return
+            images_names_wsi = {os.path.splitext(os.path.basename(image))[0] for image in image_files_wsi}
+
+            # Compare image names and process missing images
+            if images_names_tif != images_names_wsi:
+                missing_images = images_names_wsi - images_names_tif
+                process_missing_images(pth, pthim, missing_images, umpix)
+            else:
+                print("  All down-sampled images already exist in the directory.")
+        elif image_format == '.dcm':
+            # Get the .dcm image names
+            image_files_dcm = glob.glob(os.path.join(pth, '*.dcm'))
+            if not image_files_dcm:
+                print("No .dcm files found in the directory.")
+                return
+            images_names_dcm = {os.path.splitext(os.path.basename(image))[0] for image in image_files_dcm}
+            # Compare image names and process missing images
+            if images_names_tif != images_names_dcm:
+                missing_images = images_names_dcm - images_names_tif
+                for idx, missing_image in enumerate(missing_images):
+                    print(f"  {idx + 1} / {len(missing_images)} processing: {missing_image}")
+
+                    # Open the slide
+                    image_path = os.path.join(pth, missing_image + '.dcm')
+                    ds = dicom.dcmread(image_path)
+                    pixel_array_numpy = ds.pixel_array
+                    image8b = np.uint8((pixel_array_numpy / np.max(pixel_array_numpy) * 255))
+                    resize_dimension = (
+                        int(np.ceil(image8b.shape[0] * scale)),
+                        int(np.ceil(image8b.shape[1] * scale))
+                    )
+                    image8b = Image.fromarray(image8b)
+                    # Resize and save the image
+                    image8b = image8b.resize(resize_dimension, resample=Image.NEAREST)
+                    output_path = os.path.join(pthim, missing_image + '.tif')
+                    image8b.save(output_path, resolution=1, resolution_unit=1, quality=100, compression=None)
+            else:
+                print("  All down-sampled images already exist in the directory.")
+        elif image_format == '.tif':
+            # Get the .dcm image names
+            image_files_tif_wsi = glob.glob(os.path.join(pth, '*.tif'))
+            if not image_files_tif_wsi:
+                print("No .tif files found in the directory.")
+                return
+            images_names_tif_wsi = {os.path.splitext(os.path.basename(image))[0] for image in image_files_tif_wsi}
+            # Compare image names and process missing images
+            if images_names_tif != images_names_tif_wsi:
+                missing_images = images_names_tif_wsi - images_names_tif
+                for idx, missing_image in enumerate(missing_images):
+                    print(f"  {idx + 1} / {len(missing_images)} processing: {missing_image}")
+                    try:
+                        # Open the slide
+                        image_path = os.path.join(pth, missing_image + '.tif')
+                        image = Image.open(image_path)
+                        print(image.shape[0] * scale)
+                        print(type(image.shape[0] * scale))
+                        resize_dimension = (
+                            int(np.ceil(image.shape[0] * scale)),
+                            int(np.ceil(image.shape[1] * scale))
+                        )
+                        # Resize and save the image
+                        image = image.resize(resize_dimension, resample=Image.NEAREST)
+                        output_path = os.path.join(pthim, missing_image + '.tif')
+                        image.save(output_path, resolution=1, resolution_unit=1, quality=100, compression=None)
+                    except Exception as e:
+                        print(f"Error processing {missing_image}: {e}")
+            else:
+                print("  All down-sampled images already exist in the directory.")
+
 
 
 if __name__ == '__main__':

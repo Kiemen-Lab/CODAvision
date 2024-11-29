@@ -50,6 +50,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         cmap = data['cmap']
         nm = data['nm']
         nwhite = data['nwhite']
+        if umpix == 'TBD':
+            scale = float(data['scale'])
 
 
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
@@ -68,6 +70,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         png_file = os.path.join(pth, f'{imnm}.png')
         if not os.path.isfile(tif_file) and not os.path.isfile(jpg_file) and not os.path.isfile(png_file):
             raise FileNotFoundError(f'Cannot find a tif, png or jpg file for xml file: {imnm}.xml')
+
+    create_new_tiles = False
 
     # for each annotation file
 
@@ -92,7 +96,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         modification_time = os.path.getmtime(os.path.join(pth, f'{imnm}.xml'))
         date_modified = time.ctime(modification_time)
 
-        create_new_tiles = True
         if dm == str(date_modified) and bb == 1 and not reload_xml:
             print(' annotation data previously loaded')
             with open(annotations_file, 'rb') as f:
@@ -103,8 +106,9 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             #ctlist0 is now a dictionary
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
-            create_new_tiles = False
             continue
+
+        create_new_tiles = True
 
 
         if os.path.isdir(outpth):
@@ -131,7 +135,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
         I0, TA, _ = calculate_tissue_mask(pthim, imnm)
 
-        J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
+        J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
 
         io.imsave(os.path.join(outpth, 'view_annotations.png'), J0.astype(np.uint8))
 
@@ -146,9 +150,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         J3 = J3.reshape(J.shape)
         mask = np.dstack((J1, J2, J3))
         I = (I * 0.5) + (mask * 0.5)
-        if create_new_tiles and os.path.isdir(outim):
-            shutil.rmtree(outim)
-        os.makedirs(outim, exist_ok=True)
+        if os.path.isfile(os.path.join(outim, f'{imnm}.png')):
+            os.remove(os.path.join(outim, f'{imnm}.png'))
         io.imsave(os.path.join(outim, f'{imnm}.png'), (I * 255).astype(np.uint8))
 
         # create annotation bounding boxes and update data to annotation.pkl file

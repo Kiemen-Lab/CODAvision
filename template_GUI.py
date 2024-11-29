@@ -61,8 +61,12 @@ else:
     # Create tiff images if they don't exist
     print(' ')
     if resolution == 'Custom':
-        print('To be done')
-        1/0
+        train_img_type = window.img_type
+        test_img_type = window.test_img_type
+        scale = float(window.scale)
+        uncomp_pth = window.uncomp_train_pth
+        uncomp_test_pth = window.uncomp_test_pth
+        WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
     else:
         WSI2tif(pth, resolution, umpix)
 
