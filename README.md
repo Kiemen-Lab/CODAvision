@@ -1,6 +1,6 @@
- # ANACODA
+ # CODAvision
 
-ANACODA is an open-source Python package designed for microanatomical tissue labeling. It facilitates deep learning-based semantic segmentation of Whole Slide Images (WSI) through a user-friendly interface.
+CODAvision is an open-source Python package designed for microanatomical tissue labeling. It facilitates deep learning-based semantic segmentation of Whole Slide Images (WSI) through a user-friendly interface.
 
 ## Quick Install
 
