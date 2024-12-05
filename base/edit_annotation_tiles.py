@@ -6,6 +6,8 @@ Date: May 14, 2024
 import numpy as np
 from skimage.morphology import disk, dilation
 from base.augment_annotation import augment_annotation
+import cv2
+import os
 
 
 def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, big_tile_size, kpall):
@@ -58,7 +60,7 @@ def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, 
     im = im[0:p1, 0:p2, :]
     TA = TA[0:p1, 0:p2]
 
-    im = im.astype(np.uint8)
+    #im= im.astype(np.uint16)
     TA = TA.astype(np.uint8)
 
     return im, TA, kpout

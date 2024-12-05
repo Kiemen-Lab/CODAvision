@@ -68,8 +68,10 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, 
             print(f'  Image {img_name} already classified by this model')
             continue
         # print(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))
-        im = Image.open(os.path.join(pthim, img_name))
+        im = cv2.imread(os.path.join(pthim, img_name))
+        im = im[:, :, ::-1]
         im_array = np.array(im)  # Convert to NumPy array for slicing
+        print(im_array.shape)
         try:
             try:
                 TA = Image.open(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))

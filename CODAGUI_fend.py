@@ -1295,6 +1295,10 @@ class MainWindow(QtWidgets.QMainWindow):
                                                             combined_df, model_type, batch_size,
                                                             uncomp_train_pth = self.uncomp_train_pth,
                                                             uncomp_test_pth = self.uncomp_test_pth, scale = self.scale)
+        else:
+            save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+                                                            tile_size, classNames, ntrain, nvalidate, nTA, final_df,
+                                                            combined_df, model_type, batch_size)
 
 
     def load_saved_values(self):

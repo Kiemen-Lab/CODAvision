@@ -2,6 +2,7 @@
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: May 3rd, 2024
 """
+import cv2
 
 from base.calculate_tissue_mask import calculate_tissue_mask
 from base.check_if_model_parameters_changed import check_if_model_parameters_changed
@@ -50,6 +51,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         cmap = data['cmap']
         nm = data['nm']
         nwhite = data['nwhite']
+        scale = None
         if umpix == 'TBD':
             scale = float(data['scale'])
 
@@ -60,6 +62,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     numann0 = []
     ctlist0 = {'tile_name': [], 'tile_pth': []}
     outim = os.path.join(pth, 'check_annotations')
+    os.makedirs(outim, exist_ok=True)
 
 
     # Check that all images exist for all the .cml files contained in the folder
@@ -134,8 +137,10 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             data = pickle.load(f)
 
         I0, TA, _ = calculate_tissue_mask(pthim, imnm)
-
-        J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
+        if scale:
+            J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
+        else:
+            J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
 
         io.imsave(os.path.join(outpth, 'view_annotations.png'), J0.astype(np.uint8))
 

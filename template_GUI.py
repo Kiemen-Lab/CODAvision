@@ -23,7 +23,6 @@ with open('dark_theme.qss', 'r') as file:
 window = MainWindow()
 window.show()
 app.exec()
-
 if window.classify:
     if window.classification_source == 1:
         with open(window.pth_net, 'rb') as f:
@@ -58,7 +57,7 @@ else:
     resolution = window.resolution
     model_type = window.model_type
 
-    already_scaled = True
+    already_scaled =True
     # Create tiff images if they don't exist
     print(' ')
     if resolution == 'Custom':
@@ -72,6 +71,7 @@ else:
             pthtestim = uncomp_test_pth
         if not already_scaled: # Additional function i accidentally added, might include it in the future
             WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
+
     else:
         WSI2tif(pth, resolution, umpix)
 
