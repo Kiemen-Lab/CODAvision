@@ -33,10 +33,10 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
         nm = data['nm']
         sxy = data['sxy']
     model_filename = f'best_model_{name}.keras' #ARRUN
-    model = model_call(name,IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))#ARRUN
+    model = model_call(name, IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))#ARRUN
     model.load_weights(os.path.join(pthDL, model_filename))#ARRUN
 
-    
+
     outpth = os.path.join(pthim, 'classification_' + nm + '_' + name)
     os.makedirs(outpth, exist_ok=True)
 
@@ -152,5 +152,3 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False):
         plt.pause(0.2)
 
     return outpth
-
-

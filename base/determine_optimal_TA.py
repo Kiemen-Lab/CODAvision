@@ -205,6 +205,16 @@ def determine_optimal_TA(pthim,numims):
 
 
     imlist = sorted(glob(os.path.join(pthim, '*.tif')))
+    if not imlist:
+        jpg_files = glob(os.path.join(pthim, "*.jpg"))
+        if jpg_files:
+            imlist.extend(jpg_files)  # Add full paths of JPGs to list
+        png_files = glob(os.path.join(pthim, '*.png'))
+        if png_files:
+            imlist.extend(png_files)
+    if not imlist:
+        print("No TIFF, PNG or JPG image files found in", pthim)
+    print('   ')
     numims = min(numims,len(imlist))
     imlist = np.random.choice(imlist, size = numims, replace=False)
     print(f'Evaluating {numims} randomly selected images to choose a good whitespace detection...')
@@ -241,8 +251,4 @@ def determine_optimal_TA(pthim,numims):
         cts[0,count-1] = CT0
     with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'wb') as f:
         pickle.dump({'cts':cts,'imlist':imlist}, f)
-
-
-
-
     return
