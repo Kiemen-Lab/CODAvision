@@ -159,11 +159,12 @@ else:
         else:
             print(f'Object quantification already done for {classNames[tissue-1]}')
 
-    output_path = os.path.join(pthDL, model_type+ 'evaluation_report.pdf')
+    output_path = os.path.join(pthDL, model_type+ '_evaluation_report.pdf')
     confusion_matrix_path = os.path.join(pthDL, 'confusion_matrix_'+model_type+'.jpg')
     color_legend_path = os.path.join(pthDL, 'model_color_legend.jpg')
     check_annotations_path = os.path.join(pth, 'check_annotations')
     check_quant = os.path.join(quantpath, 'image_quantifications.csv')
-    check_classification_path = os.path.join(pth, resolution,'classification_'+model_name+'_'+model_type, 'check_classification')
+    check_classification_path = os.path.join(pthim, 'classification_' + model_name + '_' + model_type,
+                                                 'check_classification')
     create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path,
                       check_classification_path, check_quant)

@@ -33,9 +33,15 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, 
         nm = data['nm']
         sxy = data['sxy']
 
-    model_filename = f'best_model_{name}.keras' #ARRUN
-    model = model_call(name,IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))#ARRUN
-    model.load_weights(os.path.join(pthDL, model_filename))#ARRUN
+    try:
+        model_filename = f'best_model_{name}.keras' #ARRUN
+        model = model_call(name,IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))#ARRUN
+        model.load_weights(os.path.join(pthDL, model_filename))  # ARRUN
+    except:
+        model_filename = f'{name}.keras'  # ARRUN
+        model = model_call(name, IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))  # ARRUN
+        model.load_weights(os.path.join(pthDL, model_filename))  # ARRUN
+
 
 
     outpth = os.path.join(pthim, 'classification_' + nm + '_' + name)
@@ -71,7 +77,6 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, 
         im = cv2.imread(os.path.join(pthim, img_name))
         im = im[:, :, ::-1]
         im_array = np.array(im)  # Convert to NumPy array for slicing
-        print(im_array.shape)
         try:
             try:
                 TA = Image.open(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))

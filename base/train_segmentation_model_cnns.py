@@ -308,7 +308,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
                                 filepath=os.path.join(pthDL, best_mod_name), RLRoP_patience=1, factor=0.75)
 
-        history = model.fit(train_dataset, validation_data=val_dataset, callbacks=plotcall, verbose=1, epochs=8)
+        history = model.fit(train_dataset, validation_data=val_dataset, verbose=1, callbacks=plotcall, epochs=8)
 
         # Save model
         print('Saving model...')
