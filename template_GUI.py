@@ -57,20 +57,24 @@ else:
     resolution = window.resolution
     model_type = window.model_type
 
-    already_scaled =True
+    already_scaled = not(window.create_down)
+    downsamp_annotated = window.downsamp_annotated_images
     # Create tiff images if they don't exist
     print(' ')
     if resolution == 'Custom':
         train_img_type = window.img_type
         test_img_type = window.test_img_type
         scale = float(window.scale)
-        uncomp_pth = window.uncomp_train_pth
-        uncomp_test_pth = window.uncomp_test_pth
-        if already_scaled:
-            pthim = uncomp_pth
-            pthtestim = uncomp_test_pth
-        if not already_scaled: # Additional function i accidentally added, might include it in the future
-            WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
+        if downsamp_annotated:
+            WSI2tif(pth, resolution, umpix, train_img_type, scale, pth)
+        else:
+            uncomp_pth = window.uncomp_train_pth
+            uncomp_test_pth = window.uncomp_test_pth
+            if already_scaled:
+                pthim = uncomp_pth
+                pthtestim = uncomp_test_pth
+            if not already_scaled: # Additional function i accidentally added, might include it in the future
+                WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
 
     else:
         WSI2tif(pth, resolution, umpix)
@@ -160,7 +164,7 @@ else:
             print(f'Object quantification already done for {classNames[tissue-1]}')
 
     output_path = os.path.join(pthDL, model_type+ '_evaluation_report.pdf')
-    confusion_matrix_path = os.path.join(pthDL, 'confusion_matrix_'+model_type+'.jpg')
+    confusion_matrix_path = os.path.join(pthDL, 'confusion_matrix_'+model_type+'.png')
     color_legend_path = os.path.join(pthDL, 'model_color_legend.jpg')
     check_annotations_path = os.path.join(pth, 'check_annotations')
     check_quant = os.path.join(quantpath, 'image_quantifications.csv')

@@ -168,10 +168,12 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         # Open the slide
                         image_path = os.path.join(pth, missing_image + image_format)
                         image = Image.open(image_path)
+                        image = np.array(image)
                         resize_dimension = (
                             int(np.ceil(image.shape[0] / scale)),
                             int(np.ceil(image.shape[1] / scale))
                         )
+                        image = Image.fromarray(image)
                         # Resize and save the image
                         image = image.resize(resize_dimension, resample=Image.NEAREST)
                         output_path = os.path.join(pthim, missing_image + '.tif')

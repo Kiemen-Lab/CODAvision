@@ -53,6 +53,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.custom_test_img_PB.clicked.connect(lambda: self.browse_image_folder('testing'))
         self.ui.model_name.textChanged.connect(self.check_for_trained_model)
         self.ui.resolution_CB.currentIndexChanged.connect(self.check_for_trained_model)
+        self.ui.use_anotated_images_CB.stateChanged.connect(self.check_for_trained_model)
+        self.ui.create_downsample_CB.stateChanged.connect(self.check_for_trained_model)
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
@@ -243,28 +245,39 @@ class MainWindow(QtWidgets.QMainWindow):
                     model_exists = True
 
         if self.ui.resolution_CB.currentText() == 'Custom':
-            self.ui.label_42.setVisible(True)
-            self.ui.custom_img_LE.setVisible(True)
-            self.ui.custom_img_PB.setVisible(True)
-            self.ui.label_44.setVisible(True)
-            self.ui.custom_test_img_LE.setVisible(True)
-            self.ui.custom_test_img_PB.setVisible(True)
             self.ui.label_43.setVisible(True)
             self.ui.custom_scale_LE.setVisible(True)
-
-            if model_exists and os.path.isdir(self.ui.custom_img_LE.text()):
-                self.ui.classify_PB.setVisible(True)
-                self.ui.classify_PB.setEnabled(True)
-                self.pthim = self.ui.trianing_LE.text()
-                self.resolution = 'Custom'
-                self.nm = self.ui.model_name.text()
-                with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
-                    data = pickle.load(file)
-                    self.model_type = data['model_type']
-                self.classification_source = 2
+            self.ui.label_45.setVisible(True)
+            self.ui.use_anotated_images_CB.setVisible(True)
+            if not(self.ui.use_anotated_images_CB.isChecked()):
+                self.ui.label_42.setVisible(True)
+                self.ui.custom_img_LE.setVisible(True)
+                self.ui.custom_img_PB.setVisible(True)
+                self.ui.label_44.setVisible(True)
+                self.ui.custom_test_img_LE.setVisible(True)
+                self.ui.custom_test_img_PB.setVisible(True)
+                self.ui.label_46.setVisible(True)
+                self.ui.label_47.setVisible(True)
+                self.ui.create_downsample_CB.setVisible(True)
+                if not(self.ui.create_downsample_CB.isChecked()):
+                    self.ui.label_48.setVisible(True)
+                else:
+                    self.ui.label_48.setVisible(False)
             else:
-                self.ui.classify_PB.setVisible(False)
-                self.ui.classify_PB.setEnabled(False)
+                self.ui.label_42.setVisible(False)
+                self.ui.custom_img_LE.setVisible(False)
+                self.ui.custom_img_PB.setVisible(False)
+                self.ui.label_44.setVisible(False)
+                self.ui.custom_test_img_LE.setVisible(False)
+                self.ui.custom_test_img_PB.setVisible(False)
+                self.ui.label_46.setVisible(False)
+                self.ui.label_47.setVisible(False)
+                self.ui.label_48.setVisible(False)
+                self.ui.create_downsample_CB.setVisible(False)
+                self.ui.create_downsample_CB.setChecked(True)
+
+
+
         else:
             self.ui.label_42.setVisible(False)
             self.ui.custom_img_LE.setVisible(False)
@@ -274,6 +287,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.custom_test_img_PB.setVisible(False)
             self.ui.label_43.setVisible(False)
             self.ui.custom_scale_LE.setVisible(False)
+            self.ui.label_45.setVisible(False)
+            self.ui.label_46.setVisible(False)
+            self.ui.use_anotated_images_CB.setVisible(False)
+            self.ui.label_47.setVisible(False)
+            self.ui.label_48.setVisible(False)
+            self.ui.create_downsample_CB.setVisible(False)
+
             if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.resolution_CB.currentText())):
                 self.ui.classify_PB.setVisible(True)
                 self.ui.classify_PB.setEnabled(True)
@@ -678,48 +698,80 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, 'Warning', 'Please chose a resolution from the drop down box')
             return False
         elif resolution == "Custom":
-            custom_train = self.ui.custom_img_LE.text()
-            custom_test = self.ui.custom_test_img_LE.text()
-            if not os.path.isdir(custom_train):
-                QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The folder selected for the training images does not exist.')
-                return False
+            if not(self.ui.use_anotated_images_CB.isChecked()):
+                custom_train = self.ui.custom_img_LE.text()
+                custom_test = self.ui.custom_test_img_LE.text()
+                if not os.path.isdir(custom_train):
+                    QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                  'The folder selected for the training images does not exist.')
+                    return False
 
-            if not os.path.isdir(custom_test):
-                QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The folder selected for the testing images does not exist.')
-                return False
-            if any(f.endswith(('.ndpi')) for f in os.listdir(custom_train)):
-                self.img_type = '.ndpi'
-            elif any(f.endswith(('.dcm')) for f in os.listdir(custom_train)):
-                self.img_type = '.dcm'
-            elif any(f.endswith(('.tif')) for f in os.listdir(custom_train)):
-                self.img_type = '.tif'
-            elif any(f.endswith(('.jpg')) for f in os.listdir(custom_train)):
-                self.img_type = '.jpg'
-            elif any(f.endswith(('.png')) for f in os.listdir(custom_train)):
-                self.img_type = '.png'
-            else:
-                QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The selected uncompressed training images path does not contain'
-                                              ' .ndpi, .dcm, .tif, .png or .jpg files')
-                return False
+                if not os.path.isdir(custom_test):
+                    QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                  'The folder selected for the testing images does not exist.')
+                    return False
+                if any(f.endswith(('.ndpi')) for f in os.listdir(custom_train)):
+                    self.img_type = '.ndpi'
+                elif any(f.endswith(('.dcm')) for f in os.listdir(custom_train)):
+                    self.img_type = '.dcm'
+                elif any(f.endswith(('.tif')) for f in os.listdir(custom_train)):
+                    self.img_type = '.tif'
+                elif any(f.endswith(('.jpg')) for f in os.listdir(custom_train)):
+                    self.img_type = '.jpg'
+                elif any(f.endswith(('.png')) for f in os.listdir(custom_train)):
+                    self.img_type = '.png'
+                else:
+                    QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                  'The selected uncompressed training images path does not contain'
+                                                  ' .ndpi, .dcm, .tif, .png or .jpg files')
+                    return False
 
-            if any(f.endswith(('.ndpi')) for f in os.listdir(custom_test)):
-                self.test_img_type = '.ndpi'
-            elif any(f.endswith(('.dcm')) for f in os.listdir(custom_test)):
-                self.test_img_type = '.dcm'
-            elif any(f.endswith(('.tif')) for f in os.listdir(custom_test)):
-                self.test_img_type = '.tif'
-            elif any(f.endswith(('.jpg')) for f in os.listdir(custom_test)):
-                self.img_type = '.jpg'
-            elif any(f.endswith(('.png')) for f in os.listdir(custom_test)):
-                self.img_type = '.png'
+                if any(f.endswith(('.ndpi')) for f in os.listdir(custom_test)):
+                    self.test_img_type = '.ndpi'
+                elif any(f.endswith(('.dcm')) for f in os.listdir(custom_test)):
+                    self.test_img_type = '.dcm'
+                elif any(f.endswith(('.tif')) for f in os.listdir(custom_test)):
+                    self.test_img_type = '.tif'
+                elif any(f.endswith(('.jpg')) for f in os.listdir(custom_test)):
+                    self.img_type = '.jpg'
+                elif any(f.endswith(('.png')) for f in os.listdir(custom_test)):
+                    self.img_type = '.png'
+                else:
+                    QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                  'The selected uncompressed testing images path does not contain'
+                                                  ' .ndpi, .dcm, .tif, .png or .jpg files')
+                    return False
             else:
-                QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The selected uncompressed testing images path does not contain'
-                                              ' .ndpi, .dcm, .tif, .png or .jpg files')
-                return False
+                train = self.ui.trianing_LE.text()
+                test = self.ui.testing_LE.text()
+                if any(f.endswith(('.ndpi')) for f in os.listdir(train)):
+                    self.img_type = '.ndpi'
+                elif any(f.endswith(('.dcm')) for f in os.listdir(train)):
+                    self.img_type = '.dcm'
+                elif any(f.endswith(('.tif')) for f in os.listdir(train)):
+                    self.img_type = '.tif'
+                elif any(f.endswith(('.jpg')) for f in os.listdir(train)):
+                    self.img_type = '.jpg'
+                elif any(f.endswith(('.png')) for f in os.listdir(train)):
+                    self.img_type = '.png'
+                else:
+                    QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                  'The selected training annotation path does not contain'
+                                                  ' .ndpi, .dcm, .tif, .png or .jpg files')
+                if any(f.endswith(('.ndpi')) for f in os.listdir(test)):
+                    self.img_type = '.ndpi'
+                elif any(f.endswith(('.dcm')) for f in os.listdir(test)):
+                    self.img_type = '.dcm'
+                elif any(f.endswith(('.tif')) for f in os.listdir(test)):
+                    self.img_type = '.tif'
+                elif any(f.endswith(('.jpg')) for f in os.listdir(test)):
+                    self.img_type = '.jpg'
+                elif any(f.endswith(('.png')) for f in os.listdir(test)):
+                    self.img_type = '.png'
+                else:
+                    QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                  'The selected testing annotation path does not contain'
+                                                  ' .ndpi, .dcm, .tif, .png or .jpg files')
 
             scale = self.ui.custom_scale_LE.text()
             try:
@@ -1285,6 +1337,9 @@ class MainWindow(QtWidgets.QMainWindow):
         print('Colormap: ', colormap)
         print('WS', WS)
 
+        self.create_down = self.ui.create_downsample_CB.isChecked()
+        self.downsamp_annotated_images = self.ui.use_anotated_images_CB.isChecked()
+
         # Save model metadata onto pickle file
         if self.resolution == 'Custom':
             self.uncomp_train_pth = self.ui.custom_img_LE.text()
@@ -1294,7 +1349,9 @@ class MainWindow(QtWidgets.QMainWindow):
                                                             tile_size, classNames, ntrain, nvalidate, nTA, final_df,
                                                             combined_df, model_type, batch_size,
                                                             uncomp_train_pth = self.uncomp_train_pth,
-                                                            uncomp_test_pth = self.uncomp_test_pth, scale = self.scale)
+                                                            uncomp_test_pth = self.uncomp_test_pth, scale = self.scale,
+                                                            create_down = self.create_down,
+                                                            downsamp_annotated = self.downsamp_annotated_images)
         else:
             save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
                                                             tile_size, classNames, ntrain, nvalidate, nTA, final_df,
@@ -1317,8 +1374,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def get_pthim(self):
         pth = self.ui.trianing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
+        print(self.ui.custom_scale_LE.text())
         if resolution == 'Custom':
-            return os.path.join(pth, 'Custom_Scale_'+self.ui.custom_scale_LE.text())
+            return os.path.join(pth, 'Custom_Scale_'+str(float(self.ui.custom_scale_LE.text())))
         else:
             return os.path.join(pth, f'{resolution}')
 
@@ -1327,7 +1385,7 @@ class MainWindow(QtWidgets.QMainWindow):
         resolution = self.ui.resolution_CB.currentText()
         if resolution == 'Custom':
             print('fix when determine relation between scale and resolution at line 1299')
-            return os.path.join(pthtest, 'Custom_Scale_'+self.ui.custom_scale_LE.text())
+            return os.path.join(pthtest, 'Custom_Scale_'+str(float(self.ui.custom_scale_LE.text())))
         else:
             return os.path.join(pthtest, f'{resolution}')
 

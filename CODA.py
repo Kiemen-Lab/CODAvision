@@ -167,12 +167,37 @@ class Ui_MainWindow(object):
 
         self.label_43 = QLabel(self.tab)
         self.label_43.setObjectName(u"label_43")
-        self.label_43.setGeometry(QRect(9, 234, 100, 24))
+        self.label_43.setGeometry(QRect(270, 107, 100, 24))
         self.custom_scale_LE = QLineEdit(self.tab)
         self.custom_scale_LE.setObjectName(u"custom_scale_LE")
-        self.custom_scale_LE.setGeometry(QRect(135, 238, 120, 20))
+        self.custom_scale_LE.setGeometry(QRect(350, 111, 120, 20))
         self.label_43.setVisible(False)
         self.custom_scale_LE.setVisible(False)
+
+        self.label_45 = QLabel(self.tab)
+        self.label_45.setObjectName(u"label_45")
+        self.label_45.setGeometry(QRect(490, 107, 120, 24))
+        self.label_45.setVisible(False)
+        self.label_46 = QLabel(self.tab)
+        self.label_46.setObjectName(u"label_46")
+        self.label_46.setGeometry(QRect(490, 107, 160, 24))
+        self.label_46.setVisible(False)
+        self.use_anotated_images_CB = QCheckBox(self.tab)
+        self.use_anotated_images_CB.setGeometry(QRect(650, 113, 15, 15))
+        self.use_anotated_images_CB.setChecked(True)  # Optional: to start it as unchecked
+        self.use_anotated_images_CB.setVisible(False)
+        self.label_47 = QLabel(self.tab)
+        self.label_47.setObjectName(u"label_47")
+        self.label_47.setGeometry(QRect(490, 134, 120, 24))
+        self.label_47.setVisible(False)
+        self.label_48 = QLabel(self.tab)
+        self.label_48.setObjectName(u"label_48")
+        self.label_48.setGeometry(QRect(490, 134, 120, 24))
+        self.label_48.setVisible(False)
+        self.create_downsample_CB = QCheckBox(self.tab)
+        self.create_downsample_CB.setGeometry(QRect(610, 140, 15, 15))
+        self.create_downsample_CB.setChecked(True)  # Optional: to start it as unchecked
+        self.create_downsample_CB.setVisible(False)
 
 
         self.prerecorded_PB = QPushButton(self.tab)
@@ -571,7 +596,6 @@ class Ui_MainWindow(object):
 
         QMetaObject.connectSlotsByName(MainWindow)
     # setupUi
-
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
 #if QT_CONFIG(whatsthis)
@@ -655,10 +679,14 @@ class Ui_MainWindow(object):
         self.tts_CB.setCurrentText(QCoreApplication.translate("MainWindow", u"1024", None))
         self.label_10.setText(QCoreApplication.translate("MainWindow", u"Training tiles number:", None))
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Validation tiles number:", None))
-        self.label_12.setText(QCoreApplication.translate("MainWindow", u"TA average count:", None))
+        self.label_12.setText(QCoreApplication.translate("MainWindow", u"Tissue mask evaluation:", None))
         self.label_42.setText(QCoreApplication.translate("MainWindow", u"Uncompressed training images", None))
         self.label_44.setText(QCoreApplication.translate("MainWindow", u"Uncompressed testing images", None))
         self.label_43.setText(QCoreApplication.translate("MainWindow", u"Scaling factor", None))
+        self.label_45.setText(QCoreApplication.translate("MainWindow", u"Scale annotated images", None))
+        self.label_46.setText(QCoreApplication.translate("MainWindow", u"Not using annotated images", None))
+        self.label_47.setText(QCoreApplication.translate("MainWindow", u"Create scaled images", None))
+        self.label_48.setText(QCoreApplication.translate("MainWindow", u"Use scaled images", None))
         self.model_name_label.setText(QCoreApplication.translate("MainWindow", u"Model architecture", None))
         self.batch_label.setText(QCoreApplication.translate("MainWindow", u"Batch size", None))
         self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
