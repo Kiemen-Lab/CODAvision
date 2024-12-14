@@ -21,11 +21,15 @@ import matplotlib.pyplot as plt
 pd.set_option('display.max_columns', None)
 
 class MainWindowClassify(QtWidgets.QMainWindow):
-    def __init__(self, train_fold, resolution, nm, model_type):
+    def __init__(self, train_im_fold, nm, model_type, train_fold = ''):
         super(MainWindowClassify,self).__init__()  # Use super() to initialize the parent clasz
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)  # Pass the MainWindow instance itself as the parent
         self.setCentralWidget(self.ui.centralwidget)  # Set the central widget
+        if len(train_fold)==0:
+            for element in train_im_fold.split(os.sep)[:-1]:
+                train_fold = os.path.join(train_fold, element)
+        self.train_fold = train_fold
         with open(os.path.join(train_fold,nm,'net.pkl'), 'rb') as f:
             self.data = pickle.load(f)
         self.cmap = self.data['cmap'].copy()
@@ -36,16 +40,17 @@ class MainWindowClassify(QtWidgets.QMainWindow):
         self.change_cmap = []
         self.train_fold = train_fold
         self.pathDL = os.path.join(train_fold, nm)
-        self.resolution = resolution
+        self.train_im_fold = train_im_fold
         self.nm = nm
         self.model_type = model_type
         self.path_first_img = ''
         self.name_first_img =''
-        if os.path.isdir(os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm+'_'+self.model_type)):
-            for filename in os.listdir(os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm+'_'+self.model_type)):
+        print(os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type))
+        if os.path.isdir(os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type)):
+            for filename in os.listdir(os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type)):
                 # Check if the file has a .tiff or .tif extension (case insensitive)
                 if filename.lower().endswith(('.tiff', '.tif')):
-                    self.path_first_img = os.path.join(self.train_fold, self.resolution, 'classification_'+self.nm+'_'+self.model_type, filename)
+                    self.path_first_img = os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type, filename)
                     self.name_first_img = filename
                     continue
         if self.path_first_img == '' or self.name_first_img == '':
@@ -203,7 +208,7 @@ class MainWindowClassify(QtWidgets.QMainWindow):
             item.setForeground(QBrush(Qt.white))
 
     def show_image(self):
-        path_image = os.path.join(self.train_fold,self.resolution,self.name_first_img)
+        path_image = os.path.join(self.train_im_fold,self.name_first_img)
         self.loader = ImageLoader(self.path_first_img, path_image, self.cmap, self.classNames, self.image_displayed)
         self.process_thread = ProcessThread(self.loader)
         self.loader.started.connect(self.on_processing_started)
@@ -270,6 +275,10 @@ class MainWindowClassify(QtWidgets.QMainWindow):
             if (not os.path.isfile(os.path.join(save_path, im_jpg))) or overwrite:
                 im0 = cv2.imread(os.path.join(classification_path, im), cv2.IMREAD_GRAYSCALE)  # Mask
                 im1 = cv2.imread(os.path.join(image_path, im))  # Image
+                if im1 == None:
+                    im1 = cv2.imread(os.path.join(image_path, im[:-3]+'png'))  # Image
+                if im1 == None:
+                    im1 = cv2.imread(os.path.join(image_path, im[:-3]+'jpg'))  # Image
                 im1 = im1[:, :, ::-1]
                 r = np.zeros_like(im0).astype(np.uint8)
                 g = np.zeros_like(im0).astype(np.uint8)
@@ -345,10 +354,11 @@ class ImageLoader(QObject):
         self.started.emit()
         if self.image_displayed:
             im0 = cv2.imread(self.pth_im0, cv2.IMREAD_GRAYSCALE)  # Mask
-            im0 = im0[::10, ::10]
             im = cv2.imread(self.pth_im)  # Image
             im = im[:, :, ::-1]
-            im = im[::10, ::10, :]
+            if im.shape[0] > 3500 or im.shape[1] > 3500:
+                im0 = im0[::10, ::10]
+                im = im[::10, ::10, :]
             r = np.zeros_like(im0).astype(np.uint8)
             g = np.zeros_like(im0).astype(np.uint8)
             b = np.zeros_like(im0).astype(np.uint8)

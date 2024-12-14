@@ -69,6 +69,7 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, 
     for i, img_path in enumerate(imlist):
         classification_st = time.time()
         img_name = os.path.basename(img_path)
+        print(img_name)
         print(f'Starting classification of image {i + 1} of {len(imlist)}: {img_name}')
         if os.path.isfile(os.path.join(outpth, img_name[:-4] + ".tif")):
             print(f'  Image {img_name} already classified by this model')
@@ -84,7 +85,7 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, 
                 TA = Image.open(os.path.join(pthim, 'TA', img_name[:-4] + ".tif"))
             TA = binary_fill_holes(TA)
         except:
-            TA = np.array(im.convert('L')) < 220
+            TA = np.array(im[:,:,1]) < 220
             TA = binary_fill_holes(TA.astype(bool))
 
         # Pad image so we classify all the way to the edge

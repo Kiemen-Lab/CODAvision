@@ -187,9 +187,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 umpix = data.get('umpix','')
                 self.resolution = umpix_to_resolution.get(umpix, 'Custom')
                 if self.resolution == 'Custom':
-                    self.ui.custom_img_LE.setText(data['uncomp_train_pth'])
-                    self.ui.custom_test_img_LE.setText(data['uncomp_test_pth'])
-                    self.ui.custom_scale_LE.setText(data['scale'])
+                    self.ui.use_anotated_images_CB.setChecked(data['downsamp_annotated'])
+                    if not(self.ui.use_anotated_images_CB.isChecked()):
+                        self.ui.custom_img_LE.setText(data['uncomp_train_pth'])
+                        self.ui.custom_test_img_LE.setText(data['uncomp_test_pth'])
+                        self.ui.custom_scale_LE.setText(data['scale'])
+                        self.ui.create_downsample_CB.setChecked(data['create_down'])
                 self.ui.resolution_CB.setCurrentText(self.resolution)
                 if model_type:
                     self.ui.model_type_CB.setCurrentText(model_type)
@@ -759,15 +762,15 @@ class MainWindow(QtWidgets.QMainWindow):
                                                   'The selected training annotation path does not contain'
                                                   ' .ndpi, .dcm, .tif, .png or .jpg files')
                 if any(f.endswith(('.ndpi')) for f in os.listdir(test)):
-                    self.img_type = '.ndpi'
+                    self.test_img_type = '.ndpi'
                 elif any(f.endswith(('.dcm')) for f in os.listdir(test)):
-                    self.img_type = '.dcm'
+                    self.test_img_type = '.dcm'
                 elif any(f.endswith(('.tif')) for f in os.listdir(test)):
-                    self.img_type = '.tif'
+                    self.test_img_type = '.tif'
                 elif any(f.endswith(('.jpg')) for f in os.listdir(test)):
-                    self.img_type = '.jpg'
+                    self.test_img_type = '.jpg'
                 elif any(f.endswith(('.png')) for f in os.listdir(test)):
-                    self.img_type = '.png'
+                    self.test_img_type = '.png'
                 else:
                     QtWidgets.QMessageBox.warning(self, 'Warning',
                                                   'The selected testing annotation path does not contain'
@@ -1345,6 +1348,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.uncomp_train_pth = self.ui.custom_img_LE.text()
             self.uncomp_test_pth = self.ui.custom_test_img_LE.text()
             self.scale = self.ui.custom_scale_LE.text()
+            pthim = pthim+'_Scale_'+str(float(self.scale))
             save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
                                                             tile_size, classNames, ntrain, nvalidate, nTA, final_df,
                                                             combined_df, model_type, batch_size,

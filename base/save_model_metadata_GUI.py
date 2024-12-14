@@ -104,7 +104,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
                 {"pthim": pthim, "pthDL": pthDL, "pthtest":pthtest, "WS": WS, "nm": nm, "umpix": umpix, "cmap": cmap, "sxy": sxy,
                  "classNames": classNames, "ntrain": ntrain, "nblack": nblack, "nwhite": nwhite, "final_df": final_df,
                  "combined_df": combined_df, "nvalidate": nvalidate, "nTA": nTA, "model_type": model_type,
-                 "batch_size": batch_size, "uncomp_train_pth" : uncomp_train_pth, "uncomp_test_pth" : uncomp_test_pth,
+                 "batch_size": batch_size, "uncomp_train_pth" : uncomp_train_pth, "uncomp_test_pth": uncomp_test_pth,
                  "scale": scale, "create_down": create_down, "downsamp_annotated": downsamp_annotated})
         else:
             existing_data.update(
