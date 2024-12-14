@@ -4,8 +4,8 @@ Date: October 22, 2024
 """
 
 from PySide6 import QtWidgets, QtCore
-from CODA import Ui_MainWindow
-from classify_im_fend import MainWindowClassify
+from base.CODA import Ui_MainWindow
+from base.classify_im_fend import MainWindowClassify
 import os
 from datetime import datetime
 import xmltodict
@@ -1431,7 +1431,6 @@ class MainWindow(QtWidgets.QMainWindow):
         pthtest = self.ui.testing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
         if resolution == 'Custom':
-            print('fix when determine relation between scale and resolution at line 1299')
             return os.path.join(pthtest, 'Custom_Scale_'+str(float(self.ui.custom_scale_LE.text())))
         else:
             return os.path.join(pthtest, f'{resolution}')
