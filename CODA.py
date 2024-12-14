@@ -415,8 +415,11 @@ class Ui_MainWindow(object):
 
         self.save_nesting_PB = QPushButton(self.tab_3)
         self.save_nesting_PB.setObjectName(u"save_nesting_PB")
-
+        self.close_nesting_PB = QPushButton(self.tab_3)
+        self.close_nesting_PB.setObjectName(u"close_nesting_PB")
+        self.horizontalLayout_8.addWidget(self.close_nesting_PB)
         self.horizontalLayout_8.addWidget(self.save_nesting_PB)
+
 
 
         self.verticalLayout_6.addLayout(self.horizontalLayout_8)
@@ -442,7 +445,10 @@ class Ui_MainWindow(object):
 
         self.save_ad_PB = QPushButton(self.tab_4)
         self.save_ad_PB.setObjectName(u"save_ad_PB")
+        self.close_ad_PB = QPushButton(self.tab_4)
+        self.close_ad_PB.setObjectName(u"close_ad_PB")
 
+        self.horizontalLayout_15.addWidget(self.close_ad_PB)
         self.horizontalLayout_15.addWidget(self.save_ad_PB)
 
 
@@ -664,10 +670,12 @@ class Ui_MainWindow(object):
         self.nesting_checkBox.setText(QCoreApplication.translate("MainWindow", u"Nest uncombined data", None))
         self.AS_checkBox.setText(QCoreApplication.translate("MainWindow", u"Modify advanced settings", None))
         self.return_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
-        self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
+        self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Train", None))
+        self.close_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Nesting", None))
         self.return_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
-        self.save_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
+        self.save_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Train", None))
+        self.close_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"Training tile size:", None))
         self.tts_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"64", None))
         self.tts_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"128", None))

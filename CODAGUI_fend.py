@@ -37,10 +37,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.moveup_PB.clicked.connect(self.move_row_up)
         self.ui.Movedown_PB.clicked.connect(self.move_row_down)
         self.ui.return_nesting_PB.clicked.connect(lambda: self.return_to_previous_tab(return_to_first=False))
-        self.ui.save_nesting_PB.clicked.connect(self.save_nesting_and_continue)
+        self.ui.save_nesting_PB.clicked.connect(lambda: self.save_nesting_and_continue(True))
+        self.ui.close_nesting_PB.clicked.connect(lambda: self.save_nesting_and_continue(False))
         self.ui.Combine_PB.clicked.connect(self.add_combo)
         self.ui.Reset_PB.clicked.connect(self.reset_combo)
-        self.ui.save_ad_PB.clicked.connect(self.save_advanced_settings_and_close)
+        self.ui.save_ad_PB.clicked.connect(lambda: self.save_advanced_settings_and_close(True))
+        self.ui.close_ad_PB.clicked.connect(lambda: self.save_advanced_settings_and_close(False))
         self.ui.return_ad_PB.clicked.connect(self.return_to_previous_tab)
         self.ui.delete_PB.clicked.connect(self.delete_annotation_class)
         self.ui.nesting_checkBox.stateChanged.connect(self.on_nesting_checkbox_state_changed)
@@ -49,6 +51,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.trianing_LE.textChanged.connect(self.check_for_trained_model)
         self.ui.custom_img_LE.textChanged.connect(self.check_for_trained_model)
         self.ui.custom_test_img_LE.textChanged.connect(self.check_for_trained_model)
+        self.ui.custom_scale_LE.textChanged.connect(self.check_for_trained_model)
         self.ui.custom_img_PB.clicked.connect(lambda: self.browse_image_folder('training'))
         self.ui.custom_test_img_PB.clicked.connect(lambda: self.browse_image_folder('testing'))
         self.ui.model_name.textChanged.connect(self.check_for_trained_model)
@@ -193,6 +196,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.ui.custom_test_img_LE.setText(data['uncomp_test_pth'])
                         self.ui.custom_scale_LE.setText(data['scale'])
                         self.ui.create_downsample_CB.setChecked(data['create_down'])
+                        self.ui.custom_scale_LE.setText(data['scale'])
                 self.ui.resolution_CB.setCurrentText(self.resolution)
                 if model_type:
                     self.ui.model_type_CB.setCurrentText(model_type)
@@ -264,8 +268,35 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.create_downsample_CB.setVisible(True)
                 if not(self.ui.create_downsample_CB.isChecked()):
                     self.ui.label_48.setVisible(True)
+                    if model_exists:
+                        self.ui.classify_PB.setVisible(True)
+                        self.ui.classify_PB.setEnabled(True)
+                        self.pthim = self.ui.trianing_LE.text()
+                        self.resolution = self.ui.resolution_CB.currentText()
+                        self.nm = self.ui.model_name.text()
+                        with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
+                            data = pickle.load(file)
+                            self.model_type = data['model_type']
+                        self.classification_source = 2
+                    else:
+                        self.ui.classify_PB.setVisible(False)
+                        self.ui.classify_PB.setEnabled(False)
                 else:
                     self.ui.label_48.setVisible(False)
+                    if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
+                            float(self.ui.custom_scale_LE.text())))):
+                        self.ui.classify_PB.setVisible(True)
+                        self.ui.classify_PB.setEnabled(True)
+                        self.pthim = self.ui.trianing_LE.text()
+                        self.resolution = self.ui.resolution_CB.currentText()
+                        self.nm = self.ui.model_name.text()
+                        with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
+                            data = pickle.load(file)
+                            self.model_type = data['model_type']
+                        self.classification_source = 2
+                    else:
+                        self.ui.classify_PB.setVisible(False)
+                        self.ui.classify_PB.setEnabled(False)
             else:
                 self.ui.label_42.setVisible(False)
                 self.ui.custom_img_LE.setVisible(False)
@@ -278,9 +309,20 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.label_48.setVisible(False)
                 self.ui.create_downsample_CB.setVisible(False)
                 self.ui.create_downsample_CB.setChecked(True)
-
-
-
+                if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
+                        float(self.ui.custom_scale_LE.text())))):
+                    self.ui.classify_PB.setVisible(True)
+                    self.ui.classify_PB.setEnabled(True)
+                    self.pthim = self.ui.trianing_LE.text()
+                    self.resolution = self.ui.resolution_CB.currentText()
+                    self.nm = self.ui.model_name.text()
+                    with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
+                        data = pickle.load(file)
+                        self.model_type = data['model_type']
+                    self.classification_source = 2
+                else:
+                    self.ui.classify_PB.setVisible(False)
+                    self.ui.classify_PB.setEnabled(False)
         else:
             self.ui.label_42.setVisible(False)
             self.ui.custom_img_LE.setVisible(False)
@@ -608,7 +650,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Force update
         QtCore.QCoreApplication.processEvents()
 
-    def save_nesting_and_continue(self):
+    def save_nesting_and_continue(self,train: bool):
         model = self.ui.nesting_TW.model()
         nesting_order = [model.item(row).text() for row in range(model.rowCount())]
 
@@ -657,7 +699,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.initialize_advanced_settings()
         else:
             self.initialize_advanced_settings()
-            self.save_advanced_settings_and_close()
+            self.save_advanced_settings_and_close(train)
 
     def fill_form(self):
         """Process data"""
@@ -1226,7 +1268,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.combined_df['Component analysis'] = np.nan
 
     # Add or update these methods in the MainWindow class:
-    def save_advanced_settings_and_close(self):
+    def save_advanced_settings_and_close(self, train: bool):
 
         # Component analysis
         component_layers = {}
@@ -1264,6 +1306,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ntrain = self.ui.ttn_SB.value()
         self.nval = self.ui.vtn_SB.value()
         self.TA = self.ui.TA_SB.value()
+        self.train = train
 
         #Save model metadata onto pickle file
         self.variable_parametrization_to_WS()

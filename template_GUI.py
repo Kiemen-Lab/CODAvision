@@ -25,38 +25,38 @@ window.show()
 app.exec()
 if window.classify:
     if window.classification_source == 1:
-        with open(window.pth_net, 'rb') as f:
-            data = pickle.load(f)
-            pthim = data['pthim']
-            umpix = data['umpix']
-            nm = data['nm']
-            final_df = data['final_df']
-            model_type = data['model_type']
-            if umpix == 'TBD':
-                scale = data['scale']
-                uncomp_train = data['uncomp_train_pth']
-                uncompt_test = data['uncomp_test_pth']
-                create_down= data['create_down']
-                downsamp_annotated = data['downsamp_annotated']
-        umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
-        resolution = umpix_to_resolution.get(umpix,'TBD')
-        if resolution == 'TBD' and not(create_down):
-            pth = ''
-            for element in pth.split(os.sep)[:-1]:
-                    pth = os.path.join(pth, element)
-            window2 = MainWindowClassify(pthim, nm, model_type,pth)
-            window2.show()
-            app.exec()
-        else:
-            window2 = MainWindowClassify(pthim, nm, model_type)
-            window2.show()
-            app.exec()
+        pkl_pth = window.pth_net
     else:
-        window2 = MainWindowClassify(window.pthim, window.resolution, window.nm, window.model_type)
+        pkl_pth = os.path.join(window.pthim, window.nm,'net.pkl')
+    with open(window.pth_net, 'rb') as f:
+        data = pickle.load(f)
+        pthim = data['pthim']
+        umpix = data['umpix']
+        nm = data['nm']
+        pthDL = data['pthDL']
+        final_df = data['final_df']
+        model_type = data['model_type']
+        if umpix == 'TBD':
+            scale = data['scale']
+            uncomp_train = data['uncomp_train_pth']
+            uncompt_test = data['uncomp_test_pth']
+            create_down = data['create_down']
+            downsamp_annotated = data['downsamp_annotated']
+    umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
+    resolution = umpix_to_resolution.get(umpix, 'TBD')
+    if resolution == 'TBD' and not (create_down):
+        pth = ''
+        for element in pthDL.split(os.sep)[:-1]:
+            pth = os.path.join(pth, element)
+        window2 = MainWindowClassify(uncomp_train, nm, model_type, pth)
+        window2.show()
+        app.exec()
+    else:
+        window2 = MainWindowClassify(pthim, nm, model_type)
         window2.show()
         app.exec()
 
-else:
+elif window.train:
     # Load the paths from the GUI
     pth = os.path.abspath(window.ui.trianing_LE.text())
     pthDL = os.path.abspath(window.get_pthDL())
