@@ -37,8 +37,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.moveup_PB.clicked.connect(self.move_row_up)
         self.ui.Movedown_PB.clicked.connect(self.move_row_down)
         self.ui.return_nesting_PB.clicked.connect(lambda: self.return_to_previous_tab(return_to_first=False))
-        self.ui.save_nesting_PB.clicked.connect(lambda: self.save_nesting_and_continue(True))
-        self.ui.close_nesting_PB.clicked.connect(lambda: self.save_nesting_and_continue(False))
+        self.ui.save_nesting_PB.clicked.connect(lambda: self.save_nesting_and_continue(1))
+        self.ui.close_nesting_PB.clicked.connect(lambda: self.save_nesting_and_continue(0))
+        self.ui.AS_PB.clicked.connect(lambda: self.save_nesting_and_continue(2))
         self.ui.Combine_PB.clicked.connect(self.add_combo)
         self.ui.Reset_PB.clicked.connect(self.reset_combo)
         self.ui.save_ad_PB.clicked.connect(lambda: self.save_advanced_settings_and_close(True))
@@ -191,17 +192,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.resolution = umpix_to_resolution.get(umpix, 'Custom')
                 if self.resolution == 'Custom':
                     self.ui.use_anotated_images_CB.setChecked(data['downsamp_annotated'])
-                    if not(self.ui.use_anotated_images_CB.isChecked()):
+                    self.ui.custom_scale_LE.setText(data['scale'])
+                    if self.ui.use_anotated_images_CB.isChecked():
                         self.ui.custom_img_LE.setText(data['uncomp_train_pth'])
                         self.ui.custom_test_img_LE.setText(data['uncomp_test_pth'])
-                        self.ui.custom_scale_LE.setText(data['scale'])
                         self.ui.create_downsample_CB.setChecked(data['create_down'])
-                        self.ui.custom_scale_LE.setText(data['scale'])
                 self.ui.resolution_CB.setCurrentText(self.resolution)
                 if model_type:
                     self.ui.model_type_CB.setCurrentText(model_type)
-
-
                 self.populate_table_widget(self.combined_df)
 
                 # Initialize combo boxes with chosen annotation classes from ws
@@ -223,8 +221,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.nval = data['nvalidate']
                 self.TA = data['nTA']
                 self.load_saved_values()
-
-
                 print("Prerecorded data loaded successfully.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
@@ -256,34 +252,31 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.custom_scale_LE.setVisible(True)
             self.ui.label_45.setVisible(True)
             self.ui.use_anotated_images_CB.setVisible(True)
-            if not(self.ui.use_anotated_images_CB.isChecked()):
+            if self.ui.use_anotated_images_CB.isChecked():
                 self.ui.label_42.setVisible(True)
                 self.ui.custom_img_LE.setVisible(True)
                 self.ui.custom_img_PB.setVisible(True)
                 self.ui.label_44.setVisible(True)
                 self.ui.custom_test_img_LE.setVisible(True)
                 self.ui.custom_test_img_PB.setVisible(True)
-                self.ui.label_46.setVisible(True)
                 self.ui.label_47.setVisible(True)
                 self.ui.create_downsample_CB.setVisible(True)
-                if not(self.ui.create_downsample_CB.isChecked()):
-                    self.ui.label_48.setVisible(True)
+                if self.ui.create_downsample_CB.isChecked():
                     if model_exists:
                         self.ui.classify_PB.setVisible(True)
                         self.ui.classify_PB.setEnabled(True)
                         self.pthim = self.ui.trianing_LE.text()
                         self.resolution = self.ui.resolution_CB.currentText()
                         self.nm = self.ui.model_name.text()
+                        self.classification_source = 2
                         with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
                             data = pickle.load(file)
                             self.model_type = data['model_type']
-                        self.classification_source = 2
                     else:
                         self.ui.classify_PB.setVisible(False)
                         self.ui.classify_PB.setEnabled(False)
                 else:
-                    self.ui.label_48.setVisible(False)
-                    if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
+                    if model_exists and len(self.ui.custom_scale_LE.text())>0 and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
                             float(self.ui.custom_scale_LE.text())))):
                         self.ui.classify_PB.setVisible(True)
                         self.ui.classify_PB.setEnabled(True)
@@ -304,12 +297,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.label_44.setVisible(False)
                 self.ui.custom_test_img_LE.setVisible(False)
                 self.ui.custom_test_img_PB.setVisible(False)
-                self.ui.label_46.setVisible(False)
                 self.ui.label_47.setVisible(False)
-                self.ui.label_48.setVisible(False)
                 self.ui.create_downsample_CB.setVisible(False)
-                self.ui.create_downsample_CB.setChecked(True)
-                if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
+                self.ui.create_downsample_CB.setChecked(False)
+                if model_exists and len(self.ui.custom_scale_LE.text())>0 and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
                         float(self.ui.custom_scale_LE.text())))):
                     self.ui.classify_PB.setVisible(True)
                     self.ui.classify_PB.setEnabled(True)
@@ -333,10 +324,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.label_43.setVisible(False)
             self.ui.custom_scale_LE.setVisible(False)
             self.ui.label_45.setVisible(False)
-            self.ui.label_46.setVisible(False)
             self.ui.use_anotated_images_CB.setVisible(False)
             self.ui.label_47.setVisible(False)
-            self.ui.label_48.setVisible(False)
             self.ui.create_downsample_CB.setVisible(False)
 
             if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.resolution_CB.currentText())):
@@ -650,7 +639,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Force update
         QtCore.QCoreApplication.processEvents()
 
-    def save_nesting_and_continue(self,train: bool):
+    def save_nesting_and_continue(self,train: int):
         model = self.ui.nesting_TW.model()
         nesting_order = [model.item(row).text() for row in range(model.rowCount())]
 
@@ -687,7 +676,7 @@ class MainWindow(QtWidgets.QMainWindow):
         print(self.df)
 
         # Check if advanced settings need to be modified
-        if self.ui.AS_checkBox.isChecked():
+        if train == 2:
             current_tab_index = self.ui.tabWidget.currentIndex()
             next_tab_index = current_tab_index + 1
 
@@ -743,7 +732,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, 'Warning', 'Please chose a resolution from the drop down box')
             return False
         elif resolution == "Custom":
-            if not(self.ui.use_anotated_images_CB.isChecked()):
+            if self.ui.use_anotated_images_CB.isChecked():
                 custom_train = self.ui.custom_img_LE.text()
                 custom_test = self.ui.custom_test_img_LE.text()
                 if not os.path.isdir(custom_train):

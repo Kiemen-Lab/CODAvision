@@ -58,7 +58,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_3.addWidget(self.resolution_CB)
 
-        self.gridLayout_3.addLayout(self.horizontalLayout_3, 3, 0, 1, 1)
 
         self.horizontalSpacer_3 = QSpacerItem(416, 17, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -77,7 +76,8 @@ class Ui_MainWindow(object):
         self.horizontalLayout_6.addWidget(self.model_name)
 
 
-        self.gridLayout_3.addLayout(self.horizontalLayout_6, 4, 0, 1, 1)
+        self.gridLayout_3.addLayout(self.horizontalLayout_6, 3, 0, 1, 1)
+        self.gridLayout_3.addLayout(self.horizontalLayout_3, 4, 0, 1, 1)
 
         self.verticalSpacer = QSpacerItem(20, 187, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -141,62 +141,52 @@ class Ui_MainWindow(object):
 
         self.label_42 = QLabel(self.tab)
         self.label_42.setObjectName(u"label_42")
-        self.label_42.setGeometry(QRect(9, 168, 120, 24))
+        self.label_42.setGeometry(QRect(9, 195, 120, 24))
         self.custom_img_LE = QLineEdit(self.tab)
         self.custom_img_LE.setObjectName(u"custom_img_LE")
-        self.custom_img_LE.setGeometry(QRect(100, 170, 520, 20))
+        self.custom_img_LE.setGeometry(QRect(100, 199, 520, 20))
         self.custom_img_PB = QPushButton(self.tab)
         self.custom_img_PB.setObjectName(u"custom_img_PB")
-        self.custom_img_PB.setGeometry(QRect(626, 167, 51, 28))
+        self.custom_img_PB.setGeometry(QRect(626, 194, 51, 28))
         self.label_42.setVisible(False)
         self.custom_img_LE.setVisible(False)
         self.custom_img_PB.setVisible(False)
 
         self.label_44 = QLabel(self.tab)
         self.label_44.setObjectName(u"label_44")
-        self.label_44.setGeometry(QRect(9, 202, 120, 24))
+        self.label_44.setGeometry(QRect(9, 229, 120, 24))
         self.custom_test_img_LE = QLineEdit(self.tab)
         self.custom_test_img_LE.setObjectName(u"custom_test_img_LE")
-        self.custom_test_img_LE.setGeometry(QRect(100, 204, 520, 20))
+        self.custom_test_img_LE.setGeometry(QRect(100, 233, 520, 20))
         self.custom_test_img_PB = QPushButton(self.tab)
         self.custom_test_img_PB.setObjectName(u"custom_test_img_PB")
-        self.custom_test_img_PB.setGeometry(QRect(626, 201, 51, 28))
+        self.custom_test_img_PB.setGeometry(QRect(626, 228, 51, 28))
         self.label_44.setVisible(False)
         self.custom_test_img_LE.setVisible(False)
         self.custom_test_img_PB.setVisible(False)
 
         self.label_43 = QLabel(self.tab)
         self.label_43.setObjectName(u"label_43")
-        self.label_43.setGeometry(QRect(270, 107, 100, 24))
+        self.label_43.setGeometry(QRect(270, 134, 100, 24))
         self.custom_scale_LE = QLineEdit(self.tab)
         self.custom_scale_LE.setObjectName(u"custom_scale_LE")
-        self.custom_scale_LE.setGeometry(QRect(350, 111, 120, 20))
+        self.custom_scale_LE.setGeometry(QRect(350, 138, 120, 20))
         self.label_43.setVisible(False)
         self.custom_scale_LE.setVisible(False)
 
         self.label_45 = QLabel(self.tab)
         self.label_45.setObjectName(u"label_45")
-        self.label_45.setGeometry(QRect(490, 107, 120, 24))
+        self.label_45.setGeometry(QRect(490, 134, 120, 24))
         self.label_45.setVisible(False)
-        self.label_46 = QLabel(self.tab)
-        self.label_46.setObjectName(u"label_46")
-        self.label_46.setGeometry(QRect(490, 107, 160, 24))
-        self.label_46.setVisible(False)
         self.use_anotated_images_CB = QCheckBox(self.tab)
-        self.use_anotated_images_CB.setGeometry(QRect(650, 113, 15, 15))
-        self.use_anotated_images_CB.setChecked(True)  # Optional: to start it as unchecked
+        self.use_anotated_images_CB.setGeometry(QRect(625, 140, 15, 15))
         self.use_anotated_images_CB.setVisible(False)
         self.label_47 = QLabel(self.tab)
         self.label_47.setObjectName(u"label_47")
-        self.label_47.setGeometry(QRect(490, 134, 120, 24))
+        self.label_47.setGeometry(QRect(490, 161, 120, 24))
         self.label_47.setVisible(False)
-        self.label_48 = QLabel(self.tab)
-        self.label_48.setObjectName(u"label_48")
-        self.label_48.setGeometry(QRect(490, 134, 120, 24))
-        self.label_48.setVisible(False)
         self.create_downsample_CB = QCheckBox(self.tab)
-        self.create_downsample_CB.setGeometry(QRect(610, 140, 15, 15))
-        self.create_downsample_CB.setChecked(True)  # Optional: to start it as unchecked
+        self.create_downsample_CB.setGeometry(QRect(625, 167, 15, 15))
         self.create_downsample_CB.setVisible(False)
 
 
@@ -401,15 +391,14 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_6 = QVBoxLayout()
         self.verticalLayout_6.setObjectName(u"verticalLayout_6")
-        self.AS_checkBox = QCheckBox(self.tab_3)
-        self.AS_checkBox.setObjectName(u"AS_checkBox")
-
-        self.verticalLayout_6.addWidget(self.AS_checkBox)
+        self.AS_PB = QPushButton(self.tab_3)
+        self.AS_PB.setObjectName(u'AS_PB')
 
         self.horizontalLayout_8 = QHBoxLayout()
         self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
         self.return_nesting_PB = QPushButton(self.tab_3)
         self.return_nesting_PB.setObjectName(u"return_nesting_PB")
+        self.return_nesting_PB.setGeometry(QRect(200,400,140,30))
 
         self.horizontalLayout_8.addWidget(self.return_nesting_PB)
 
@@ -419,13 +408,14 @@ class Ui_MainWindow(object):
         self.close_nesting_PB.setObjectName(u"close_nesting_PB")
         self.horizontalLayout_8.addWidget(self.close_nesting_PB)
         self.horizontalLayout_8.addWidget(self.save_nesting_PB)
-
-
-
+        self.horizontalLayout_8.addWidget(self.AS_PB)
         self.verticalLayout_6.addLayout(self.horizontalLayout_8)
+        container = QWidget(self.tab_3)
+        container.setLayout(self.verticalLayout_6)
+        container.setGeometry(QRect(275,340,410,45))
 
 
-        self.gridLayout_5.addLayout(self.verticalLayout_6, 1, 3, 1, 1)
+        #self.gridLayout_5.addLayout(self.verticalLayout_6, 1, 3, 1, 1)
 
         self.tabWidget.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
@@ -668,10 +658,10 @@ class Ui_MainWindow(object):
         self.moveup_PB.setText(QCoreApplication.translate("MainWindow", u"Move up", None))
         self.Movedown_PB.setText(QCoreApplication.translate("MainWindow", u"Move Down", None))
         self.nesting_checkBox.setText(QCoreApplication.translate("MainWindow", u"Nest uncombined data", None))
-        self.AS_checkBox.setText(QCoreApplication.translate("MainWindow", u"Modify advanced settings", None))
         self.return_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
         self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Train", None))
         self.close_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
+        self.AS_PB.setText(QCoreApplication.translate("MainWindow", u"Go to Advanced Settings", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Nesting", None))
         self.return_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
         self.save_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Train", None))
@@ -691,10 +681,8 @@ class Ui_MainWindow(object):
         self.label_42.setText(QCoreApplication.translate("MainWindow", u"Training images", None))
         self.label_44.setText(QCoreApplication.translate("MainWindow", u"Testing images", None))
         self.label_43.setText(QCoreApplication.translate("MainWindow", u"Scaling factor", None))
-        self.label_45.setText(QCoreApplication.translate("MainWindow", u"Scale annotated images", None))
-        self.label_46.setText(QCoreApplication.translate("MainWindow", u"Not using annotated images", None))
-        self.label_47.setText(QCoreApplication.translate("MainWindow", u"Create scaled images", None))
-        self.label_48.setText(QCoreApplication.translate("MainWindow", u"Use scaled images", None))
+        self.label_45.setText(QCoreApplication.translate("MainWindow", u"Scale custom images", None))
+        self.label_47.setText(QCoreApplication.translate("MainWindow", u"Use pre-scaled images", None))
         self.model_name_label.setText(QCoreApplication.translate("MainWindow", u"Model architecture", None))
         self.batch_label.setText(QCoreApplication.translate("MainWindow", u"Batch size", None))
         self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))

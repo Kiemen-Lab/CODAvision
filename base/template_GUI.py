@@ -30,7 +30,7 @@ def CODAVision():
             pkl_pth = window.pth_net
         else:
             pkl_pth = os.path.join(window.pthim, window.nm,'net.pkl')
-        with open(window.pth_net, 'rb') as f:
+        with open(pkl_pth, 'rb') as f:
             data = pickle.load(f)
             pthim = data['pthim']
             umpix = data['umpix']
@@ -46,7 +46,7 @@ def CODAVision():
                 downsamp_annotated = data['downsamp_annotated']
         umpix_to_resolution = {1: '10x', 2: '5x', 4: '1x'}
         resolution = umpix_to_resolution.get(umpix, 'TBD')
-        if resolution == 'TBD' and not (create_down):
+        if resolution == 'TBD' and create_down:
             pth = ''
             for element in pthDL.split(os.sep)[:-1]:
                 pth = os.path.join(pth, element)
@@ -70,23 +70,23 @@ def CODAVision():
         resolution = window.resolution
         model_type = window.model_type
 
-        already_scaled = not(window.create_down)
-        downsamp_annotated = window.downsamp_annotated_images
+        scale_images = not(window.create_down)
+        not_downsamp_annotated = window.downsamp_annotated_images
         # Create tiff images if they don't exist
         print(' ')
         if resolution == 'Custom':
             train_img_type = window.img_type
             test_img_type = window.test_img_type
             scale = float(window.scale)
-            if downsamp_annotated:
+            if not(not_downsamp_annotated):
                 WSI2tif(pth, resolution, umpix, train_img_type, scale, pth)
             else:
                 uncomp_pth = window.uncomp_train_pth
                 uncomp_test_pth = window.uncomp_test_pth
-                if already_scaled:
+                if not(scale_images):
                     pthim = uncomp_pth
                     pthtestim = uncomp_test_pth
-                if not already_scaled: # Additional function i accidentally added, might include it in the future
+                if scale_images: # Additional function i accidentally added, might include it in the future
                     WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
 
         else:
@@ -108,7 +108,7 @@ def CODAVision():
         # 5 Test model
         print(' ')
         if resolution == 'Custom':
-            if downsamp_annotated:
+            if not(not_downsamp_annotated):
                 WSI2tif(pthtest, resolution, umpix, test_img_type, scale, pthtest)
                 if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
                     try:
@@ -118,7 +118,7 @@ def CODAVision():
                     except:
                         print('No TA cutoff file found, using default value')
             else:
-                if already_scaled:
+                if not(scale_images):
                     if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
                         try:
                             os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
@@ -126,7 +126,7 @@ def CODAVision():
                                         os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
                         except:
                             print('No TA cutoff file found, using default value')
-                if not already_scaled: # Additional function i accidentally added, might include it in the future
+                if scale_images:
                     WSI2tif(uncomp_test_pth, resolution, umpix, train_img_type, scale, pthtest)
                     if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
                         try:
