@@ -138,3 +138,79 @@ class DeepLabV3Plus:
         output = layers.Activation('softmax')(x)
 
         model = models.Model(model_input, output, name='resnet50')
+
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, ReLU, UpSampling2D, Concatenate
+from tensorflow.keras.models import Model
+import tensorflow as tf
+class ClaudeDeepLabV3Plus:
+    def __init__(self, sxy, num_classes,class_weights):
+        self.sxy = sxy
+        self.num_classes = num_classes
+        self.class_weights = class_weights
+
+    def build_model(self):
+        """
+        Create DeepLabV3+ model with ResNet50 backbone
+
+        Args:
+            input_shape (tuple): Input shape (height, width, channels)
+            num_classes (int): Number of classes
+            class_weights (dict): Class weights dictionary
+
+        Returns:
+            tf.keras.Model: DeepLabV3+ model
+        """
+        input_shape = (self.sxy, self.sxy, 3)
+        # Create base ResNet50 model
+        base_model = ResNet50(
+            input_shape=input_shape,
+            weights='imagenet',
+            include_top=False
+        )
+
+        # Extract features at different levels
+        input_layer = base_model.input
+        low_level_features = base_model.get_layer('conv2_block3_out').output
+        encoder_output = base_model.output
+
+        # ASPP (Atrous Spatial Pyramid Pooling)
+        x = Conv2D(256, 1, padding='same', use_bias=False)(encoder_output)
+        x = BatchNormalization()(x)
+        x = ReLU()(x)
+
+        # Decoder
+        x = UpSampling2D(size=(4, 4), interpolation='bilinear')(x)
+
+        # Low-level features processing
+        low_level_features = Conv2D(48, 1, padding='same', use_bias=False)(low_level_features)
+        low_level_features = BatchNormalization()(low_level_features)
+        low_level_features = ReLU()(low_level_features)
+
+        # Concatenate features
+        x = Concatenate()([x, low_level_features])
+
+        # Final convolutions
+        x = Conv2D(256, 3, padding='same', activation='relu')(x)
+        x = Conv2D(256, 3, padding='same', activation='relu')(x)
+        x = UpSampling2D(size=(4, 4), interpolation='bilinear')(x)
+
+        # Final classification layer
+        outputs = Conv2D(self.num_classes, 1, padding='same', activation='softmax', name='classification')(x)
+
+        # Create model
+        model = Model(inputs=input_layer, outputs=outputs)
+
+        # Compile model with weighted categorical crossentropy
+        loss = tf.keras.losses.CategoricalCrossentropy(
+            from_logits=False,
+            class_weights=self.class_weights
+        )
+
+        model.compile(
+            optimizer='adam',
+            loss=loss,
+            metrics=['accuracy']
+        )
+
+        return model

@@ -11,13 +11,10 @@ import tensorflow as tf
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import os
-import numpy as np
-import matplotlib.pyplot as plt
 
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 os.system("nvcc --version")
 import warnings
-import GPUtil
 
 warnings.filterwarnings('ignore')
 
@@ -25,10 +22,33 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model
 
 
+class WeightedClassificationLayer(tf.keras.layers.Layer):
+    def __init__(self, class_weights, **kwargs):
+        super().__init__(**kwargs)
+        self.class_weights = class_weights
+
+    def call(self, inputs):
+        # Apply weights to the softmax outputs
+        weights = tf.constant([[self.class_weights[i] for i in range(len(self.class_weights))]],
+            dtype=tf.float32
+        )
+        weighted_outputs = inputs * weights
+        return weighted_outputs
+
+    def get_config(self):
+        # Get the base config first
+        config = super(WeightedClassificationLayer, self).get_config()
+        # Add class_weights to the config
+        config.update({
+            "class_weights": self.class_weights,
+        })
+        return config
+
 class DeepLabV3Plus:
-    def __init__(self, input_size, num_classes):
+    def __init__(self, input_size, num_classes, class_weights):
         self.input_size = input_size
         self.num_classes = num_classes
+        self.class_weights = class_weights
 
     def convolution_block(self, block_input, num_filters=256, kernel_size=(1, 1), strides=None, padding='valid',
                           dilation_rate=1, use_bias=False):
@@ -158,7 +178,8 @@ class DeepLabV3Plus:
         x = layers.Conv2D(self.num_classes, (1, 1), (1, 1), 'valid')(x)
         x = layers.Conv2DTranspose(self.num_classes, (8, 8), (4, 4))(x)
         x = layers.Cropping2D(cropping=((2, 2), (2, 2)))(x)
-        output = layers.Activation('softmax')(x)
+        x = layers.Activation('softmax')(x)
+        output = WeightedClassificationLayer(self.class_weights, name='classification')(x)
 
         model = models.Model(model_input, output, name='resnet50')
         return model
@@ -586,11 +607,11 @@ class CASe_UNet:
 
 
 # Instantiate and build
-def model_call(name, IMAGE_SIZE, NUM_CLASSES):
+def model_call(name, IMAGE_SIZE, NUM_CLASSES, CLASS_WEIGHTS = None):
     if (name == "UNet"):
         model = UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     elif (name == "DeepLabV3_plus"):
-        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
+        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES, class_weights= CLASS_WEIGHTS).build_model()
     elif (name == "UNet3_plus"):
         model = UNet3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     elif (name == "TransUNet"):

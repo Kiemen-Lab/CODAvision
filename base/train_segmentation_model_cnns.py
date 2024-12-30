@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from base.backbones import * #ADDED IMPORT
+from base.calculate_class_weights import calculate_class_weights
 
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 os.system("nvcc --version")
@@ -81,6 +82,9 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         # Get paths to validation images and labels
         val_images = sorted(glob(os.path.join(pthValidation, 'im', "*.png")))
         val_masks = sorted(glob(os.path.join(pthValidation, 'label', "*.png")))
+
+        # Get class weights
+        classWeights = calculate_class_weights(train_masks, classNames)
 
         # BATCH_SIZE = 3
         #BATCH_SIZE = 3 #11/13/2024
@@ -293,7 +297,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                     #plt.show()
 
         # Train the model
-        model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
+        model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES,CLASS_WEIGHTS=classWeights)
         #model.summary()
 
         print('Starting model training...')
@@ -315,6 +319,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         mod_name = f"{model_type}.keras"
         model.save(os.path.join(pthDL, mod_name))
         # data['model'] = model
+        data['class_weights'] = classWeights
         data['history'] = history.history  # Get the model history
         with open(os.path.join(pthDL, 'net.pkl'), 'wb') as f:
             pickle.dump(data, f)
