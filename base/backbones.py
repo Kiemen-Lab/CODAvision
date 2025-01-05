@@ -22,27 +22,27 @@ import tensorflow as tf
 from tensorflow.keras import layers, Model
 
 
-class WeightedClassificationLayer(tf.keras.layers.Layer):
-    def __init__(self, class_weights, **kwargs):
-        super().__init__(**kwargs)
-        self.class_weights = class_weights
-
-    def call(self, inputs):
-        # Apply weights to the softmax outputs
-        weights = tf.constant([[self.class_weights[i] for i in range(len(self.class_weights))]],
-            dtype=tf.float32
-        )
-        weighted_outputs = inputs * weights
-        return weighted_outputs
-
-    def get_config(self):
-        # Get the base config first
-        config = super(WeightedClassificationLayer, self).get_config()
-        # Add class_weights to the config
-        config.update({
-            "class_weights": self.class_weights,
-        })
-        return config
+# class WeightedClassificationLayer(tf.keras.layers.Layer):
+#     def __init__(self, class_weights, **kwargs):
+#         super().__init__(**kwargs)
+#         self.class_weights = class_weights
+#
+#     def call(self, inputs):
+#         # Apply weights to the softmax outputs
+#         weights = tf.constant([[self.class_weights[i] for i in range(len(self.class_weights))]],
+#             dtype=tf.float32
+#         )
+#         weighted_outputs = inputs * weights
+#         return weighted_outputs
+#
+#     def get_config(self):
+#         # Get the base config first
+#         config = super(WeightedClassificationLayer, self).get_config()
+#         # Add class_weights to the config
+#         config.update({
+#             "class_weights": self.class_weights,
+#         })
+#         return config
 
 class DeepLabV3Plus:
     def __init__(self, input_size, num_classes, class_weights):
@@ -177,9 +177,8 @@ class DeepLabV3Plus:
         x = self.convolution_block(x, 256, (3, 3), (1, 1), 'same')
         x = layers.Conv2D(self.num_classes, (1, 1), (1, 1), 'valid')(x)
         x = layers.Conv2DTranspose(self.num_classes, (8, 8), (4, 4))(x)
-        x = layers.Cropping2D(cropping=((2, 2), (2, 2)))(x)
-        x = layers.Activation('softmax')(x)
-        output = WeightedClassificationLayer(self.class_weights, name='classification')(x)
+        output = layers.Cropping2D(cropping=((2, 2), (2, 2)))(x)
+        #output = layers.Activation('softmax')(x)
 
         model = models.Model(model_input, output, name='resnet50')
         return model

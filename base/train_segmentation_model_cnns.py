@@ -5,14 +5,12 @@ Date: November 15, 2024
 """
 
 import tensorflow as tf
+from tensorflow import keras
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-import os
 import numpy as np
 import matplotlib.pyplot as plt
-
 from base.backbones import * #ADDED IMPORT
 from base.calculate_class_weights import calculate_class_weights
-
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 os.system("nvcc --version")
 from glob import glob
@@ -21,7 +19,41 @@ from tensorflow import data as tf_data
 from tensorflow import io as tf_io
 import warnings
 import GPUtil
+
 warnings.filterwarnings('ignore')
+
+class WeightedSCCE(keras.losses.Loss):
+    def __init__(self, class_weight, from_logits=False, name='weighted_scce'):
+        super().__init__(name=name)
+        self.class_weight = tf.convert_to_tensor(class_weight, dtype=tf.float32)
+        self.from_logits = from_logits
+        self.reduction = tf.keras.losses.Reduction.AUTO
+
+    def __call__(self, y_true, y_pred, sample_weight=None):
+        y_true = tf.squeeze(y_true, axis=-1)
+        y_true = tf.cast(y_true, tf.int32)
+
+        # Apply softmax if needed
+        if self.from_logits:
+            y_pred = tf.nn.softmax(y_pred, axis=-1)
+
+        # Create one-hot encoding with matching dimensions
+        y_true_one_hot = tf.one_hot(y_true, depth=tf.shape(y_pred)[-1])
+        pixel_losses = -tf.reduce_sum(
+            y_true_one_hot * tf.math.log(tf.clip_by_value(y_pred, 1e-7, 1.0)),
+            axis=-1
+        )
+
+        # Apply class weights
+        weight_mask = tf.gather(self.class_weight, y_true)
+        weighted_pixel_losses = pixel_losses * weight_mask
+
+        # tf.print("Unweighted loss mean:", tf.reduce_mean(pixel_losses))
+        # tf.print("Weighted loss mean:", tf.reduce_mean(weighted_pixel_losses))
+        # tf.print("Weight distribution:", tf.unique_with_counts(weight_mask))
+
+        # Return mean loss across all pixels
+        return tf.reduce_mean(weighted_pixel_losses)
 
 
 def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
@@ -119,7 +151,8 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
 
 
         # Define loss function
-        loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+        loss = WeightedSCCE(from_logits=True, class_weight= np.array(classWeights))
+        #loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         class BatchAccCall(keras.callbacks.Callback):
             def __init__(self, model, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
