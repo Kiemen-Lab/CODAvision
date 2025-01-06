@@ -5,6 +5,7 @@ Date: May 14, 2024
 import numpy as np
 import cv2
 from scipy.ndimage import gaussian_filter
+import os
 
 def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, rsz=False):
     """
@@ -71,14 +72,18 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         # Scale red
         imr = 255 - imh[:, :, 0]
         imh[:, :, 0] = 255 - (imr * rd[ird])
+        # imh[:, :, 0] = imh[:, :, 0] - np.min(imh[:, :, 0])
 
         # Scale green
         img = 255 - imh[:, :, 1]
         imh[:, :, 1] = 255 - (img * gr[igr])
+        # imh[:, :, 1] = imh[:, :, 1] - np.min(imh[:, :, 1])
 
         # Scale blue
         imb = 255 - imh[:, :, 2]
         imh[:, :, 2] = 255 - (imb * bl[ibl])
+        # imh[:,:,2] = imh[:, :, 2]-np.min(imh[:, :, 2])
+
 
     # Random blurring
 
@@ -114,4 +119,3 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
     imh = imh * tmp
 
     return imh, imlabel
-

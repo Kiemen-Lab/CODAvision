@@ -1,8 +1,3 @@
-"""
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: September 5th, 2024
-"""
-
 import pickle
 import numpy as np
 import os
@@ -11,14 +6,14 @@ import cv2
 
 def quantify_images(pthDL, pthim):
     """
-       Quantifies tissue composition in images and saves the results to an Excel file. Not part of the CODA main pipline.
+       Quantifies tissue composition in images and saves the results to a CSV file.
 
        Parameters:
        pthDL (str): Path to the directory containing the 'net.pkl' file with the model metadata.
        pthim (str): Path to the directory containing the images to be quantified.
 
        Outputs:
-       An Excel file named 'image_quantifications.xlsx' containing the pixel counts and tissue composition percentages
+       A CSV file named 'image_quantifications.csv' containing the pixel counts and tissue composition percentages
        for each image. Saved in the same directory as the classified images.
        """
 
@@ -29,24 +24,22 @@ def quantify_images(pthDL, pthim):
         classNames = data['classNames']
         nwhite = data['nwhite']
         nm = data['nm']
-
+        model_type = data['model_type']
 
     # Define the headers for the pixel count and tissue composition quantifications
     classQuantification = ['Image name'] + \
                           [f'{className} pixel count' for className in classNames[:-1]] + \
                           [f"{classNames[i]} tissue composition (%)" for i in range(len(classNames) - 1) if i != nwhite - 1]
 
-    # Save headers to Excel
-    quantPath = os.path.join(pthim, 'classification_' + nm)
-    file = os.path.join(quantPath, 'image_quantifications.xlsx')
+    # Save headers to CSV
+    quantPath = os.path.join(pthim, 'classification_' + nm + '_'+ model_type)
+    file = os.path.join(quantPath, 'image_quantifications.csv')
     df = pd.DataFrame(columns=classQuantification)
-    with pd.ExcelWriter(file, engine='openpyxl', mode='w') as writer:
-        df.to_excel(writer, sheet_name='Quantification (default)', startrow=2, startcol=0, index=False)
+    df.to_csv(file, index=False)
 
     # Process images
     files = [f for f in os.listdir(quantPath) if f.endswith('.tif')]
     numfiles = len(files)
-    row = 3
 
     for j, imageName in enumerate(files):
         print(f"Image {j + 1} / {numfiles}: {imageName}")
@@ -59,15 +52,12 @@ def quantify_images(pthDL, pthim):
 
         imageData = [imageName] + classCounts + [comp for i, comp in enumerate(tissueCompositions) if i + 1 != nwhite]
 
-        df = pd.DataFrame([imageData])
-        with pd.ExcelWriter(file, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
-            df.to_excel(writer, sheet_name='Quantification (default)', startrow=row, header=False, index=False)
-        row += 1
+        df = pd.DataFrame([imageData], columns=classQuantification)
+        df.to_csv(file, mode='a', header=False, index=False)
 
-    # Write additional information to Excel
-    with pd.ExcelWriter(file, engine='openpyxl', mode='a', if_sheet_exists='overlay') as writer:
-        pd.DataFrame([['Model name:', pthDL]]).to_excel(writer, sheet_name='Quantification (default)', startrow=0, header=False, index=False)
-        pd.DataFrame([['File location:', quantPath]]).to_excel(writer, sheet_name='Quantification (default)', startrow=1, header=False, index=False)
+    # Write additional information to CSV
+    additional_info = pd.DataFrame([['Model name:', pthDL], ['File location:', quantPath]])
+    additional_info.to_csv(file, mode='a', header=False, index=False)
 
 # Example usage
 if __name__ == '__main__':
