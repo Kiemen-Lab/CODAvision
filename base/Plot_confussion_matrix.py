@@ -10,7 +10,7 @@ Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: June 26, 2024
 """
 
-def plot_confusion_matrix(confusion_data, classNames, pthDL):
+def plot_confusion_matrix(confusion_data, classNames, pthDL, cnn_name):
     # Ensure confusion_data is a numpy array
     confusion_data = np.array(confusion_data)
 
@@ -75,11 +75,11 @@ def plot_confusion_matrix(confusion_data, classNames, pthDL):
     plt.gca().xaxis.tick_top()
 
     plt.tight_layout()
-    plt.savefig(os.path.join(pthDL, 'confusion_matrix.jpg'))
+    cm_name = f'confusion_matrix_{cnn_name}.png'
+    plt.savefig(os.path.join(pthDL, cm_name))
     plt.show()
 
-    print(f"\nConfusion matrix saved to {os.path.join(pthDL, 'confusion_matrix.jpg')}")
-
-    print(f"\nOverall Accuracy: {accuracy}%")
+    print(f"\nConfusion matrix saved to {os.path.join(pthDL, 'confusion_matrix' + cnn_name + '.png')}")
+    print(f"Overall Accuracy: {accuracy}%")
 
     return confusion_with_metrics

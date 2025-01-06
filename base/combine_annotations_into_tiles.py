@@ -40,9 +40,9 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     kpall = 1
 
     # Define folder locations
-    outpthim = os.path.join(pthDL, outpth, 'im/')
-    outpthlabel = os.path.join(pthDL, outpth, 'label/')
-    outpthbg = os.path.join(pthDL, outpth, 'big_tiles/')
+    outpthim = os.path.join(pthDL, outpth, 'im')
+    outpthlabel = os.path.join(pthDL, outpth, 'label')
+    outpthbg = os.path.join(pthDL, outpth, 'big_tiles')
 
     os.makedirs(outpthim, exist_ok=True)
     os.makedirs(outpthlabel, exist_ok=True)
@@ -52,7 +52,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     nm0 = len(imlistck) + 1
 
     # Create very large blank images
-    imH = np.full((stile, stile, 3), nbg, dtype=np.uint8) # create an array with the specified dimensions with the value of ngb as background
+    imH = np.full((stile, stile, 3), nbg, dtype=np.float64) # create an array with the specified dimensions with the value of ngb as background
     imT = np.zeros((stile, stile), dtype=np.uint8)  # blank mask
     nL = imT.size  # size of the big tile
     ct = np.zeros(numann.shape[1])  # list (size of how many annotations you have)
@@ -66,10 +66,10 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     numcount = np.zeros(len(imlist['tile_name']))
     typecount = np.zeros(len(ct))
 
-    h = np.ones((51, 51))
-    h[25, 25] = 0
-    h = distance_transform_edt(h) < 26
-    h_array32 = np.array(h / np.sum(h), dtype=np.float64)
+    # h = np.ones((51, 51))
+    # h[25, 25] = 0
+    # h = distance_transform_edt(h) < 26
+    # h_array32 = np.array(h / np.sum(h), dtype=np.float64)
 
     # Here comes the fun part, tiles are going to be added to the big black tile until the cutoff is achieved ~55%
     iteration = 1
@@ -100,11 +100,11 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         tile_name = imlist['tile_name'][num[0]]
 
         tile_path = os.path.join(imlist['tile_pth'][num[0]], tile_name)
-        pf = tile_path.rfind('\\', 0, tile_path.rfind('\\'))
+        pf = tile_path.rfind(os.path.sep, 0, tile_path.rfind(os.path.sep))
         pthlabel = os.path.join(tile_path[0:pf], 'label')
 
         im = cv2.imread(tile_path)
-        im = im[:, :, ::-1]  # cv2.imread() reads image in BGR order, so we have to reorder color channels
+        #im = im[:, :, ::-1]  # cv2.imread() reads image in BGR order, so we have to reorder color channels
         TA = cv2.imread(os.path.join(pthlabel, tile_name), cv2.IMREAD_GRAYSCALE)
 
         if count % 3 == 1:
@@ -182,7 +182,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
 
     # cut edges off tile
-    imH = imH[100:-100, 100:-100, :].astype(np.uint8)
+    imH = imH[100:-100, 100:-100, :].astype(np.float64)
     imT = imT[100:-100, 100:-100].astype(np.uint8)
     for p in range(nblack - 1):  # the '-1' has to do with python indxing
         ct[p] = np.sum(imT == p)
@@ -198,8 +198,8 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
                 imTtmp = imT[s1:s1 + sxy, s2:s2 + sxy]
             except ValueError:
                 continue
-
-            Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.png"))
+            cv2.imwrite(os.path.join(outpthim, f"{nm0}.png"),imHtmp)
+            #Image.fromarray(imHtmp).save(os.path.join(outpthim, f"{nm0}.png"))
             Image.fromarray(imTtmp).save(os.path.join(outpthlabel, f"{nm0}.png"))
 
 
@@ -209,7 +209,8 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
 
     # save large tiles
     print('Saving big tiles')
-    Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
+    #Image.fromarray(imH).save(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"))
+    cv2.imwrite(os.path.join(outpthbg, f"HE_tile_{nm1}.jpg"), imH)
     Image.fromarray(imT).save(os.path.join(outpthbg, f"label_tile_{nm1}.jpg"))
     # io.imsave(os.path.join(outpthbg, f"HE_tile_{nm1}.tif"), imH)
     # io.imsave(os.path.join(outpthbg, f"label_tile_{nm1}.tif"), imT)

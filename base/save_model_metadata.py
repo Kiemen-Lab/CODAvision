@@ -75,7 +75,7 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
         classNames.append("black")
     nblack = len(classNames)
 
-    datafile = os.path.join(pthDL.rstrip('\\'), 'net.pkl')
+    datafile = os.path.join(pthDL.rstrip(os.path.sep), 'net.pkl')
 
     # Save the data to a pickle file
     if os.path.exists(datafile):
@@ -102,5 +102,3 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
     # plot color legend
     plot_cmap_legend(cmap, classNames)
     plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
-
-

@@ -12,18 +12,18 @@ import matplotlib.pyplot as plt
 import pickle
 import time
 from scipy.ndimage import binary_fill_holes
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Model
 import keras
 from .Semanticseg import semantic_seg
 from .make_overlay import make_overlay, decode_segmentation_masks
 Image.MAX_IMAGE_PIXELS = None
+from base.backbones import *
 
 
 
-def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
+def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, disp = True):
     start_time = time.time()
     # Load the model weights and other relevant data
-    model = load_model(os.path.join(pthDL, 'best_model_net.keras'))
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         classNames = data['classNames']
@@ -33,7 +33,18 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         nm = data['nm']
         sxy = data['sxy']
 
-    outpth = os.path.join(pthim, 'classification_' + nm)
+    try:
+        model_filename = f'best_model_{name}.keras' #ARRUN
+        model = model_call(name,IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))#ARRUN
+        model.load_weights(os.path.join(pthDL, model_filename))  # ARRUN
+    except:
+        model_filename = f'{name}.keras'  # ARRUN
+        model = model_call(name, IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))  # ARRUN
+        model.load_weights(os.path.join(pthDL, model_filename))  # ARRUN
+
+
+
+    outpth = os.path.join(pthim, 'classification_' + nm + '_' + name)
     os.makedirs(outpth, exist_ok=True)
 
     b = 100
@@ -58,12 +69,14 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     for i, img_path in enumerate(imlist):
         classification_st = time.time()
         img_name = os.path.basename(img_path)
-        print(f'  Starting classification of image {i + 1} of {len(imlist)}: {img_name}')
+        print(img_name)
+        print(f'Starting classification of image {i + 1} of {len(imlist)}: {img_name}')
         if os.path.isfile(os.path.join(outpth, img_name[:-4] + ".tif")):
             print(f'  Image {img_name} already classified by this model')
             continue
         # print(os.path.join(pthim, 'TA', img_name[:-4] + ".png"))
-        im = Image.open(os.path.join(pthim, img_name))
+        im = cv2.imread(os.path.join(pthim, img_name))
+        im = im[:, :, ::-1]
         im_array = np.array(im)  # Convert to NumPy array for slicing
         try:
             try:
@@ -72,7 +85,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
                 TA = Image.open(os.path.join(pthim, 'TA', img_name[:-4] + ".tif"))
             TA = binary_fill_holes(TA)
         except:
-            TA = np.array(im.convert('L')) < 220
+            TA = np.array(im[:,:,1]) < 220
             TA = binary_fill_holes(TA.astype(bool))
 
         # Pad image so we classify all the way to the edge
@@ -137,7 +150,7 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
     print(f'  Total time for classification: {hours}h {minutes}m {seconds}s')
 
     # Only show images if im_array was actually assigned
-    if first_img is not None:
+    if first_img is not None and disp:
         fig, axs = plt.subplots(1, 2)
         axs[0].imshow(first_img)
         axs[1].imshow(keras.utils.array_to_img(prediction_colormap))
@@ -148,5 +161,3 @@ def classify_images(pthim, pthDL, color_overlay_HE=True, color_mask=False):
         plt.pause(0.2)
 
     return outpth
-
-

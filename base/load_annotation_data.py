@@ -2,6 +2,7 @@
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: May 3rd, 2024
 """
+import cv2
 
 from base.calculate_tissue_mask import calculate_tissue_mask
 from base.check_if_model_parameters_changed import check_if_model_parameters_changed
@@ -50,12 +51,9 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         cmap = data['cmap']
         nm = data['nm']
         nwhite = data['nwhite']
-
-    # Make PNG images if they don't exist
-    print(' ')
-    resolution = pthim.split('\\')[-1]
-    # WSI2png(pth, resolution, umpix)
-    WSI2tif(pth, resolution, umpix)
+        scale = None
+        if umpix == 'TBD':
+            scale = float(data['scale'])
 
 
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
@@ -66,6 +64,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     outim = os.path.join(pth, 'check_annotations')
     os.makedirs(outim, exist_ok=True)
 
+
     # Check that all images exist for all the .cml files contained in the folder
     for imnm in imlist:
         imnm = imnm[:-4]
@@ -74,6 +73,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         png_file = os.path.join(pth, f'{imnm}.png')
         if not os.path.isfile(tif_file) and not os.path.isfile(jpg_file) and not os.path.isfile(png_file):
             raise FileNotFoundError(f'Cannot find a tif, png or jpg file for xml file: {imnm}.xml')
+
+    create_new_tiles = False
 
     # for each annotation file
 
@@ -110,6 +111,8 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
             continue
 
+        create_new_tiles = True
+
 
         if os.path.isdir(outpth):
             shutil.rmtree(outpth)
@@ -134,8 +137,10 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             data = pickle.load(f)
 
         I0, TA, _ = calculate_tissue_mask(pthim, imnm)
-
-        J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
+        if scale:
+            J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
+        else:
+            J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
 
         io.imsave(os.path.join(outpth, 'view_annotations.png'), J0.astype(np.uint8))
 
@@ -150,7 +155,9 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         J3 = J3.reshape(J.shape)
         mask = np.dstack((J1, J2, J3))
         I = (I * 0.5) + (mask * 0.5)
-        io.imsave(os.path.join(outim, f'{imnm}.tif'), (I * 255).astype(np.uint8))
+        if os.path.isfile(os.path.join(outim, f'{imnm}.png')):
+            os.remove(os.path.join(outim, f'{imnm}.png'))
+        io.imsave(os.path.join(outim, f'{imnm}.png'), (I * 255).astype(np.uint8))
 
         # create annotation bounding boxes and update data to annotation.pkl file
         numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
@@ -161,4 +168,4 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         ctlist0['tile_pth'].extend(ctlist['tile_pth'])
 
         print(f' Finished image in {round(time.time() - image_time)} seconds.')
-    return ctlist0, numann0
+    return ctlist0, numann0, create_new_tiles

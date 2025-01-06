@@ -14,8 +14,8 @@ from PIL import Image
 
 def convert_to_array(image_path, prediction_mask):
     # Open the image and convert it to a numpy array
-    image = Image.open(image_path)
-    image = np.array(image)
+    image = cv2.imread(image_path)
+    image = image[:, :, ::-1]
 
     # Check if the image is too large, and downsample it by 2 if it is
     if image.shape[0] > 20000 or image.shape[1] > 20000:
