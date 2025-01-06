@@ -6,6 +6,7 @@ Date: November 15, 2024
 
 import tensorflow as tf
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+import pandas as pd
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -112,6 +113,26 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
 
         train_dataset = data_generator(train_images, train_masks)
         val_dataset = data_generator(val_images, val_masks)
+
+
+        # Count pixels in each class
+        def count_each_label(mask_list):
+            label_counts = {}
+            for mask_path in mask_list:
+                mask = read_image(mask_path, mask=True)
+                unique, counts = tf.unique(tf.reshape(mask, [-1]))
+                for u, c in zip(unique.numpy(), counts.numpy()):
+                    if u in label_counts:
+                        label_counts[u] += c
+                    else:
+                        label_counts[u] = c
+            return label_counts
+
+        label_counts = count_each_label(train_masks)
+        tbl = pd.DataFrame(list(label_counts.items()), columns=['Label', 'PixelCount'])
+        tbl['ImagePixelCount'] = tbl['PixelCount'].sum()
+        image_freq = tbl['PixelCount'] / tbl['ImagePixelCount']
+        class_weights = np.median(image_freq) / image_freq
 
 
         # Define loss function

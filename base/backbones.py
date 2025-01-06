@@ -22,13 +22,29 @@ import GPUtil
 warnings.filterwarnings('ignore')
 
 import tensorflow as tf
+from tensorflow.keras.layers import Layer
 from tensorflow.keras import layers, Model
+
+class WeightedClassificationLayer(Layer):
+    def __init__(self, num_classes, class_weights, **kwargs):
+        super(WeightedClassificationLayer, self).__init__(**kwargs)
+        self.num_classes = num_classes
+        self.class_weights = class_weights
+
+    def build(self, input_shape):
+        self.conv = tf.keras.layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")
+
+    def call(self, inputs):
+        logits = self.conv(inputs)
+        weighted_logits = logits * self.class_weights
+        return weighted_logits
 
 
 class DeepLabV3Plus:
-    def __init__(self, input_size, num_classes):
+    def __init__(self, input_size, num_classes, class_weights=None):
         self.input_size = input_size
         self.num_classes = num_classes
+        self.class_weights = class_weights
 
     def convolution_block(self, block_input, num_filters=256, kernel_size=3, dilation_rate=1, use_bias=False):
         x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate, padding="same",
@@ -84,7 +100,10 @@ class DeepLabV3Plus:
             interpolation="bilinear",
         )(x)
 
-        outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
+        if self.class_weights is not None:
+            outputs = WeightedClassificationLayer(self.num_classes, self.class_weights)(x)
+        else:
+            outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
 
         model = Model(preprocessed, outputs, name='DeepLabV3_plus')
         return model
@@ -512,16 +531,16 @@ class CASe_UNet:
 
 
 # Instantiate and build
-def model_call(name, IMAGE_SIZE, NUM_CLASSES):
-    if (name == "UNet"):
+def model_call(name, IMAGE_SIZE, NUM_CLASSES, class_weights=None):
+    if name == "UNet":
         model = UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif (name == "DeepLabV3_plus"):
-        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif (name == "UNet3_plus"):
+    elif name == "DeepLabV3_plus":
+        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES, class_weights=class_weights).build_model()
+    elif name == "UNet3_plus":
         model = UNet3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif (name == "TransUNet"):
+    elif name == "TransUNet":
         model = TransUNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif (name == "CASe_UNet"):
+    elif name == "CASe_UNet":
         model = CASe_UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     else:
         raise ValueError(f'Incorrect Model Name / Pretrained model of {name} does not exist')
