@@ -314,7 +314,8 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                     #plt.show()
 
         # Train the model
-        model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
+        # model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
+        model = model_call(model_type, IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES, class_weights=class_weights) #with weighted classes
         #model.summary()
 
         print('Starting model training...')
