@@ -33,8 +33,8 @@ setup(
         'openslide-python==1.3.1',
         'openpyxl==3.1.2',
         'GPUtil==1.4.0',
-        'PySide6==6.5.1.1'
-        'pydicom==3.0.1',
+        'PySide6==6.5.1.1',
+        'pydicom',
         'fpdf==1.7.2',
     ],
     package_data={
