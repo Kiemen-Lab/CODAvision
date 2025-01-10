@@ -128,6 +128,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                         label_counts[u] = c
             return label_counts
 
+        #Calcualte class weights
         label_counts = count_each_label(train_masks)
         tbl = pd.DataFrame(list(label_counts.items()), columns=['Label', 'PixelCount'])
         tbl['ImagePixelCount'] = tbl['PixelCount'].sum()
@@ -136,7 +137,35 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
 
 
         # Define loss function
-        loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+        def model_loss(y_true, y_pred, class_names, class_weights):
+            # Normalize class weights and convert to tf tensor
+            class_weights = tf.convert_to_tensor(class_weights, dtype=tf.float32)
+            class_weights = class_weights / tf.reduce_sum(class_weights)
+
+            # Create a mask to handle NaN values
+            mask = ~tf.math.is_nan(y_true)
+            y_true = tf.where(tf.math.is_nan(y_true), tf.zeros_like(y_true), y_true)
+
+            num_classes = len(class_names)
+            y_true_onehot = tf.one_hot(tf.cast(y_true, tf.int32), depth=num_classes)
+
+            # Class-wise weighted cross-entropy
+            y_pred = tf.cast(y_pred, tf.float32)
+            loss = 0.0
+            num_classes = len(class_names)
+
+            for c in range(num_classes):
+                class_mask = tf.cast(mask[:, :, c], tf.float32) * tf.cast(y_true_onehot[:, :, c], tf.float32)
+                class_loss = tf.keras.losses.sparse_categorical_crossentropy(y_true_onehot[:, :, c], y_pred[:, :, c])
+                class_loss = tf.reduce_mean(class_loss * class_mask)
+                loss += class_weights[c] * class_loss
+
+            return loss
+
+        loss = lambda y_true, y_pred: model_loss(y_true, y_pred, classNames, class_weights)
+
+        # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) #original
 
         class BatchAccCall(keras.callbacks.Callback):
             def __init__(self, model, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
@@ -314,8 +343,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                     #plt.show()
 
         # Train the model
-        # model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
-        model = model_call(model_type, IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES, class_weights=class_weights) #with weighted classes
+        model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
         #model.summary()
 
         print('Starting model training...')
