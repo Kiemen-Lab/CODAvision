@@ -26,7 +26,7 @@ def calculate_class_weights(label_paths, class_names):
         total_image_pixels = label.size
 
         for val, count in zip(unique, counts):
-            class_name = class_names[val-1]
+            class_name = class_names[val]
             pixel_counts[class_name] += count
             total_pixels[class_name] += total_image_pixels
 
@@ -49,3 +49,10 @@ def calculate_class_weights(label_paths, class_names):
     class_weights = list(class_weights.values())
 
     return class_weights
+
+from glob import glob
+import os
+pthTrain = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_01_06_2024_sametilesas12_03_2024_notGUI\training'
+train_masks = sorted(glob(os.path.join(pthTrain, 'label', "*.png")))
+classNames = ['PDAC','bile_duct','vasculature','hepatocyte','immune','stroma','whitespace','black']
+calculate_class_weights(train_masks,classNames)

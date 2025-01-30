@@ -11,176 +11,84 @@ import tensorflow as tf
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 os.system("nvcc --version")
 import warnings
+import GPUtil
 
 warnings.filterwarnings('ignore')
 
 import tensorflow as tf
+from tensorflow.keras.layers import Layer
 from tensorflow.keras import layers, Model
 
 
-# class WeightedClassificationLayer(tf.keras.layers.Layer):
-#     def __init__(self, class_weights, **kwargs):
-#         super().__init__(**kwargs)
-#         self.class_weights = class_weights
-#
-#     def call(self, inputs):
-#         # Apply weights to the softmax outputs
-#         weights = tf.constant([[self.class_weights[i] for i in range(len(self.class_weights))]],
-#             dtype=tf.float32
-#         )
-#         weighted_outputs = inputs * weights
-#         return weighted_outputs
-#
-#     def get_config(self):
-#         # Get the base config first
-#         config = super(WeightedClassificationLayer, self).get_config()
-#         # Add class_weights to the config
-#         config.update({
-#             "class_weights": self.class_weights,
-#         })
-#         return config
-
 class DeepLabV3Plus:
-    def __init__(self, input_size, num_classes, class_weights):
+    def __init__(self, input_size, num_classes):
         self.input_size = input_size
         self.num_classes = num_classes
-        self.class_weights = class_weights
 
-    def convolution_block(self, block_input, num_filters=256, kernel_size=(1, 1), strides=None, padding='valid',
-                          dilation_rate=1, use_bias=False):
-        if isinstance(padding, int):
-            if padding == 0:
-                if strides:
-                    x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
-                                      padding="valid",
-                                      use_bias=use_bias,
-                                      kernel_initializer=tf.keras.initializers.HeNormal(),
-                                      strides=strides)(block_input)
-                else:
-                    x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
-                                      padding="valid",
-                                      use_bias=use_bias,
-                                      kernel_initializer=tf.keras.initializers.HeNormal(),
-                                      )(block_input)
-
-            else:
-                x = layers.ZeroPadding2D(padding=(padding, padding))(block_input)
-                if strides:
-                    x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
-                                      padding="valid",
-                                      use_bias=use_bias,
-                                      kernel_initializer=tf.keras.initializers.HeNormal(),
-                                      strides=strides)(x)
-                else:
-                    x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate,
-                                      padding="valid",
-                                      use_bias=use_bias,
-                                      kernel_initializer=tf.keras.initializers.HeNormal(),
-                                      )(x)
-        else:
-            if strides:
-                x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate, padding=padding,
-                                  use_bias=use_bias,
-                                  kernel_initializer=tf.keras.initializers.HeNormal(), strides=strides
-                                  )(block_input)
-            else:
-                x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate, padding=padding,
-                                  use_bias=use_bias,
-                                  kernel_initializer=tf.keras.initializers.HeNormal(),
-                                  )(block_input)
+    def convolution_block(self, block_input, num_filters=256, kernel_size=3, dilation_rate=1, use_bias=False):
+        x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate, padding="same",
+                          use_bias=use_bias,
+                          kernel_initializer=tf.keras.initializers.HeNormal(),
+                          )(block_input)
         x = layers.BatchNormalization()(x)
         x = layers.Activation('relu')(x)
         return x
 
-    def bifurcation_block(self, block_input, populate_right=False, num1=64, ker1=(1, 1), str1=(1, 1), pad1='valid',
-                          num2=64,
-                          ker2=(3, 3), str2=(1, 1), pad2='same', num3=256, ker3=(1, 1), str3=(1, 1), pad3='valid',
-                          numr=256):
-        a = self.convolution_block(block_input, num1, ker1, str1, pad1)
-        a = self.convolution_block(a, num2, ker2, str2, pad2)
-        a = layers.Conv2D(num3, ker3, str3, pad3)(a)
-        a = layers.BatchNormalization()(a)
+    def dilated_spatial_pyramid_pooling(self, dspp_input):
+        dims = dspp_input.shape
+        x = layers.AveragePooling2D(pool_size=(dims[-3], dims[-2]))(dspp_input)
+        x = self.convolution_block(x, kernel_size=1, use_bias=True)
+        out_pool = layers.UpSampling2D(
+            size=(dims[-3] // x.shape[1], dims[-2] // x.shape[2]),
+            interpolation="bilinear",
+        )(x)
 
-        if populate_right:
-            b = layers.Conv2D(numr, ker1, str1, pad1)(block_input)
-            b = layers.BatchNormalization()(b)
+        out_1 = self.convolution_block(dspp_input, kernel_size=1, dilation_rate=1)
+        out_6 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=6)
+        out_12 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=12)
+        out_18 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=18)
 
-            x = layers.add([a, b])
-            x = layers.Activation('relu')(x)
-            return x
-        else:
-            x = layers.add([a, block_input])
-            x = layers.Activation('relu')(x)
-            return x
-
-    def dilated_spatial_pyramid_pooling(self, block_input):
-        a = self.convolution_block(block_input, 256, (1, 1), (1, 1), 'same')
-        b = self.convolution_block(block_input, 256, (3, 3), (1, 1), 'same', dilation_rate=(6, 6))
-        c = self.convolution_block(block_input, 256, (3, 3), (1, 1), 'same', dilation_rate=(12, 12))
-        d = self.convolution_block(block_input, 256, (3, 3), (1, 1), 'same', dilation_rate=(18, 18))
-        output = layers.Concatenate(axis=-1)([a, b, c, d])
+        x = layers.Concatenate(axis=-1)([out_pool, out_1, out_6, out_12, out_18])
+        output = self.convolution_block(x, kernel_size=1)
         return output
 
     def build_model(self):
+        # inputs = layers.Input(self.input_size) ARRUN
         model_input = keras.Input(shape=(self.input_size, self.input_size, 3))
-        x = self.convolution_block(model_input, 64, (7, 7), (2, 2), 3)
-        x = layers.MaxPooling2D((3, 3), (2, 2), 'same')(x)
+        preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
+        # preprocessed = applications.resnet50.preprocess_input(inputs)
+        resnet50 = applications.ResNet50(weights="imagenet", include_top=False, input_tensor=preprocessed)
 
-        x = self.bifurcation_block(x, True)
-        x = self.bifurcation_block(x, False)
+        x = resnet50.get_layer("conv4_block6_2_relu").output
+        x = self.dilated_spatial_pyramid_pooling(x)
 
-        z = self.convolution_block(x, 48, (1, 1), (1, 1), 'valid')
+        input_a = layers.UpSampling2D(
+            size=(self.input_size // 4 // x.shape[1], self.input_size // 4 // x.shape[2]),
+            interpolation="bilinear",
+        )(x)
 
-        y = self.bifurcation_block(x, True, 128, (1, 1), (2, 2), 'valid', 128, (3, 3), (1, 1),
-                                   'same', 512, (1, 1), (1, 1), 'valid', 512)
-        for i in range(0, 3):
-            y = self.bifurcation_block(y, False, 128, (1, 1), (1, 1), 'valid', 128, (3, 3), (1, 1),
-                                       'same', 512, (1, 1), (1, 1), 'valid')
+        input_b = resnet50.get_layer("conv2_block3_2_relu").output
+        input_b = self.convolution_block(input_b, num_filters=48, kernel_size=1)
 
-        y = self.bifurcation_block(y, True, 256, (1, 1), (2, 2), 'same', 256, (3, 3), (1, 1),
-                                   'same', 1024, (1, 1), (1, 1), 'valid', 1024)
+        x = layers.Concatenate(axis=-1)([input_a, input_b])
+        x = self.convolution_block(x)
+        x = self.convolution_block(x)
 
-        for i in range(0, 5):
-            y = self.bifurcation_block(y, False, 256, (1, 1), (1, 1), 'valid', 256, (3, 3), (1, 1),
-                                       'same', 1024, (1, 1), (1, 1), 'valid')
+        x = layers.UpSampling2D(
+            size=(self.input_size // x.shape[1], self.input_size // x.shape[2]),
+            interpolation="bilinear",
+        )(x)
 
-        a = self.convolution_block(y, 512, (1, 1), (1, 1), 'valid')
-        a = self.convolution_block(a, 512, (3, 3), (1, 1), 'same', dilation_rate=(2, 2))
-        a = layers.Conv2D(2048, (1, 1), (1, 1), 'valid')(a)
-        a = layers.BatchNormalization()(a)
-        b = layers.Conv2D(2048, (1, 1), (1, 1), 'valid')(y)
-        b = layers.BatchNormalization()(b)
-        y = layers.add([a, b])
-        y = layers.Activation('relu')(y)
+        outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
 
-        for i in range(0, 2):
-            a = self.convolution_block(y, 512, (1, 1), (1, 1), 'valid')
-            a = self.convolution_block(a, 512, (3, 3), (1, 1), 'same', dilation_rate=(2, 2))
-            a = layers.Conv2D(2048, (1, 1), (1, 1), 'valid')(a)
-            a = layers.BatchNormalization()(a)
-            y = layers.add([a, y])
-            y = layers.Activation('relu')(y)
+        model = Model(preprocessed, outputs, name='DeepLabV3_plus')
 
-        y = self.dilated_spatial_pyramid_pooling(y)
-
-        y = self.convolution_block(y, 256, (1, 1), (1, 1), 'valid')
-        y = layers.Conv2DTranspose(256, (8, 8), (4, 4))(y)
-        y = layers.Cropping2D(cropping=((2, 2), (2, 2)))(y)
-
-        x = layers.Concatenate(axis=-1)([y, z])
-
-        x = self.convolution_block(x, 256, (3, 3), (1, 1), 'same')
-        x = self.convolution_block(x, 256, (3, 3), (1, 1), 'same')
-        x = layers.Conv2D(self.num_classes, (1, 1), (1, 1), 'valid')(x)
-        x = layers.Conv2DTranspose(self.num_classes, (8, 8), (4, 4))(x)
-        output = layers.Cropping2D(cropping=((2, 2), (2, 2)))(x)
-        #output = layers.Activation('softmax')(x)
-
-        model = models.Model(model_input, output, name='resnet50')
         return model
 
 
@@ -606,16 +514,16 @@ class CASe_UNet:
 
 
 # Instantiate and build
-def model_call(name, IMAGE_SIZE, NUM_CLASSES, CLASS_WEIGHTS = None):
-    if (name == "UNet"):
+def model_call(name, IMAGE_SIZE, NUM_CLASSES, class_weights=None):
+    if name == "UNet":
         model = UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif (name == "DeepLabV3_plus"):
-        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES, class_weights= CLASS_WEIGHTS).build_model()
-    elif (name == "UNet3_plus"):
+    elif name == "DeepLabV3_plus":
+        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
+    elif name == "UNet3_plus":
         model = UNet3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif (name == "TransUNet"):
+    elif name == "TransUNet":
         model = TransUNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    elif (name == "CASe_UNet"):
+    elif name == "CASe_UNet":
         model = CASe_UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     else:
         raise ValueError(f'Incorrect Model Name / Pretrained model of {name} does not exist')

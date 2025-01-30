@@ -275,9 +275,9 @@ class MainWindowClassify(QtWidgets.QMainWindow):
             if (not os.path.isfile(os.path.join(save_path, im_jpg))) or overwrite:
                 im0 = cv2.imread(os.path.join(classification_path, im), cv2.IMREAD_GRAYSCALE)  # Mask
                 im1 = cv2.imread(os.path.join(image_path, im))  # Image
-                if im1 == None:
+                if im1 is None:
                     im1 = cv2.imread(os.path.join(image_path, im[:-3]+'png'))  # Image
-                if im1 == None:
+                if im1 is None:
                     im1 = cv2.imread(os.path.join(image_path, im[:-3]+'jpg'))  # Image
                 im1 = im1[:, :, ::-1]
                 r = np.zeros_like(im0).astype(np.uint8)

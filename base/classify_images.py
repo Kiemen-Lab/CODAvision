@@ -32,15 +32,14 @@ def classify_images(pthim, pthDL,name, color_overlay_HE=True, color_mask=False, 
         cmap = data['cmap']
         nm = data['nm']
         sxy = data['sxy']
-        class_weights = data['class_weights']
 
     try:
         model_filename = f'best_model_{name}.keras' #ARRUN
-        model = model_call(name,IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames), CLASS_WEIGHTS=class_weights )#ARRUN
+        model = model_call(name,IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))#ARRUN
         model.load_weights(os.path.join(pthDL, model_filename))  # ARRUN
     except:
         model_filename = f'{name}.keras'  # ARRUN
-        model = model_call(name, IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames), CLASS_WEIGHTS=class_weights)  # ARRUN
+        model = model_call(name, IMAGE_SIZE=sxy, NUM_CLASSES=len(classNames))  # ARRUN
         model.load_weights(os.path.join(pthDL, model_filename))  # ARRUN
 
 

@@ -9,8 +9,6 @@ from base.check_if_model_parameters_changed import check_if_model_parameters_cha
 from .import_xml import import_xml
 from .save_annotation_mask import save_annotation_mask
 from .save_bounding_boxes import save_bounding_boxes
-from .WSI2png import WSI2png
-from .WSI2tif import WSI2tif
 import os
 import pickle
 import shutil
