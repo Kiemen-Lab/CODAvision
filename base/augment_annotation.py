@@ -72,17 +72,14 @@ def augment_annotation(imh0, imlabel0, rot=True, sc=True, hue=True, blr=False, r
         # Scale red
         imr = 255 - imh[:, :, 0]
         imh[:, :, 0] = 255 - (imr * rd[ird])
-        # imh[:, :, 0] = imh[:, :, 0] - np.min(imh[:, :, 0])
 
         # Scale green
         img = 255 - imh[:, :, 1]
         imh[:, :, 1] = 255 - (img * gr[igr])
-        # imh[:, :, 1] = imh[:, :, 1] - np.min(imh[:, :, 1])
 
         # Scale blue
         imb = 255 - imh[:, :, 2]
         imh[:, :, 2] = 255 - (imb * bl[ibl])
-        # imh[:,:,2] = imh[:, :, 2]-np.min(imh[:, :, 2])
 
 
     # Random blurring

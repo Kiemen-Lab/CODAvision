@@ -106,6 +106,7 @@ class DeepLabV3Plus:
             outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
 
         model = Model(preprocessed, outputs, name='DeepLabV3_plus')
+
         return model
 
 
@@ -535,7 +536,7 @@ def model_call(name, IMAGE_SIZE, NUM_CLASSES, class_weights=None):
     if name == "UNet":
         model = UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     elif name == "DeepLabV3_plus":
-        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES, class_weights=class_weights).build_model()
+        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     elif name == "UNet3_plus":
         model = UNet3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     elif name == "TransUNet":

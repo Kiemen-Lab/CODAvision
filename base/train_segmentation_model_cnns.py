@@ -14,7 +14,6 @@ Authors:
 Date: January 10, 2025
 """
 from base.backbones import *
-
 import time
 import pickle
 import os
@@ -237,6 +236,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
 
         train_dataset = data_generator(train_images, train_masks)
         val_dataset = data_generator(val_images, val_masks)
+
 
         # Define loss function
         # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) # unweighted loss

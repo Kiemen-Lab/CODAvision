@@ -92,7 +92,7 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
         # Get the .tif image names
         image_files_tif = glob.glob(os.path.join(pthim, '*.tif'))
         images_names_tif = {os.path.splitext(os.path.basename(image))[0] for image in image_files_tif}
-        if image_format == '.ndpi':
+        if image_format == '.ndpi' or image_format =='.svs':
             # Get the .ndpi and .svs image names
             image_files_wsi = glob.glob(os.path.join(pth, '*.ndpi')) + glob.glob(os.path.join(pth, '*.svs'))
             if not image_files_wsi:

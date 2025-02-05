@@ -5,7 +5,6 @@ Date: October 10th, 2024
 
 import os
 import numpy as np
-from scipy.ndimage import distance_transform_edt
 from .edit_annotation_tiles import edit_annotations_tiles
 from PIL import Image
 import time
