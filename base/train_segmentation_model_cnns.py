@@ -1,12 +1,19 @@
-# https://keras.io/examples/vision/deeplabv3_plus/
 """
-Author: Valentina Matos Romero (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 15, 2024
+DeepLabV3+ Implementation for Semantic Segmentation
+
+This script implements the DeepLabV3+ architecture for semantic image segmentation
+using TensorFlow and Keras. It includes custom loss functions, data generators,
+and training utilities.
+
+Original implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
+
+Authors:
+    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+    Tyler Newton (JHU - DSAI)
+
+Date: January 10, 2025
 """
-
-
-from base.backbones import * #ADDED IMPORT
-
+from base.backbones import *
 import time
 import pickle
 import os
@@ -27,59 +34,7 @@ warnings.filterwarnings('ignore')
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 
-import numpy as np
-import tensorflow as tf
-
-
-def calculate_class_weights(label_paths, class_names):
-    """
-    Calculate class weights based on pixel frequency in labels
-
-    Args:
-        label_paths (list): List of paths to label images
-        class_names (list): List of class names
-
-    Returns:
-        dict: Class weights dictionary
-    """
-    # Initialize counters
-    pixel_counts = {name: 0 for name in class_names}
-    total_pixels = {name: 0 for name in class_names}
-
-    # Count pixels for each class
-    for label_path in label_paths:
-        label = np.array(tf.keras.preprocessing.image.load_img(
-            label_path, color_mode='grayscale'))
-
-        unique, counts = np.unique(label, return_counts=True)
-        total_image_pixels = label.size
-
-        for val, count in zip(unique, counts):
-            class_name = class_names[val]
-            pixel_counts[class_name] += count
-            total_pixels[class_name] += total_image_pixels
-
-    # Calculate frequency for each class
-    image_freq = {name: pixel_counts[name] / total_pixels[name]
-                  for name in class_names}
-
-    # Calculate class weights using median frequency balancing
-    median_freq = np.median(list(image_freq.values()))
-    class_weights = {name: median_freq / freq for name, freq in image_freq.items()}
-
-    print("Class frequencies:")
-    for name, freq in image_freq.items():
-        print(f"{name}: {freq:.4f}")
-
-    print("\nClass weights:")
-    for name, weight in class_weights.items():
-        print(f"{name}: {weight:.4f}")
-
-    class_weights = list(class_weights.values())
-
-    return class_weights
-
-def calculate_class_weights_tyler(mask_list, num_classes, image_size):
+def calculate_class_weights(mask_list, num_classes, image_size):
     """
     Calculate class weights using median frequency balancing.
 
@@ -195,6 +150,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
         model_type = data['model_type']
+
     if not (os.path.isfile(os.path.join(pthDL, 'best_model_'+model_type+'.keras'))) or retrain_model:
         #Start training time
         start_time = time.time()
@@ -282,36 +238,16 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         val_dataset = data_generator(val_images, val_masks)
 
 
-        # Count pixels in each class
-        def count_each_label(mask_list):
-            label_counts = {}
-            for mask_path in mask_list:
-                mask = read_image(mask_path, mask=True)
-                unique, counts = tf.unique(tf.reshape(mask, [-1]))
-                for u, c in zip(unique.numpy(), counts.numpy()):
-                    if u in label_counts:
-                        label_counts[u] += c
-                    else:
-                        label_counts[u] = c
-            return label_counts
-
-
-
-
         # Define loss function
-
         # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) # unweighted loss
         print("Calculating class weights...")
-        class_weights = calculate_class_weights(train_masks, classNames)
+        class_weights = calculate_class_weights(train_masks, NUM_CLASSES, IMAGE_SIZE)
         print("Class weights:", class_weights)
         loss = WeightedSparseCategoricalCrossentropy(
             class_weights=class_weights,
             from_logits=True,
             reduction='sum_over_batch_size'
         )
-
-
-        # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) #original
 
         class BatchAccCall(keras.callbacks.Callback):
             def __init__(self, model, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,

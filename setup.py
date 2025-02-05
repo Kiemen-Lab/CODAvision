@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='ANACODA',
+    name='CODA Vision',
     version='0.1.0',
-    description='ANACODA is an open-source Python package designed for microanatomical tissue labeling.',
+    description='CODA Vision is an open-source Python package designed for microanatomical tissue labeling.',
     author='Valentina Matos',
     url='https://github.com/Valentinamatos/CODA_python',
     packages=find_packages(),
