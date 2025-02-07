@@ -163,6 +163,10 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         y_true = tf.cast(y_true, tf.int32)
         y_true_flat = tf.reshape(y_true, [-1])
 
+        # Add epsilon for numerical stability
+        epsilon = 1e-7
+        y_pred = tf.clip_by_value(y_pred, epsilon, 1 - epsilon)
+
         # Get weights for each sample based on its true class
         sample_weights = tf.gather(self.class_weights, y_true_flat)
 
@@ -191,7 +195,6 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         """Create an instance from configuration dictionary."""
         class_weights = tf.convert_to_tensor(config.pop("class_weights"), dtype=tf.float32)
         return cls(class_weights=class_weights, **config)
-
 def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
@@ -415,14 +418,11 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                         predictions = tf.cast(predictions, dtype=tf.int32)
                         val_loss = loss(y_val_flat, val_logits_flat)
                         val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
-
                         val_loss_total += tf.reduce_mean(val_loss).numpy()
                         val_accuracy_total += val_accuracy.numpy()
                         num_batches += 1
-
                     val_loss_avg = val_loss_total / num_batches
                     val_accuracy_avg = val_accuracy_total / num_batches
-
                     # Use logger for validation metrics if available
                     if self.logger:
                         self.logger.log_validation_metrics(
@@ -431,19 +431,15 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                             loss=val_loss_avg,
                             accuracy=val_accuracy_avg
                         )
-
                     self.validation_losses.append(val_loss_avg)
                     self.validation_accuracies.append(val_accuracy_avg)
-
                     if self.early_stopping:
                         if self.monitor == 'val_loss':
                             current = val_loss_avg
                         elif self.monitor == 'val_accuracy':
                             current = val_accuracy_avg
-
                         if current is None:
                             return
-
                         if self.monitor_op(current, self.best):
                             self.best = current
                             self.wait = 0
@@ -459,7 +455,6 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                                 self._model.stop_training = True
                                 if self.verbose > 0 and self.logger:
                                     self.logger.log_info(f'\nEpoch {self.current_epoch + 1}: early stopping')
-
                 except Exception as e:
                     if self.logger:
                         self.logger.log_error(f"Validation failed: {str(e)}")
@@ -478,7 +473,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         print('Starting model training...')
 
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.0005),
+            optimizer=keras.optimizers.Adam(learning_rate=0.0005, clipnorm=1.0),
             loss=loss,
             metrics=["accuracy"],
         )
