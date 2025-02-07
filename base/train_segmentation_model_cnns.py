@@ -21,6 +21,7 @@ from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
 import GPUtil
+from .logger import Logger
 
 # Suppress warnings and TF logging
 warnings.filterwarnings('ignore')
@@ -238,6 +239,10 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
             if 'model' in f:
                 raise ValueError(f'A network has already been trained for model {nm}. Choose a new model name to retrain.')
 
+        # Initialize logger
+        logger = Logger(log_dir=os.path.join(pthDL, 'logs'), model_name=nm)
+        logger.log_system_info()
+
         # Define paths to training and validation directories
         pthTrain = os.path.join(pthDL, 'training')
         pthValidation = os.path.join(pthDL, 'validation')
@@ -282,18 +287,6 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         val_dataset = data_generator(val_images, val_masks)
 
 
-        # Count pixels in each class
-        def count_each_label(mask_list):
-            label_counts = {}
-            for mask_path in mask_list:
-                mask = read_image(mask_path, mask=True)
-                unique, counts = tf.unique(tf.reshape(mask, [-1]))
-                for u, c in zip(unique.numpy(), counts.numpy()):
-                    if u in label_counts:
-                        label_counts[u] += c
-                    else:
-                        label_counts[u] = c
-            return label_counts
 
 
 
@@ -314,11 +307,13 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) #original
 
         class BatchAccCall(keras.callbacks.Callback):
-            def __init__(self, model, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
+            def __init__(self, model, val_data, logger=None, num_validations=3, early_stopping=True,
+                         reduceLRonPlateau=True,
                          monitor='val_accuracy', ES_patience=6, RLRoP_patience=1, factor=0.75, verbose=0,
                          save_best_model=True, filepath='best_model.h5'):
                 super(BatchAccCall, self).__init__()
-                self._model = model
+                self.logger = logger
+                self._model = model  # store as a protected attribute to maintain compatibility with Keras' callbacks
                 self.batch_accuracies = []
                 self.batch_numbers = []
                 self.batch_losses = []
@@ -349,8 +344,12 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 self.stopped_epoch = 0
                 self.factor = factor
 
-            @property
+                # Add initial validation dataset logging
+                if self.logger:
+                    self.logger.logger.info("\nInitial Validation Dataset Information:")
+                    self.logger.log_dataset_info(val_data, "Initial-Validation")
 
+            @property
             def model(self):
                 return self._model
 
@@ -365,14 +364,26 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 self.validation_counter = 0
                 self.current_step = 0
 
+                # Log dataset info at the start of each epoch if logger is available
+                if self.logger:
+                    self.logger.log_dataset_info(self.val_data, f"Validation-Epoch{epoch + 1}")
+
             def on_batch_end(self, batch, logs=None):
-                batch_end = time.time()
                 logs = logs or {}
                 self.current_step += 1
                 if self.current_step in self.validation_steps:
                     self.run_validation()
                     self.val_indices.append(self.current_step + self.params['steps'] * (self.current_epoch))
-                accuracy = logs.get('accuracy')  # Use the metric name you specified
+
+                # Use logger for batch metrics if available
+                if self.logger:
+                    self.logger.log_batch_metrics(
+                        batch_number=self.params['steps'] * self.current_epoch + batch + 1,
+                        metrics=logs,
+                        model=self._model
+                    )
+
+                accuracy = logs.get('accuracy')
                 if accuracy is not None:
                     self.batch_accuracies.append(accuracy)
                     self.batch_numbers.append(self.params['steps'] * self.current_epoch + batch + 1)
@@ -393,104 +404,76 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 val_accuracy_total = 0
                 num_batches = 0
 
-                for x_val, y_val in self.val_data:
-                    y_val = tf.cast(y_val, dtype=tf.int32)
-                    val_logits = self._model(x_val, training=False)
-                    num_classes = val_logits.shape[-1]
-                    val_logits_flat = tf.reshape(val_logits, [-1, num_classes])
-                    y_val_flat = tf.reshape(y_val, [-1])
-                    predictions = tf.argmax(val_logits_flat, axis=1)
-                    predictions = tf.cast(predictions, dtype=tf.int32)
-                    val_loss = tf.keras.losses.sparse_categorical_crossentropy(y_val_flat, val_logits_flat,
-                                                                               from_logits=True)
-                    val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
+                try:
+                    for x_val, y_val in self.val_data:
+                        y_val = tf.cast(y_val, dtype=tf.int32)
+                        val_logits = self._model(x_val, training=False)
+                        num_classes = val_logits.shape[-1]
+                        val_logits_flat = tf.reshape(val_logits, [-1, num_classes])
+                        y_val_flat = tf.reshape(y_val, [-1])
+                        predictions = tf.argmax(val_logits_flat, axis=1)
+                        predictions = tf.cast(predictions, dtype=tf.int32)
+                        val_loss = loss(y_val_flat, val_logits_flat)
+                        val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
 
-                    val_loss_total += tf.reduce_mean(val_loss).numpy()
-                    val_accuracy_total += val_accuracy.numpy()
-                    num_batches += 1
+                        val_loss_total += tf.reduce_mean(val_loss).numpy()
+                        val_accuracy_total += val_accuracy.numpy()
+                        num_batches += 1
 
-                val_loss_avg = val_loss_total / num_batches
-                val_accuracy_avg = val_accuracy_total / num_batches
+                    val_loss_avg = val_loss_total / num_batches
+                    val_accuracy_avg = val_accuracy_total / num_batches
 
-                self.validation_losses.append(val_loss_avg)
-                self.validation_accuracies.append(val_accuracy_avg)
-
-                if self.early_stopping:
-                    if self.monitor == 'val_loss':
-                        current = val_loss_avg
-                    elif self.monitor == 'val_accuracy':
-                        current = val_accuracy_avg
-
-                    if current is None:
-                        return
-
-                    if self.monitor_op(current, self.best):
-                        self.best = current
-                        self.wait = 0
-                        # Save the model if the `save_best_model` flag is set
-                        if self.save_best_model:
-                            self._model.save(self.save_path)
-                            if self.verbose > 0:
-                                print(f'\nEpoch {self.current_epoch + 1}: Model saved to {self.save_path}')
-                    else:
-                        self.wait += 1
-                        if self.wait >= self.ES_patience and self.early_stopping:
-                            self.stopped_epoch = self.current_epoch
-                            self._model.stop_training = True
-                            if self.verbose > 0:
-                                print(f'\nEpoch {self.current_epoch + 1}: early stopping')
-
-            def on_train_end(self, logs=None):
-                # Plot after training ends
-                plt.figure(figsize=(12, 6))
-                plt.plot(self.batch_numbers[50:], self.batch_accuracies[50:], color='blue', label='Training Accuracy',
-                         linestyle='-')
-                plt.plot(self.val_indices, self.validation_accuracies, color='red', label='Validation Accuracy',
-                         linestyle='-')
-                for epoch in self.epoch_indices:
-                    plt.axvline(x=(epoch + 1) * self.params['steps'], color='grey', linestyle='--', linewidth=1)
-                    plt.text(
-                        (epoch + 0.5) * self.params['steps'],
-                        plt.ylim()[1] * 0.95,
-                        f'Epoch {epoch}',
-                        color='grey',
-                        rotation=90,
-                        verticalalignment='top',
-                        horizontalalignment='right'
-                    )
-                plt.title('Training and Validation Accuracy')
-                plt.xlabel('Iteration')
-                plt.ylabel('Accuracy')
-                plt.legend()
-                plt.grid(True)
-                #plt.show()
-
-                if self.validation_losses:
-                    plt.figure(figsize=(12, 6))
-                    plt.plot(self.batch_numbers[50:], self.batch_losses[50:], color='blue', label='Training Loss',
-                             linestyle='-')
-                    plt.plot(self.val_indices, self.validation_losses, linestyle='-', color='red', label='Validation Loss')
-                    for epoch in self.epoch_indices:
-                        plt.axvline(x=(epoch + 1) * self.params['steps'], color='grey', linestyle='--', linewidth=1)
-                        plt.text(
-                            (epoch + 0.5) * self.params['steps'],
-                            plt.ylim()[1] * 0.85,
-                            f'Epoch {epoch}',
-                            color='grey',
-                            rotation=90,
-                            verticalalignment='top',
-                            horizontalalignment='right'
+                    # Use logger for validation metrics if available
+                    if self.logger:
+                        self.logger.log_validation_metrics(
+                            val_logits=val_logits,
+                            y_val=y_val,
+                            loss=val_loss_avg,
+                            accuracy=val_accuracy_avg
                         )
-                    plt.title('Training and Validation Loss')
-                    plt.xlabel('Iteration')
-                    plt.ylabel('Loss')
-                    plt.legend()
-                    plt.grid(True)
-                    #plt.show()
+
+                    self.validation_losses.append(val_loss_avg)
+                    self.validation_accuracies.append(val_accuracy_avg)
+
+                    if self.early_stopping:
+                        if self.monitor == 'val_loss':
+                            current = val_loss_avg
+                        elif self.monitor == 'val_accuracy':
+                            current = val_accuracy_avg
+
+                        if current is None:
+                            return
+
+                        if self.monitor_op(current, self.best):
+                            self.best = current
+                            self.wait = 0
+                            if self.save_best_model:
+                                tf.keras.models.save_model(self._model, self.save_path, save_format='tf')
+                                if self.verbose > 0 and self.logger:
+                                    self.logger.log_info(
+                                        f'\nEpoch {self.current_epoch + 1}: Model saved to {self.save_path}')
+                        else:
+                            self.wait += 1
+                            if self.wait >= self.ES_patience and self.early_stopping:
+                                self.stopped_epoch = self.current_epoch
+                                self._model.stop_training = True
+                                if self.verbose > 0 and self.logger:
+                                    self.logger.log_info(f'\nEpoch {self.current_epoch + 1}: early stopping')
+
+                except Exception as e:
+                    if self.logger:
+                        self.logger.log_error(f"Validation failed: {str(e)}")
+                    raise
 
         # Train the model
         model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
         #model.summary()
+
+
+        num_validations = 3
+        best_mod_name = f"best_model_{model_type}.keras"
+        plotcall = BatchAccCall(model=model, val_data=val_dataset, logger=logger, num_validations=num_validations,
+                                filepath=os.path.join(pthDL, best_mod_name), RLRoP_patience=1, factor=0.75)
 
         print('Starting model training...')
 
@@ -499,14 +482,11 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
             loss=loss,
             metrics=["accuracy"],
         )
-        num_validations = 3
-        best_mod_name = f"best_model_{model_type}.keras"
-        plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
-                                filepath=os.path.join(pthDL, best_mod_name), RLRoP_patience=1, factor=0.75)
 
         history = model.fit(train_dataset, validation_data=val_dataset, verbose=1, callbacks=plotcall, epochs=8)
 
         # Save model
+        logger.save_debug_summary()
         print('Saving model...')
         mod_name = f"{model_type}.keras"
         model.save(os.path.join(pthDL, mod_name))
