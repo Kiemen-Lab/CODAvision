@@ -1,11 +1,20 @@
-# https://keras.io/examples/vision/deeplabv3_plus/
 """
-Author: Valentina Matos Romero (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 15, 2024
+DeepLabV3+ Implementation for Semantic Segmentation
+
+This script implements the DeepLabV3+ architecture for semantic image segmentation
+using TensorFlow and Keras. It includes custom loss functions, data generators,
+and training utilities.
+
+Original implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
+
+Authors:
+    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+    Tyler Newton (JHU - DSAI)
+    Jaime Gomez (UC3M)
+
+Date: January 10, 2025
 """
-
-
-from base.backbones import * #ADDED IMPORT
+from base.backbones import *
 
 import time
 import pickle
