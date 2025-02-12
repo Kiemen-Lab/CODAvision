@@ -79,54 +79,6 @@ def calculate_class_weights(label_paths, class_names):
 
     return class_weights
 
-def calculate_class_weights_tyler(mask_list, num_classes, image_size):
-    """
-    Calculate class weights using median frequency balancing.
-
-    This function computes class weights based on the frequency of each class in the dataset,
-    using pixel frequencies per image rather than global counts.
-
-    Args:
-        mask_list (list): List of paths to mask images
-        num_classes (int): Number of classes in the segmentation task
-        image_size (int): Size of the input images (assuming square images)
-
-    Returns:
-        np.ndarray: Array of class weights as float32 values
-
-    Note:
-        The function uses median frequency balancing to handle class imbalance,
-        where rare classes get higher weights than common classes.
-    """
-    class_pixels = np.zeros(num_classes)
-    image_pixels = np.zeros(num_classes)
-    epsilon = 1e-5
-
-    total_pixels = image_size * image_size
-
-    for mask_path in mask_list:
-        mask = tf.keras.preprocessing.image.load_img(mask_path, color_mode='grayscale')
-        mask = tf.keras.preprocessing.image.img_to_array(mask)
-        mask = mask.astype(int)
-
-        for i in range(num_classes):
-            pixels_in_class = np.sum(mask == i)
-            class_pixels[i] += pixels_in_class
-            if pixels_in_class > 0:
-                image_pixels[i] += total_pixels
-
-    # Calculate frequency for each class
-    freq = class_pixels / image_pixels
-
-    # Handle division by zero and invalid values
-    freq[np.isinf(freq) | np.isnan(freq)] = epsilon
-
-    # Calculate weights using median frequency balancing
-    median_freq = np.median(freq)
-    class_weights = median_freq / freq
-
-    return class_weights.astype(np.float32)
-
 
 class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
     """
@@ -280,24 +232,6 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
 
         train_dataset = data_generator(train_images, train_masks)
         val_dataset = data_generator(val_images, val_masks)
-
-
-        # Count pixels in each class
-        def count_each_label(mask_list):
-            label_counts = {}
-            for mask_path in mask_list:
-                mask = read_image(mask_path, mask=True)
-                unique, counts = tf.unique(tf.reshape(mask, [-1]))
-                for u, c in zip(unique.numpy(), counts.numpy()):
-                    if u in label_counts:
-                        label_counts[u] += c
-                    else:
-                        label_counts[u] = c
-            return label_counts
-
-
-
-
         # Define loss function
 
         # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) # unweighted loss
