@@ -1,9 +1,18 @@
-# https://keras.io/examples/vision/deeplabv3_plus/
 """
-Author: Valentina Matos Romero (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 15, 2024
-"""
+DeepLabV3+ Implementation for Semantic Segmentation
 
+This script implements the DeepLabV3+ architecture for semantic image segmentation
+using TensorFlow and Keras. It includes custom loss functions, data generators,
+and training utilities.
+
+Original implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
+
+Authors:
+    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+    Tyler Newton (JHU - DSAI)
+
+Date: January 10, 2025
+"""
 
 from base.backbones import * #ADDED IMPORT
 
@@ -13,74 +22,25 @@ import os
 import warnings
 from glob import glob
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import keras
-from keras import layers, models
+from base.backbones import unfreeze_model
 from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
 import GPUtil
 from .logger import Logger
 
+
 # Suppress warnings and TF logging
 warnings.filterwarnings('ignore')
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
-
-import numpy as np
-import tensorflow as tf
+# os.environ['CUDA_VISIBLE_DEVICES'] = '' # force to run on CPU
 
 
-def calculate_class_weights(label_paths, class_names):
-    """
-    Calculate class weights based on pixel frequency in labels
 
-    Args:
-        label_paths (list): List of paths to label images
-        class_names (list): List of class names
-
-    Returns:
-        dict: Class weights dictionary
-    """
-    # Initialize counters
-    pixel_counts = {name: 0 for name in class_names}
-    total_pixels = {name: 0 for name in class_names}
-
-    # Count pixels for each class
-    for label_path in label_paths:
-        label = np.array(tf.keras.preprocessing.image.load_img(
-            label_path, color_mode='grayscale'))
-
-        unique, counts = np.unique(label, return_counts=True)
-        total_image_pixels = label.size
-
-        for val, count in zip(unique, counts):
-            class_name = class_names[val]
-            pixel_counts[class_name] += count
-            total_pixels[class_name] += total_image_pixels
-
-    # Calculate frequency for each class
-    image_freq = {name: pixel_counts[name] / total_pixels[name]
-                  for name in class_names}
-
-    # Calculate class weights using median frequency balancing
-    median_freq = np.median(list(image_freq.values()))
-    class_weights = {name: median_freq / freq for name, freq in image_freq.items()}
-
-    print("Class frequencies:")
-    for name, freq in image_freq.items():
-        print(f"{name}: {freq:.4f}")
-
-    print("\nClass weights:")
-    for name, weight in class_weights.items():
-        print(f"{name}: {weight:.4f}")
-
-    class_weights = list(class_weights.values())
-
-    return class_weights
-
-def calculate_class_weights_tyler(mask_list, num_classes, image_size):
+def calculate_class_weights(mask_list, num_classes, image_size):
     """
     Calculate class weights using median frequency balancing.
 
@@ -230,7 +190,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 # Memory growth must be set before GPUs have been initialized
                 print(e)
         else:
-            print("No GPU available. Ensure that the NVIDIA GPU and CUDA are correctly installed.")
+            print("No GPU available. Training will proceed on the CPU. Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
 
         with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
             data = pickle.load(f)
@@ -290,16 +250,12 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         val_dataset = data_generator(val_images, val_masks)
 
 
-
-
-
-
         # Define loss function
 
         # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) # unweighted loss
-        print("Calculating class weights...")
-        class_weights = calculate_class_weights(train_masks, classNames)
-        print("Class weights:", class_weights)
+        # print("Calculating class weights...")
+        class_weights = calculate_class_weights(train_masks, NUM_CLASSES, IMAGE_SIZE)
+        # print("Class weights:", class_weights)
         loss = WeightedSparseCategoricalCrossentropy(
             class_weights=class_weights,
             from_logits=True,
@@ -367,9 +323,9 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 self.validation_counter = 0
                 self.current_step = 0
 
-                # Log dataset info at the start of each epoch if logger is available
-                if self.logger:
-                    self.logger.log_dataset_info(self.val_data, f"Validation-Epoch{epoch + 1}")
+                # # Log dataset info at the start of each epoch if logger is available
+                # if self.logger:
+                #     self.logger.log_dataset_info(self.val_data, f"Validation-Epoch{epoch + 1}")
 
             def on_batch_end(self, batch, logs=None):
                 logs = logs or {}
@@ -379,12 +335,12 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                     self.val_indices.append(self.current_step + self.params['steps'] * (self.current_epoch))
 
                 # Use logger for batch metrics if available
-                if self.logger:
-                    self.logger.log_batch_metrics(
-                        batch_number=self.params['steps'] * self.current_epoch + batch + 1,
-                        metrics=logs,
-                        model=self._model
-                    )
+                # if self.logger:
+                #     self.logger.log_batch_metrics(
+                #         batch_number=self.params['steps'] * self.current_epoch + batch + 1,
+                #         metrics=logs,
+                #         model=self._model
+                #     )
 
                 accuracy = logs.get('accuracy')
                 if accuracy is not None:
@@ -418,28 +374,35 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                         predictions = tf.cast(predictions, dtype=tf.int32)
                         val_loss = loss(y_val_flat, val_logits_flat)
                         val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
+
                         val_loss_total += tf.reduce_mean(val_loss).numpy()
                         val_accuracy_total += val_accuracy.numpy()
                         num_batches += 1
+
                     val_loss_avg = val_loss_total / num_batches
                     val_accuracy_avg = val_accuracy_total / num_batches
-                    # Use logger for validation metrics if available
-                    if self.logger:
-                        self.logger.log_validation_metrics(
-                            val_logits=val_logits,
-                            y_val=y_val,
-                            loss=val_loss_avg,
-                            accuracy=val_accuracy_avg
-                        )
+
+                    # # Use logger for validation metrics if available
+                    # if self.logger:
+                    #     self.logger.log_validation_metrics(
+                    #         val_logits=val_logits,
+                    #         y_val=y_val,
+                    #         loss=val_loss_avg,
+                    #         accuracy=val_accuracy_avg
+                    #     )
+
                     self.validation_losses.append(val_loss_avg)
                     self.validation_accuracies.append(val_accuracy_avg)
+
                     if self.early_stopping:
                         if self.monitor == 'val_loss':
                             current = val_loss_avg
                         elif self.monitor == 'val_accuracy':
                             current = val_accuracy_avg
+
                         if current is None:
                             return
+
                         if self.monitor_op(current, self.best):
                             self.best = current
                             self.wait = 0
@@ -455,6 +418,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                                 self._model.stop_training = True
                                 if self.verbose > 0 and self.logger:
                                     self.logger.log_info(f'\nEpoch {self.current_epoch + 1}: early stopping')
+
                 except Exception as e:
                     if self.logger:
                         self.logger.log_error(f"Validation failed: {str(e)}")
@@ -472,13 +436,55 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
 
         print('Starting model training...')
 
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.0005, clipnorm=1.0),
-            loss=loss,
-            metrics=["accuracy"],
-        )
+        if model_type == "DeepLabV3_plus":
+            model.compile(
+                optimizer=keras.optimizers.Adam(learning_rate=0.0005),  # clipnorm=1.0),
+                loss=loss,
+                metrics=["accuracy"],
+            )
 
-        history = model.fit(train_dataset, validation_data=val_dataset, verbose=1, callbacks=plotcall, epochs=8)
+            history = model.fit(train_dataset, validation_data=val_dataset, callbacks=[plotcall], verbose=0,
+                                epochs=8)  # callbacks=[logger]
+
+        elif model_type == "UNet":
+            # Initial training with frozen encoder
+            model.compile(
+                optimizer=keras.optimizers.Adam(learning_rate=0.001),
+                loss=loss,
+                metrics=["accuracy"]
+            )
+            initial_epochs = 5
+            history = model.fit(
+                train_dataset,
+                validation_data=val_dataset,
+                epochs=initial_epochs,
+                callbacks=[plotcall],
+            )
+
+            # Unfreeze encoder for fine-tuning
+            model = unfreeze_model(model)
+            model.compile(
+                optimizer=keras.optimizers.Adam(learning_rate=0.0001),  # Lower learning rate
+                loss=loss,
+                metrics=["accuracy"]
+            )
+
+            # Fine-tuning
+            history = model.fit(
+                train_dataset,
+                validation_data=val_dataset,
+                epochs=10,
+                initial_epoch=initial_epochs,
+                callbacks=[plotcall],
+            )
+
+        # model.compile(
+        #     optimizer=keras.optimizers.Adam(learning_rate=0.0005),# clipnorm=1.0),
+        #     loss=loss,
+        #     metrics=["accuracy"],
+        # )
+        #
+        # history = model.fit(train_dataset, validation_data=val_dataset, verbose=1, callbacks=plotcall, epochs=8)
 
         # Save model
         logger.save_debug_summary()
