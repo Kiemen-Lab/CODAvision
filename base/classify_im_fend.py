@@ -7,6 +7,7 @@ from PySide6 import QtWidgets, QtCore
 from base.classify_im import Ui_MainWindow
 from base.classify_images import classify_images
 from base.quantify_objects import quantify_objects
+from base.quantify_images import quantify_images
 import os
 import cv2
 import pandas as pd
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (QColorDialog, QHeaderView, QDialog, QPushButton, 
                                QProgressBar, QGraphicsPixmapItem)
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 import pickle
+
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -303,6 +305,7 @@ class MainWindowClassify(QtWidgets.QMainWindow):
             image_path = item.text()
             classification_path = os.path.join(item.text(),'classification_'+self.nm+'_'+self.model_type)
             classify_images(os.path.normpath(item.text()),os.path.join(self.train_fold,self.nm), self.model_type,disp=False)
+            quantify_images(os.path.join(self.train_fold,self.nm), os.path.normpath(item.text()))
             datafile = os.path.join(classification_path, 'cmap.pkl')
             try:
                 with open(datafile, 'rb') as file:
