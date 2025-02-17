@@ -155,6 +155,9 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         """Create an instance from configuration dictionary."""
         class_weights = tf.convert_to_tensor(config.pop("class_weights"), dtype=tf.float32)
         return cls(class_weights=class_weights, **config)
+
+
+
 def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
