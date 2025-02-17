@@ -163,12 +163,11 @@ class UNet:
         d3 = self.decoder_block(d2, s2, 128)  # 128
         d4 = self.decoder_block(d3, s1, 64)  # 256
 
-        # Additional upsampling layers to reach 1024x1024
-        d5 = Conv2DTranspose(32, (2, 2), strides=2, padding="same")(d4)  # 1024
-        d5 = self.conv_block(d5, 32)
+        # # Additional upsampling layers to reach 1024x1024
+        # d5 = Conv2DTranspose(32, (2, 2), strides=2, padding="same")(d4)  # 1024
+        # d5 = self.conv_block(d5, 32)
 
-
-        outputs = Conv2D(num_classes, (1, 1), activation="sigmoid")(d5)
+        outputs = Conv2DTranspose(num_classes, (2, 2), strides=2, padding="same", activation="softmax")(d4)
 
         model = Model(inputs, outputs, name="UNetResNet50")
         return model
