@@ -156,8 +156,6 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         class_weights = tf.convert_to_tensor(config.pop("class_weights"), dtype=tf.float32)
         return cls(class_weights=class_weights, **config)
 
-
-
 def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
@@ -449,19 +447,26 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
             history = model.fit(train_dataset, validation_data=val_dataset, callbacks=[plotcall], verbose=0,
                                 epochs=8)  # callbacks=[logger]
 
+
         elif model_type == "UNet":
+
             # Initial training with frozen encoder
+
             model.compile(
                 optimizer=keras.optimizers.Adam(learning_rate=0.001),
                 loss=loss,
                 metrics=["accuracy"]
+
             )
+
             initial_epochs = 5
+
             history = model.fit(
                 train_dataset,
                 validation_data=val_dataset,
                 epochs=initial_epochs,
                 callbacks=[plotcall],
+
             )
 
             # Unfreeze encoder for fine-tuning
@@ -480,14 +485,6 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 initial_epoch=initial_epochs,
                 callbacks=[plotcall],
             )
-
-        # model.compile(
-        #     optimizer=keras.optimizers.Adam(learning_rate=0.0005),# clipnorm=1.0),
-        #     loss=loss,
-        #     metrics=["accuracy"],
-        # )
-        #
-        # history = model.fit(train_dataset, validation_data=val_dataset, verbose=1, callbacks=plotcall, epochs=8)
 
         # Save model
         logger.save_debug_summary()
