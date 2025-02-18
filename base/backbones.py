@@ -113,9 +113,9 @@ def unfreeze_model(model):
 
 
 class UNet:
-    def __init__(self, input_size, num_classes):
-        self.input_size = input_size
-        self.num_classes = num_classes
+    # def __init__(self, input_size, num_classes):
+    #     self.input_size = input_size
+    #     self.num_classes = num_classes
 
     def conv_block(self, inputs, num_filters, kernel_size=3):
         """Convolutional block with batch normalization"""
@@ -188,7 +188,7 @@ class UNet:
 # Instantiate and build
 def model_call(name, IMAGE_SIZE, NUM_CLASSES):
     if name == "UNet":
-        model = UNet(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_unet(IMAGE_SIZE, NUM_CLASSES)
+        model = UNet().build_unet(IMAGE_SIZE, NUM_CLASSES)
     elif name == "DeepLabV3_plus":
         model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     else:
