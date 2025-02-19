@@ -443,7 +443,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 metrics=["accuracy"],
             )
 
-            history = model.fit(train_dataset, validation_data=val_dataset, callbacks=[plotcall], verbose=0,
+            history = model.fit(train_dataset, validation_data=val_dataset, callbacks=[plotcall], verbose=1,
                                 epochs=8)  # callbacks=[logger]
 
 
