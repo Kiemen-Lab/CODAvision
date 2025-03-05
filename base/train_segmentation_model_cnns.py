@@ -1,28 +1,160 @@
-# https://keras.io/examples/vision/deeplabv3_plus/
 """
-Author: Valentina Matos Romero (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 15, 2024
-"""
+DeepLabV3+ Implementation for Semantic Segmentation
 
-import tensorflow as tf
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-import pandas as pd
-import os
-import numpy as np
-import matplotlib.pyplot as plt
+This script implements the DeepLabV3+ architecture for semantic image segmentation
+using TensorFlow and Keras. It includes custom loss functions, data generators,
+and training utilities.
+
+Original implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
+
+Authors:
+    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+    Tyler Newton (JHU - DSAI)
+
+Date: January 10, 2025
+"""
 
 from base.backbones import * #ADDED IMPORT
 
-os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
-os.system("nvcc --version")
+import time
+import pickle
+import os
+import warnings
 from glob import glob
+import numpy as np
+import tensorflow as tf
+import keras
+from base.backbones import unfreeze_model
 from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
-import warnings
 import GPUtil
-warnings.filterwarnings('ignore')
+from .logger import Logger
 
+
+# Suppress warnings and TF logging
+warnings.filterwarnings('ignore')
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
+# os.environ['CUDA_VISIBLE_DEVICES'] = '' # force to run on CPU
+
+
+
+def calculate_class_weights(mask_list, num_classes, image_size):
+    """
+    Calculate class weights using median frequency balancing.
+
+    This function computes class weights based on the frequency of each class in the dataset,
+    using pixel frequencies per image rather than global counts.
+
+    Args:
+        mask_list (list): List of paths to mask images
+        num_classes (int): Number of classes in the segmentation task
+        image_size (int): Size of the input images (assuming square images)
+
+    Returns:
+        np.ndarray: Array of class weights as float32 values
+
+    Note:
+        The function uses median frequency balancing to handle class imbalance,
+        where rare classes get higher weights than common classes.
+    """
+    class_pixels = np.zeros(num_classes)
+    image_pixels = np.zeros(num_classes)
+    epsilon = 1e-5
+
+    total_pixels = image_size * image_size
+
+    for mask_path in mask_list:
+        mask = tf.keras.preprocessing.image.load_img(mask_path, color_mode='grayscale')
+        mask = tf.keras.preprocessing.image.img_to_array(mask)
+        mask = mask.astype(int)
+
+        for i in range(num_classes):
+            pixels_in_class = np.sum(mask == i)
+            class_pixels[i] += pixels_in_class
+            if pixels_in_class > 0:
+                image_pixels[i] += total_pixels
+
+    # Calculate frequency for each class
+    freq = class_pixels / image_pixels
+
+    # Handle division by zero and invalid values
+    freq[np.isinf(freq) | np.isnan(freq)] = epsilon
+
+    # Calculate weights using median frequency balancing
+    median_freq = np.median(freq)
+    class_weights = median_freq / freq
+
+    return class_weights.astype(np.float32)
+
+
+class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
+    """
+    Custom loss function implementing weighted sparse categorical crossentropy.
+
+    This class extends the base Keras Loss class to provide a weighted version
+    of sparse categorical crossentropy, useful for handling class imbalance
+    in segmentation tasks.
+
+    Args:
+        class_weights (array-like): Weights for each class
+        from_logits (bool): Whether the predictions are logits
+        reduction (str): Type of reduction to apply to the loss
+        name (str, optional): Name of the loss function
+    """
+
+    def __init__(self, class_weights, from_logits=True, reduction='sum_over_batch_size', name=None):
+        super().__init__(reduction=reduction, name=name)
+        self.class_weights = tf.convert_to_tensor(class_weights, dtype=tf.float32)
+        self.from_logits = from_logits
+
+    def call(self, y_true, y_pred):
+        """
+        Compute the weighted loss between predictions and targets.
+
+        Args:
+            y_true (tf.Tensor): Ground truth labels
+            y_pred (tf.Tensor): Model predictions
+
+        Returns:
+            tf.Tensor: Computed loss value
+        """
+        y_true = tf.cast(y_true, tf.int32)
+        y_true_flat = tf.reshape(y_true, [-1])
+
+        # Add epsilon for numerical stability
+        epsilon = 1e-7
+        y_pred = tf.clip_by_value(y_pred, epsilon, 1 - epsilon)
+
+        # Get weights for each sample based on its true class
+        sample_weights = tf.gather(self.class_weights, y_true_flat)
+
+        # Calculate regular sparse categorical crossentropy
+        losses = tf.keras.losses.sparse_categorical_crossentropy(
+            y_true_flat,
+            tf.reshape(y_pred, [tf.shape(y_true_flat)[0], -1]),
+            from_logits=self.from_logits
+        )
+
+        # Apply weights to the losses
+        weighted_losses = losses * sample_weights
+        return tf.reduce_mean(weighted_losses)
+
+    def get_config(self):
+        """Get configuration for serialization."""
+        config = super().get_config()
+        config.update({
+            "class_weights": self.class_weights.numpy().tolist(),
+            "from_logits": self.from_logits,
+        })
+        return config
+
+    @classmethod
+    def from_config(cls, config):
+        """Create an instance from configuration dictionary."""
+        class_weights = tf.convert_to_tensor(config.pop("class_weights"), dtype=tf.float32)
+        return cls(class_weights=class_weights, **config)
 
 def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
     with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
@@ -59,7 +191,7 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 # Memory growth must be set before GPUs have been initialized
                 print(e)
         else:
-            print("No GPU available. Ensure that the NVIDIA GPU and CUDA are correctly installed.")
+            print("No GPU available. Training will proceed on the CPU. Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
 
         with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
             data = pickle.load(f)
@@ -70,6 +202,10 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
             BATCH_SIZE = data['batch_size']
             if 'model' in f:
                 raise ValueError(f'A network has already been trained for model {nm}. Choose a new model name to retrain.')
+
+        # Initialize logger
+        logger = Logger(log_dir=os.path.join(pthDL, 'logs'), model_name=nm)
+        logger.log_system_info()
 
         # Define paths to training and validation directories
         pthTrain = os.path.join(pthDL, 'training')
@@ -115,35 +251,29 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
         val_dataset = data_generator(val_images, val_masks)
 
 
-        # Count pixels in each class
-        def count_each_label(mask_list):
-            label_counts = {}
-            for mask_path in mask_list:
-                mask = read_image(mask_path, mask=True)
-                unique, counts = tf.unique(tf.reshape(mask, [-1]))
-                for u, c in zip(unique.numpy(), counts.numpy()):
-                    if u in label_counts:
-                        label_counts[u] += c
-                    else:
-                        label_counts[u] = c
-            return label_counts
-
-        label_counts = count_each_label(train_masks)
-        tbl = pd.DataFrame(list(label_counts.items()), columns=['Label', 'PixelCount'])
-        tbl['ImagePixelCount'] = tbl['PixelCount'].sum()
-        image_freq = tbl['PixelCount'] / tbl['ImagePixelCount']
-        class_weights = np.median(image_freq) / image_freq
-
-
         # Define loss function
-        loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+
+        # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) # unweighted loss
+        # print("Calculating class weights...")
+        class_weights = calculate_class_weights(train_masks, NUM_CLASSES, IMAGE_SIZE)
+        # print("Class weights:", class_weights)
+        loss = WeightedSparseCategoricalCrossentropy(
+            class_weights=class_weights,
+            from_logits=True,
+            reduction='sum_over_batch_size'
+        )
+
+
+        # loss = keras.losses.SparseCategoricalCrossentropy(from_logits=True) #original
 
         class BatchAccCall(keras.callbacks.Callback):
-            def __init__(self, model, val_data, num_validations=3, early_stopping=True, reduceLRonPlateau=True,
+            def __init__(self, model, val_data, logger=None, num_validations=3, early_stopping=True,
+                         reduceLRonPlateau=True,
                          monitor='val_accuracy', ES_patience=6, RLRoP_patience=1, factor=0.75, verbose=0,
                          save_best_model=True, filepath='best_model.h5'):
                 super(BatchAccCall, self).__init__()
-                self._model = model
+                self.logger = logger
+                self._model = model  # store as a protected attribute to maintain compatibility with Keras' callbacks
                 self.batch_accuracies = []
                 self.batch_numbers = []
                 self.batch_losses = []
@@ -174,8 +304,12 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 self.stopped_epoch = 0
                 self.factor = factor
 
-            @property
+                # Add initial validation dataset logging
+                if self.logger:
+                    self.logger.logger.info("\nInitial Validation Dataset Information:")
+                    self.logger.log_dataset_info(val_data, "Initial-Validation")
 
+            @property
             def model(self):
                 return self._model
 
@@ -190,14 +324,26 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 self.validation_counter = 0
                 self.current_step = 0
 
+                # # Log dataset info at the start of each epoch if logger is available
+                # if self.logger:
+                #     self.logger.log_dataset_info(self.val_data, f"Validation-Epoch{epoch + 1}")
+
             def on_batch_end(self, batch, logs=None):
-                batch_end = time.time()
                 logs = logs or {}
                 self.current_step += 1
                 if self.current_step in self.validation_steps:
                     self.run_validation()
                     self.val_indices.append(self.current_step + self.params['steps'] * (self.current_epoch))
-                accuracy = logs.get('accuracy')  # Use the metric name you specified
+
+                # Use logger for batch metrics if available
+                # if self.logger:
+                #     self.logger.log_batch_metrics(
+                #         batch_number=self.params['steps'] * self.current_epoch + batch + 1,
+                #         metrics=logs,
+                #         model=self._model
+                #     )
+
+                accuracy = logs.get('accuracy')
                 if accuracy is not None:
                     self.batch_accuracies.append(accuracy)
                     self.batch_numbers.append(self.params['steps'] * self.current_epoch + batch + 1)
@@ -218,120 +364,130 @@ def train_segmentation_model_cnns(pthDL, retrain_model = False): #ADDED NAME
                 val_accuracy_total = 0
                 num_batches = 0
 
-                for x_val, y_val in self.val_data:
-                    y_val = tf.cast(y_val, dtype=tf.int32)
-                    val_logits = self._model(x_val, training=False)
-                    num_classes = val_logits.shape[-1]
-                    val_logits_flat = tf.reshape(val_logits, [-1, num_classes])
-                    y_val_flat = tf.reshape(y_val, [-1])
-                    predictions = tf.argmax(val_logits_flat, axis=1)
-                    predictions = tf.cast(predictions, dtype=tf.int32)
-                    val_loss = tf.keras.losses.sparse_categorical_crossentropy(y_val_flat, val_logits_flat,
-                                                                               from_logits=True)
-                    val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
+                try:
+                    for x_val, y_val in self.val_data:
+                        y_val = tf.cast(y_val, dtype=tf.int32)
+                        val_logits = self._model(x_val, training=False)
+                        num_classes = val_logits.shape[-1]
+                        val_logits_flat = tf.reshape(val_logits, [-1, num_classes])
+                        y_val_flat = tf.reshape(y_val, [-1])
+                        predictions = tf.argmax(val_logits_flat, axis=1)
+                        predictions = tf.cast(predictions, dtype=tf.int32)
+                        val_loss = loss(y_val_flat, val_logits_flat)
+                        val_accuracy = tf.reduce_mean(tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
 
-                    val_loss_total += tf.reduce_mean(val_loss).numpy()
-                    val_accuracy_total += val_accuracy.numpy()
-                    num_batches += 1
+                        val_loss_total += tf.reduce_mean(val_loss).numpy()
+                        val_accuracy_total += val_accuracy.numpy()
+                        num_batches += 1
 
-                val_loss_avg = val_loss_total / num_batches
-                val_accuracy_avg = val_accuracy_total / num_batches
+                    val_loss_avg = val_loss_total / num_batches
+                    val_accuracy_avg = val_accuracy_total / num_batches
 
-                self.validation_losses.append(val_loss_avg)
-                self.validation_accuracies.append(val_accuracy_avg)
+                    # # Use logger for validation metrics if available
+                    # if self.logger:
+                    #     self.logger.log_validation_metrics(
+                    #         val_logits=val_logits,
+                    #         y_val=y_val,
+                    #         loss=val_loss_avg,
+                    #         accuracy=val_accuracy_avg
+                    #     )
 
-                if self.early_stopping:
-                    if self.monitor == 'val_loss':
-                        current = val_loss_avg
-                    elif self.monitor == 'val_accuracy':
-                        current = val_accuracy_avg
+                    self.validation_losses.append(val_loss_avg)
+                    self.validation_accuracies.append(val_accuracy_avg)
 
-                    if current is None:
-                        return
+                    if self.early_stopping:
+                        if self.monitor == 'val_loss':
+                            current = val_loss_avg
+                        elif self.monitor == 'val_accuracy':
+                            current = val_accuracy_avg
 
-                    if self.monitor_op(current, self.best):
-                        self.best = current
-                        self.wait = 0
-                        # Save the model if the `save_best_model` flag is set
-                        if self.save_best_model:
-                            self._model.save(self.save_path)
-                            if self.verbose > 0:
-                                print(f'\nEpoch {self.current_epoch + 1}: Model saved to {self.save_path}')
-                    else:
-                        self.wait += 1
-                        if self.wait >= self.ES_patience and self.early_stopping:
-                            self.stopped_epoch = self.current_epoch
-                            self._model.stop_training = True
-                            if self.verbose > 0:
-                                print(f'\nEpoch {self.current_epoch + 1}: early stopping')
+                        if current is None:
+                            return
 
-            def on_train_end(self, logs=None):
-                # Plot after training ends
-                plt.figure(figsize=(12, 6))
-                plt.plot(self.batch_numbers[50:], self.batch_accuracies[50:], color='blue', label='Training Accuracy',
-                         linestyle='-')
-                plt.plot(self.val_indices, self.validation_accuracies, color='red', label='Validation Accuracy',
-                         linestyle='-')
-                for epoch in self.epoch_indices:
-                    plt.axvline(x=(epoch + 1) * self.params['steps'], color='grey', linestyle='--', linewidth=1)
-                    plt.text(
-                        (epoch + 0.5) * self.params['steps'],
-                        plt.ylim()[1] * 0.95,
-                        f'Epoch {epoch}',
-                        color='grey',
-                        rotation=90,
-                        verticalalignment='top',
-                        horizontalalignment='right'
-                    )
-                plt.title('Training and Validation Accuracy')
-                plt.xlabel('Iteration')
-                plt.ylabel('Accuracy')
-                plt.legend()
-                plt.grid(True)
-                #plt.show()
+                        if self.monitor_op(current, self.best):
+                            self.best = current
+                            self.wait = 0
+                            if self.save_best_model:
+                                tf.keras.models.save_model(self._model, self.save_path, save_format='tf')
+                                if self.verbose > 0 and self.logger:
+                                    self.logger.log_info(
+                                        f'\nEpoch {self.current_epoch + 1}: Model saved to {self.save_path}')
+                        else:
+                            self.wait += 1
+                            if self.wait >= self.ES_patience and self.early_stopping:
+                                self.stopped_epoch = self.current_epoch
+                                self._model.stop_training = True
+                                if self.verbose > 0 and self.logger:
+                                    self.logger.log_info(f'\nEpoch {self.current_epoch + 1}: early stopping')
 
-                if self.validation_losses:
-                    plt.figure(figsize=(12, 6))
-                    plt.plot(self.batch_numbers[50:], self.batch_losses[50:], color='blue', label='Training Loss',
-                             linestyle='-')
-                    plt.plot(self.val_indices, self.validation_losses, linestyle='-', color='red', label='Validation Loss')
-                    for epoch in self.epoch_indices:
-                        plt.axvline(x=(epoch + 1) * self.params['steps'], color='grey', linestyle='--', linewidth=1)
-                        plt.text(
-                            (epoch + 0.5) * self.params['steps'],
-                            plt.ylim()[1] * 0.85,
-                            f'Epoch {epoch}',
-                            color='grey',
-                            rotation=90,
-                            verticalalignment='top',
-                            horizontalalignment='right'
-                        )
-                    plt.title('Training and Validation Loss')
-                    plt.xlabel('Iteration')
-                    plt.ylabel('Loss')
-                    plt.legend()
-                    plt.grid(True)
-                    #plt.show()
+                except Exception as e:
+                    if self.logger:
+                        self.logger.log_error(f"Validation failed: {str(e)}")
+                    raise
 
         # Train the model
         model = model_call(model_type,IMAGE_SIZE=IMAGE_SIZE, NUM_CLASSES=NUM_CLASSES)
         #model.summary()
 
-        print('Starting model training...')
 
-        model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.0005),
-            loss=loss,
-            metrics=["accuracy"],
-        )
         num_validations = 3
         best_mod_name = f"best_model_{model_type}.keras"
-        plotcall = BatchAccCall(model=model, val_data=val_dataset, num_validations=num_validations,
+        plotcall = BatchAccCall(model=model, val_data=val_dataset, logger=logger, num_validations=num_validations,
                                 filepath=os.path.join(pthDL, best_mod_name), RLRoP_patience=1, factor=0.75)
 
-        history = model.fit(train_dataset, validation_data=val_dataset, verbose=1, callbacks=plotcall, epochs=8)
+        print('Starting model training...')
+
+        if model_type == "DeepLabV3_plus":
+            model.compile(
+                optimizer=keras.optimizers.Adam(learning_rate=0.0005),  # clipnorm=1.0),
+                loss=loss,
+                metrics=["accuracy"],
+            )
+
+            history = model.fit(train_dataset, validation_data=val_dataset, callbacks=[plotcall], verbose=1,
+                                epochs=8)  # callbacks=[logger]
+
+
+        elif model_type == "UNet":
+
+            # Initial training with frozen encoder
+
+            model.compile(
+                optimizer=keras.optimizers.Adam(learning_rate=0.001),
+                loss=loss,
+                metrics=["accuracy"]
+
+            )
+
+            initial_epochs = 5
+
+            history = model.fit(
+                train_dataset,
+                validation_data=val_dataset,
+                epochs=initial_epochs,
+                callbacks=[plotcall],
+
+            )
+
+            # Unfreeze encoder for fine-tuning
+            model = unfreeze_model(model)
+            model.compile(
+                optimizer=keras.optimizers.Adam(learning_rate=0.0001),  # Lower learning rate
+                loss=loss,
+                metrics=["accuracy"]
+            )
+
+            # Fine-tuning
+            history = model.fit(
+                train_dataset,
+                validation_data=val_dataset,
+                epochs=10,
+                initial_epoch=initial_epochs,
+                callbacks=[plotcall],
+            )
 
         # Save model
+        logger.save_debug_summary()
         print('Saving model...')
         mod_name = f"{model_type}.keras"
         model.save(os.path.join(pthDL, mod_name))
