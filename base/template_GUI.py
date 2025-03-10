@@ -90,7 +90,7 @@ def CODAVision():
                     WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
 
         else:
-            WSI2tif(pth, resolution, umpix, window.img_type)
+            WSI2tif(pth, resolution, umpix)
 
 
         # Determine optimal TA
@@ -136,7 +136,7 @@ def CODAVision():
                         except:
                             print('No TA cutoff file found, using default value')
         else:
-            WSI2tif(pthtest, resolution, umpix, window.test_img_type)
+            WSI2tif(pthtest, resolution, umpix)
 
         test_segmentation_model(pthDL, pthtest, pthtestim)
 

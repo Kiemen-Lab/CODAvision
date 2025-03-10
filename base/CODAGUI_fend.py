@@ -820,39 +820,6 @@ class MainWindow(QtWidgets.QMainWindow):
                                               'Introduce a valid scaling factor')
                 self.ui.custom_scale_LE.setText('1')
                 return False
-        else:
-            if any(f.endswith(('.ndpi')) for f in os.listdir(pth)):
-                self.img_type = '.ndpi'
-            elif any(f.endswith(('.dcm')) for f in os.listdir(pth)):
-                self.img_type = '.dcm'
-            elif any(f.endswith(('.tif')) for f in os.listdir(pth)):
-                self.img_type = '.tif'
-            elif any(f.endswith(('.jpg')) for f in os.listdir(pth)):
-                self.img_type = '.jpg'
-            elif any(f.endswith(('.png')) for f in os.listdir(pth)):
-                self.img_type = '.png'
-            else:
-                QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The selected uncompressed training images path does not contain'
-                                              ' .ndpi, .dcm, .tif, .png or .jpg files')
-                return False
-
-            if any(f.endswith(('.ndpi')) for f in os.listdir(pthtest)):
-                self.test_img_type = '.ndpi'
-            elif any(f.endswith(('.dcm')) for f in os.listdir(pthtest)):
-                self.test_img_type = '.dcm'
-            elif any(f.endswith(('.tif')) for f in os.listdir(pthtest)):
-                self.test_img_type = '.tif'
-            elif any(f.endswith(('.jpg')) for f in os.listdir(pthtest)):
-                self.test_img_type = '.jpg'
-            elif any(f.endswith(('.png')) for f in os.listdir(pthtest)):
-                self.test_img_type = '.png'
-            else:
-                QtWidgets.QMessageBox.warning(self, 'Warning',
-                                              'The selected uncompressed testing images path does not contain'
-                                              ' .ndpi, .dcm, .tif, .png or .jpg files')
-                return False
-
 
 
         # Check if resolution is selected
