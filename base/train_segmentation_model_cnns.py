@@ -24,12 +24,10 @@ from glob import glob
 import numpy as np
 import tensorflow as tf
 import keras
-from base.backbones import unfreeze_model
 from tensorflow import image as tf_image
 from tensorflow import data as tf_data
 from tensorflow import io as tf_io
 import GPUtil
-from .logger import Logger
 
 
 # Suppress warnings and TF logging
