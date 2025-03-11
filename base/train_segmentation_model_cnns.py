@@ -1,11 +1,9 @@
 """
-DeepLabV3+ Implementation for Semantic Segmentation
-
 This module implements training functions for semantic segmentation models
 using TensorFlow and Keras. It includes custom loss functions, data generators,
 and training utilities for various architectures including DeepLabV3+ and UNet.
-
-Original implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
+The original implementation of DeepLabv3+ was based on:
+https://keras.io/examples/vision/deeplabv3_plus/
 
 Authors:
     Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
