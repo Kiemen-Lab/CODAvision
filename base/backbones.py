@@ -1,183 +1,331 @@
 """
-DeepLabV3+ ans UNet Implementation for Semantic Segmentation
+Semantic Segmentation Model Architectures
 
-This script implements the DeepLabV3+ and UNet architecture for semantic image segmentation
-using TensorFlow and Keras. It includes the backbones for both models.
+This module provides implementations of popular semantic segmentation architectures
+including DeepLabV3+ and UNet. It includes classes and functions for creating,
+configuring, and manipulating these models.
 
-Original implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
+The implementations follow object-oriented design principles and modern Python
+coding standards while maintaining backward compatibility with the rest of the
+CODA_python codebase.
+
+Original DeepLabV3+ implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
 
 Authors:
     Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
     Tyler Newton (JHU - DSAI)
     Arrun Sivasubramanian (Johns Hopkins - Kiemen Lab)
 
-Date: February 11, 2025
+Updated: March 12, 2025
 """
 
 import os
-import keras
-from keras import layers, applications
+from abc import ABC, abstractmethod
+from typing import Optional, Tuple, Union
+
 import tensorflow as tf
-from tensorflow.keras import layers, Model
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, Activation
-from tensorflow.keras.layers import Conv2DTranspose, Concatenate
+from tensorflow.keras import layers, Model, applications
 
-
-
+# Configure TensorFlow to reduce verbosity
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-
-
-
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
-os.system("nvcc --version")
+
+# Suppress warnings
 import warnings
-
-
 warnings.filterwarnings('ignore')
 
 
+class BaseSegmentationModel(ABC):
+    """
+    Abstract base class for semantic segmentation models.
 
+    This class defines the common interface for all segmentation models
+    in the codebase, ensuring consistent usage patterns.
 
-class DeepLabV3Plus:
-    def __init__(self, input_size, num_classes):
+    Attributes:
+        input_size (int): Size of the input images (assumes square images)
+        num_classes (int): Number of segmentation classes
+    """
+
+    def __init__(self, input_size: int, num_classes: int):
+        """
+        Initialize the segmentation model.
+
+        Args:
+            input_size: Size of the input images (assumes square images)
+            num_classes: Number of segmentation classes
+        """
         self.input_size = input_size
         self.num_classes = num_classes
 
-    def convolution_block(self, block_input, num_filters=256, kernel_size=3, dilation_rate=1, use_bias=False):
-        x = layers.Conv2D(num_filters, kernel_size=kernel_size, dilation_rate=dilation_rate, padding="same",
-                          use_bias=use_bias,
-                          kernel_initializer=tf.keras.initializers.HeNormal(),
-                          )(block_input)
+    @abstractmethod
+    def build_model(self) -> Model:
+        """
+        Build and return the segmentation model.
+
+        Returns:
+            A compiled Keras model ready for training or inference
+        """
+        pass
+
+
+class DeepLabV3Plus(BaseSegmentationModel):
+    """
+    Implementation of the DeepLabV3+ architecture for semantic segmentation.
+
+    DeepLabV3+ combines a powerful encoder backbone (ResNet50) with
+    atrous spatial pyramid pooling and an effective decoder module for
+    detailed segmentation results.
+
+    Attributes:
+        input_size (int): Size of the input images (assumes square images)
+        num_classes (int): Number of segmentation classes
+    """
+
+    def convolution_block(
+        self,
+        block_input: tf.Tensor,
+        num_filters: int = 256,
+        kernel_size: int = 3,
+        dilation_rate: int = 1,
+        use_bias: bool = False
+    ) -> tf.Tensor:
+        """
+        Create a convolution block with batch normalization and ReLU activation.
+
+        Args:
+            block_input: Input tensor
+            num_filters: Number of convolution filters
+            kernel_size: Size of the convolution kernel
+            dilation_rate: Dilation rate for atrous convolution
+            use_bias: Whether to use bias in convolution
+
+        Returns:
+            Output tensor after convolution, batch normalization, and activation
+        """
+        x = layers.Conv2D(
+            num_filters,
+            kernel_size=kernel_size,
+            dilation_rate=dilation_rate,
+            padding="same",
+            use_bias=use_bias,
+            kernel_initializer=tf.keras.initializers.HeNormal(),
+        )(block_input)
         x = layers.BatchNormalization()(x)
         x = layers.Activation('relu')(x)
         return x
 
-    def dilated_spatial_pyramid_pooling(self, dspp_input):
+    def dilated_spatial_pyramid_pooling(self, dspp_input: tf.Tensor) -> tf.Tensor:
+        """
+        Create a dilated spatial pyramid pooling module.
+
+        This module uses multiple parallel atrous convolutions with different
+        dilation rates to capture multi-scale context information.
+
+        Args:
+            dspp_input: Input tensor
+
+        Returns:
+            Output tensor after DSPP processing
+        """
         dims = dspp_input.shape
+
+        # Global average pooling branch
         x = layers.AveragePooling2D(pool_size=(dims[-3], dims[-2]))(dspp_input)
         x = self.convolution_block(x, kernel_size=1, use_bias=True)
         out_pool = layers.UpSampling2D(
-            size=(dims[-3] // x.shape[1], dims[-2] // x.shape[2]),
+            size=(dims[-3], dims[-2]),
             interpolation="bilinear",
         )(x)
 
+        # Multiple atrous convolution branches with different dilation rates
         out_1 = self.convolution_block(dspp_input, kernel_size=1, dilation_rate=1)
         out_6 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=6)
         out_12 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=12)
         out_18 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=18)
 
+        # Concatenate all branches and apply final convolution
         x = layers.Concatenate(axis=-1)([out_pool, out_1, out_6, out_12, out_18])
         output = self.convolution_block(x, kernel_size=1)
         return output
 
-    def build_model(self):
-        # inputs = layers.Input(self.input_size) ARRUN
-        model_input = keras.Input(shape=(self.input_size, self.input_size, 3))
-        preprocessed = tf.keras.applications.resnet50.preprocess_input(model_input)
-        # preprocessed = applications.resnet50.preprocess_input(inputs)
-        resnet50 = applications.ResNet50(weights="imagenet", include_top=False, input_tensor=preprocessed)
+    def build_model(self) -> Model:
+        """
+        Build and return the DeepLabV3+ model.
 
+        The model uses ResNet50 as the encoder backbone, followed by
+        dilated spatial pyramid pooling and a decoder that combines
+        features from different levels of the encoder.
+
+        Returns:
+            Compiled DeepLabV3+ model
+        """
+        # Input layer
+        model_input = tf.keras.Input(shape=(self.input_size, self.input_size, 3))
+        preprocessed = applications.resnet50.preprocess_input(model_input)
+
+        # Encoder (ResNet50 backbone)
+        resnet50 = applications.ResNet50(
+            weights="imagenet",
+            include_top=False,
+            input_tensor=preprocessed
+        )
+
+        # Get intermediate feature maps for skip connections
         x = resnet50.get_layer("conv4_block6_2_relu").output
+
+        # Apply dilated spatial pyramid pooling
         x = self.dilated_spatial_pyramid_pooling(x)
 
+        # Upsampling and skip connection with earlier feature maps
         input_a = layers.UpSampling2D(
-            size=(self.input_size // 4 // x.shape[1], self.input_size // 4 // x.shape[2]),
+            size=(4, 4),
             interpolation="bilinear",
         )(x)
 
         input_b = resnet50.get_layer("conv2_block3_2_relu").output
         input_b = self.convolution_block(input_b, num_filters=48, kernel_size=1)
 
+        # Combine feature maps and apply convolutions
         x = layers.Concatenate(axis=-1)([input_a, input_b])
         x = self.convolution_block(x)
         x = self.convolution_block(x)
 
+        # Final upsampling to original resolution
         x = layers.UpSampling2D(
-            size=(self.input_size // x.shape[1], self.input_size // x.shape[2]),
+            size=(4, 4),
             interpolation="bilinear",
         )(x)
 
+        # Output segmentation map
         outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
 
-        model = Model(preprocessed, outputs, name='DeepLabV3_plus')
-
+        # Create and return model
+        model = Model(model_input, outputs, name='DeepLabV3_plus')
         return model
 
-def unfreeze_model(model):
-    """Unfreeze the encoder layers for fine-tuning"""
-    for layer in model.layers:
-        if hasattr(layer, 'kernel_initializer') and 'resnet' in layer.name:
-            layer.trainable = True
-    return model
 
+class UNet(BaseSegmentationModel):
+    """
+    Implementation of the UNet architecture for semantic segmentation.
 
-class UNet:
-    # def __init__(self, input_size, num_classes):
-    #     self.input_size = input_size
-    #     self.num_classes = num_classes
+    UNet is a popular encoder-decoder architecture with skip connections
+    between encoder and decoder at corresponding resolutions, which helps
+    preserve spatial information.
 
-    def conv_block(self, inputs, num_filters, kernel_size=3):
-        """Convolutional block with batch normalization"""
-        x = Conv2D(num_filters, kernel_size, padding="same")(inputs)
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
+    This implementation uses ResNet50 as the encoder backbone.
 
-        x = Conv2D(num_filters, kernel_size, padding="same")(x)
-        x = BatchNormalization()(x)
-        x = Activation("relu")(x)
+    Attributes:
+        input_size (int): Size of the input images (assumes square images)
+        num_classes (int): Number of segmentation classes
+    """
+
+    def conv_block(self, inputs: tf.Tensor, num_filters: int, kernel_size: int = 3) -> tf.Tensor:
+        """
+        Create a convolutional block with batch normalization and ReLU activation.
+
+        Args:
+            inputs: Input tensor
+            num_filters: Number of convolution filters
+            kernel_size: Size of the convolution kernel
+
+        Returns:
+            Output tensor after convolutions, batch normalization, and activation
+        """
+        x = layers.Conv2D(num_filters, kernel_size, padding="same")(inputs)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+
+        x = layers.Conv2D(num_filters, kernel_size, padding="same")(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
         return x
 
-    def decoder_block(self, inputs, skip_features, num_filters):
-        """Decoder block with skip connections"""
-        x = Conv2DTranspose(num_filters, (2, 2), strides=2, padding="same")(inputs)
-        x = Concatenate()([x, skip_features])
+    def decoder_block(
+        self,
+        inputs: tf.Tensor,
+        skip_features: tf.Tensor,
+        num_filters: int
+    ) -> tf.Tensor:
+        """
+        Create a decoder block with transposed convolution and skip connections.
+
+        Args:
+            inputs: Input tensor from previous layer
+            skip_features: Skip connection features from encoder
+            num_filters: Number of convolution filters
+
+        Returns:
+            Output tensor after processing
+        """
+        x = layers.Conv2DTranspose(num_filters, (2, 2), strides=2, padding="same")(inputs)
+        x = layers.Concatenate()([x, skip_features])
         x = self.conv_block(x, num_filters)
         return x
 
-    def UNetResNet50(self, input_shape, num_classes):
-        """UNet with ResNet50 encoder"""
-        inputs = Input(input_shape)
-        # Preprocess input
-        preprocessed = tf.keras.applications.resnet50.preprocess_input(inputs)
+    def build_unet_resnet50(self, input_shape: Tuple[int, int, int], num_classes: int) -> Model:
+        """
+        Build a UNet model with ResNet50 encoder.
 
-        # ResNet50 as encoder (pre-trained on ImageNet)
-        resnet50 = ResNet50(
+        Args:
+            input_shape: Shape of input images (height, width, channels)
+            num_classes: Number of segmentation classes
+
+        Returns:
+            UNet model with ResNet50 encoder
+        """
+        # Input layer
+        inputs = layers.Input(input_shape)
+
+        # Apply preprocessing for ResNet50
+        preprocessed = applications.resnet50.preprocess_input(inputs)
+
+        # Encoder (ResNet50 backbone)
+        resnet50 = applications.ResNet50(
             include_top=False,
             weights="imagenet",
             input_tensor=preprocessed,
         )
 
-        # Skip connections (getting intermediate layers)
-        s1 = resnet50.get_layer("conv1_relu").output  # 256
-        s2 = resnet50.get_layer("conv2_block3_out").output  # 128
-        s3 = resnet50.get_layer("conv3_block4_out").output  # 64
-        s4 = resnet50.get_layer("conv4_block6_out").output  # 32
+        # Extract skip connection features from different layers
+        s1 = resnet50.get_layer("conv1_relu").output
+        s2 = resnet50.get_layer("conv2_block3_out").output
+        s3 = resnet50.get_layer("conv3_block4_out").output
+        s4 = resnet50.get_layer("conv4_block6_out").output
 
-        # Bridge
-        b1 = resnet50.get_layer("conv5_block3_out").output  # 16
+        # Bridge/bottleneck
+        b1 = resnet50.get_layer("conv5_block3_out").output
 
-        # Decoder
-        d1 = self.decoder_block(b1, s4, 512)  # 32
-        d2 = self.decoder_block(d1, s3, 256)  # 64
-        d3 = self.decoder_block(d2, s2, 128)  # 128
-        d4 = self.decoder_block(d3, s1, 64)  # 256
+        # Decoder with skip connections
+        d1 = self.decoder_block(b1, s4, 512)
+        d2 = self.decoder_block(d1, s3, 256)
+        d3 = self.decoder_block(d2, s2, 128)
+        d4 = self.decoder_block(d3, s1, 64)
 
-        # # Additional upsampling layers to reach 1024x1024
-        # d5 = Conv2DTranspose(32, (2, 2), strides=2, padding="same")(d4)  # 1024
-        # d5 = self.conv_block(d5, 32)
+        # Final upsampling and output layer
+        outputs = layers.Conv2DTranspose(
+            num_classes,
+            (2, 2),
+            strides=2,
+            padding="same",
+            activation="softmax"
+        )(d4)
 
-        outputs = Conv2DTranspose(num_classes, (2, 2), strides=2, padding="same", activation="softmax")(d4)
-
+        # Create and return model
         model = Model(inputs, outputs, name="UNetResNet50")
         return model
 
-    def build_unet(self, image_size, num_classes):
-        """Create and return the UNet-ResNet50 model"""
-        input_shape = (image_size, image_size, 3)
-        model = self.UNetResNet50(input_shape, num_classes)
+    def build_model(self) -> Model:
+        """
+        Build and return the UNet model.
 
-        # Freeze the encoder layers initially
+        Returns:
+            UNet model with frozen encoder layers
+        """
+        input_shape = (self.input_size, self.input_size, 3)
+        model = self.build_unet_resnet50(input_shape, self.num_classes)
+
+        # Freeze encoder layers (ResNet50 backbone)
         for layer in model.layers:
             if hasattr(layer, 'kernel_initializer') and 'resnet' in layer.name:
                 layer.trainable = False
@@ -185,10 +333,39 @@ class UNet:
         return model
 
 
-# Instantiate and build
-def model_call(name, IMAGE_SIZE, NUM_CLASSES):
+def unfreeze_model(model: Model) -> Model:
+    """
+    Unfreeze the encoder layers of a model for fine-tuning.
+
+    Args:
+        model: The model with frozen encoder layers
+
+    Returns:
+        Model with unfrozen encoder layers
+    """
+    for layer in model.layers:
+        if hasattr(layer, 'kernel_initializer') and 'resnet' in layer.name:
+            layer.trainable = True
+    return model
+
+
+def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int) -> Model:
+    """
+    Factory function to create a segmentation model of the specified type.
+
+    Args:
+        name: Model type ('UNet' or 'DeepLabV3_plus')
+        IMAGE_SIZE: Size of input images (assumes square images)
+        NUM_CLASSES: Number of segmentation classes
+
+    Returns:
+        The requested segmentation model
+
+    Raises:
+        ValueError: If an invalid model name is provided
+    """
     if name == "UNet":
-        model = UNet().build_unet(IMAGE_SIZE, NUM_CLASSES)
+        model = UNet(IMAGE_SIZE, NUM_CLASSES).build_model()
     elif name == "DeepLabV3_plus":
         model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
     else:
