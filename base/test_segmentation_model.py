@@ -1,153 +1,380 @@
+"""
+Semantic Segmentation Model Testing and Evaluation
+
+This module provides functionality to test trained semantic segmentation models
+and evaluate their performance using confusion matrices and accuracy metrics.
+
+Authors:
+    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+    Tyler Newton (JHU - DSAI)
+
+Updated March 11, 2025
+"""
 
 import os
 import numpy as np
 import pickle
+from typing import Dict, List, Optional, Tuple, Union, Any
+
 from tifffile import imread
 from skimage.morphology import remove_small_objects
-from .load_annotation_data import load_annotation_data
-from base.classify_images import classify_images
 from PIL import Image
+
+from .load_annotation_data import load_annotation_data
+from .classify_images import classify_images
 from .Plot_confussion_matrix import plot_confusion_matrix
+
 import warnings
+
 warnings.filterwarnings("ignore")
 
-"""
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: November 14, 2024
-"""
 
-def read_image_as_double(file_path):
-    try:
-        img = Image.open(file_path)
-        img = img.convert('L') # Convert image to grayscale (single-channel images)
-        return np.array(img).astype(np.double) # Convert to NumPy array and cast to double
-    except Exception as e:
-        raise RuntimeError(f"Error reading image file {file_path}: {e}")
+class SegmentationModelTester:
+    """
+    Class for testing and evaluating semantic segmentation models.
 
-def test_segmentation_model(pthDL,pthtest, pthtestim):
+    This class handles the testing of trained segmentation models against
+    a test dataset, calculating performance metrics, and generating
+    confusion matrices for evaluation.
+    """
 
-    print("Testing segmentation model......")
+    def __init__(self, model_path: str, test_annotation_path: str, test_image_path: str):
+        """
+        Initialize the SegmentationModelTester with paths to model and test data.
 
-    with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
-        data = pickle.load(f)
-        nblack = data['nblack']
-        nwhite = data['nwhite']
-        classNames = data['classNames']
-        model_type = data['model_type']
+        Args:
+            model_path: Path to the directory containing model data
+            test_annotation_path: Path to the directory containing test annotations
+            test_image_path: Path to the directory containing test images
+        """
+        self.model_path = model_path
+        self.test_annotation_path = test_annotation_path
+        self.test_image_path = test_image_path
 
-    pthtestdata = os.path.join(pthtest, 'data py')
-    load_annotation_data(pthDL, pthtest, pthtestim)
+        self.model_data = None
+        self.nblack = None
+        self.nwhite = None
+        self.class_names = None
+        self.model_type = None
 
-    pthclassifytest = classify_images(pthtestim, pthDL,model_type, color_overlay_HE=True, color_mask=False)
+        self._load_model_data()
 
-    classNames = classNames[:-1]
-    numClasses = nblack - 1
+    def _load_model_data(self) -> None:
+        """
+        Load model metadata from the pickle file.
 
-    true_labels = []
-    predicted_labels = []
+        Raises:
+            FileNotFoundError: If the model data file doesn't exist
+            ValueError: If essential parameters are missing
+        """
+        data_file = os.path.join(self.model_path, 'net.pkl')
 
-    imlist = os.listdir(pthtestdata)
+        if not os.path.exists(data_file):
+            raise FileNotFoundError(f"Model data file not found: {data_file}")
 
-    for folder in imlist:
-        pth_annotation_data = os.path.join(pthtestdata, folder)
-        annotation_file_png = os.path.join(pth_annotation_data, 'view_annotations.png')
-        annotation_file_raw_png = os.path.join(pth_annotation_data, 'view_annotations_raw.png')
-        # annotation_file_png = os.path.join(pth_annotation_data, 'view_annotations.tif')
-        # annotation_file_raw_png = os.path.join(pth_annotation_data, 'view_annotations_raw.tif')
+        try:
+            with open(data_file, 'rb') as f:
+                self.model_data = pickle.load(f)
 
+            self.nblack = self.model_data.get('nblack')
+            self.nwhite = self.model_data.get('nwhite')
+            self.class_names = self.model_data.get('classNames')
+            self.model_type = self.model_data.get('model_type')
 
-        if os.path.exists(os.path.join(pth_annotation_data, 'view_annotations.png')) or os.path.exists(
-                os.path.join(pth_annotation_data, 'view_annotations_raw.png')):
-            try:
-                # Read the image and convert to double
-                if os.path.exists(annotation_file_png):
-                    J0 = read_image_as_double(annotation_file_png)
-                else:
-                    J0 = read_image_as_double(annotation_file_raw_png)
-            except RuntimeError as e:
-                print(e)
-                continue
+            if None in [self.nblack, self.nwhite, self.class_names, self.model_type]:
+                raise ValueError("Missing required parameters in model data file")
 
-            # Read the imDL image
-            imDL = imread(os.path.join(pthclassifytest, folder + '.tif'))
-            imDL_array = np.array(imDL)
+        except Exception as e:
+            raise ValueError(f"Failed to load model data: {e}")
 
-            # Remove small pixels
-            for b in range(0, int(J0.max())):
-                tmp = J0 == b
-                J0[J0 == b] = 0
-                tmp = remove_small_objects(tmp.astype(bool), min_size=25, connectivity=2)
-                J0[tmp] = b
+    def read_image_as_double(self, file_path: str) -> np.ndarray:
+        """
+        Read an image file and convert it to a double-precision numpy array.
 
-            # Get true and predicted class at testing annotation locations
-            L = np.where(J0 > 0)
+        Args:
+            file_path: Path to the image file
 
-            true_labels = np.concatenate((true_labels, J0[L]))
-            predicted_labels = np.concatenate((predicted_labels, imDL_array[L]))
+        Returns:
+            Numpy array representation of the image as double-precision values
 
+        Raises:
+            RuntimeError: If there's an error reading the image file
+        """
+        try:
+            img = Image.open(file_path)
+            img = img.convert('L')
+            return np.array(img).astype(np.double)
+        except Exception as e:
+            raise RuntimeError(f"Error reading image file {file_path}: {e}")
 
-    predicted_labels = np.array(predicted_labels)
-    predicted_labels[predicted_labels == nblack] = nwhite
-    predicted_labels = predicted_labels
+    def prepare_test_data(self) -> str:
+        """
+        Prepare test data by loading annotations and classifying test images.
 
+        Returns:
+            Path to the directory containing classified test images
 
+        Raises:
+            ValueError: If preparation fails
+        """
+        try:
+            # Prepare test data using existing functions
+            test_data_path = os.path.join(self.test_annotation_path, 'data py')
 
-    # Normalize to the minimum number of pixels, rounded to nearest 1000
-    label_counts = np.histogram(true_labels, bins=numClasses)[0]
-    label_percentages = (label_counts / label_counts.max() * 100).astype(int)
-    min_count = label_counts.min()
+            # Load annotation data
+            load_annotation_data(self.model_path, self.test_annotation_path, self.test_image_path)
 
-
-    # Display number of pixels of each class in testing
-    print()
-    print('Calculating total number of pixels in the testing dataset...')
-    for i, count in enumerate(label_counts):
-        if label_percentages[i] == 100:
-            print(f"  There are {count} pixels of {classNames[i]}. This is the most common class.")
-        else:
-            print(f"  There are {count} pixels of {classNames[i]}, {label_percentages[i]}% of the most common class.")
-
-    if 0 in label_counts:
-        for i, count in enumerate(label_counts):
-            if count == 0:
-                print(f"\n No testing annotations exist for class {classNames[i]}.")
-        raise ValueError("Cannot make confusion matrix. Please add testing annotations of missing class(es).")
-
-    if min_count < 100:
-        min_count = (min_count // 10) * 10
-    elif min_count < 1000:
-        min_count = (min_count // 100) * 100
-    else:
-        min_count = (min_count // 1000) * 1000
-
-    for i, count in enumerate(label_counts):
-        if count < 15000:
-            print(f"\n  Only {count} testing pixels of {classNames[i]} found.")
-            print("    We suggest a minimum of 15,000 pixels for a good assessment of model accuracy.")
-            print("    Confusion matrix may be misleading.")
-
-    # Normalize Pixel counts
-    balanced_true_labels = []
-    balanced_predicted_labels = []
-    for label in np.unique(true_labels):
-        indices = np.where(np.array(true_labels) == label)[0]
-        selected_indices = np.random.choice(indices, min_count, replace=False)
-        balanced_true_labels.extend(np.array(true_labels)[selected_indices])
-        balanced_predicted_labels.extend(np.array(predicted_labels)[selected_indices])
-
-    balanced_true_labels = np.array(balanced_true_labels)
-    balanced_predicted_labels = np.array(balanced_predicted_labels)
-
-    # Confusion matrix with equal number of pixels of each class
-    confusion_data = np.zeros((int(np.max(balanced_true_labels)), int(np.max(balanced_predicted_labels))))
-    for true_label in range(1, int(np.max(balanced_true_labels)) + 1):
-        for pred_label in range(1, int(np.max(balanced_predicted_labels)) + 1):
-            confusion_data[true_label - 1, pred_label - 1] = np.sum(
-                (balanced_true_labels == true_label) &
-                (balanced_predicted_labels == pred_label)
+            # Classify test images
+            classified_path = classify_images(
+                self.test_image_path,
+                self.model_path,
+                self.model_type,
+                color_overlay_HE=True,
+                color_mask=False
             )
 
-    confusion_data[np.isnan(confusion_data)] = 0
+            return classified_path
 
-    _ = plot_confusion_matrix(confusion_data, classNames, pthDL, model_type)
+        except Exception as e:
+            raise ValueError(f"Failed to prepare test data: {e}")
+
+    def collect_prediction_data(self, classified_path: str) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Collect ground truth and prediction data from test images.
+
+        Args:
+            classified_path: Path to the directory containing classified test images
+
+        Returns:
+            Tuple of (ground truth labels, predicted labels)
+
+        Raises:
+            ValueError: If data collection fails
+        """
+        true_labels = []
+        predicted_labels = []
+
+        test_data_path = os.path.join(self.test_annotation_path, 'data py')
+
+        # Process each annotation folder
+        for folder in os.listdir(test_data_path):
+            annotation_path = os.path.join(test_data_path, folder)
+            annotation_file_png = os.path.join(annotation_path, 'view_annotations.png')
+            annotation_file_raw_png = os.path.join(annotation_path, 'view_annotations_raw.png')
+
+            # Check if annotation files exist
+            if os.path.exists(annotation_file_png) or os.path.exists(annotation_file_raw_png):
+                try:
+                    # Load annotation image
+                    if os.path.exists(annotation_file_png):
+                        ground_truth = self.read_image_as_double(annotation_file_png)
+                    else:
+                        ground_truth = self.read_image_as_double(annotation_file_raw_png)
+                except RuntimeError as e:
+                    print(e)
+                    continue
+
+                # Load prediction image
+                try:
+                    prediction = imread(os.path.join(classified_path, folder + '.tif'))
+                    prediction_array = np.array(prediction)
+                except Exception as e:
+                    print(f"Error loading prediction for {folder}: {e}")
+                    continue
+
+                # Clean up small objects in ground truth
+                for label in range(0, int(ground_truth.max())):
+                    mask = ground_truth == label
+                    ground_truth[mask] = 0
+                    cleaned_mask = remove_small_objects(mask.astype(bool), min_size=25, connectivity=2)
+                    ground_truth[cleaned_mask] = label
+
+                # Extract non-zero pixels for comparison
+                non_zero_indices = np.where(ground_truth > 0)
+
+                if len(non_zero_indices[0]) > 0:
+                    true_labels.extend(ground_truth[non_zero_indices])
+                    predicted_labels.extend(prediction_array[non_zero_indices])
+
+        if not true_labels or not predicted_labels:
+            raise ValueError("No valid annotation data found in test dataset")
+
+        return np.array(true_labels), np.array(predicted_labels)
+
+    def analyze_class_distribution(self, true_labels: np.ndarray) -> np.ndarray:
+        """
+        Analyze the distribution of classes in the ground truth labels.
+
+        Args:
+            true_labels: Array of ground truth labels
+
+        Returns:
+            Array of class counts
+
+        Raises:
+            ValueError: If there are missing classes in the test dataset
+        """
+        # Remove 'black' class from class names list for analysis
+        class_names = self.class_names[:-1]
+        num_classes = len(class_names)
+
+        # Count occurrences of each class
+        label_counts = np.histogram(true_labels, bins=num_classes)[0]
+        label_percentages = (label_counts / label_counts.max() * 100).astype(int)
+
+        # Display class distribution
+        print('\nCalculating total number of pixels in the testing dataset...')
+        for i, count in enumerate(label_counts):
+            if label_percentages[i] == 100:
+                print(f"  There are {count} pixels of {class_names[i]}. This is the most common class.")
+            else:
+                print(
+                    f"  There are {count} pixels of {class_names[i]}, {label_percentages[i]}% of the most common class.")
+
+        # Check for missing classes
+        if 0 in label_counts:
+            for i, count in enumerate(label_counts):
+                if count == 0:
+                    print(f"\n No testing annotations exist for class {class_names[i]}.")
+            raise ValueError("Cannot make confusion matrix. Please add testing annotations of missing class(es).")
+
+        # Warn about classes with few samples
+        min_recommended_pixels = 15000
+        for i, count in enumerate(label_counts):
+            if count < min_recommended_pixels:
+                print(f"\n  Only {count} testing pixels of {class_names[i]} found.")
+                print("    We suggest a minimum of 15,000 pixels for a good assessment of model accuracy.")
+                print("    Confusion matrix may be misleading.")
+
+        return label_counts
+
+    def balance_samples(self, true_labels: np.ndarray, predicted_labels: np.ndarray,
+                        label_counts: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Balance the sample sizes across classes for fair evaluation.
+
+        Args:
+            true_labels: Array of ground truth labels
+            predicted_labels: Array of predicted labels
+            label_counts: Array of class counts
+
+        Returns:
+            Tuple of (balanced true labels, balanced predicted labels)
+        """
+        # Determine minimum sample size (with adjustment based on count)
+        min_count = label_counts.min()
+        if min_count < 100:
+            min_count = min_count * 10
+        elif min_count < 1000:
+            min_count = min_count * 3
+        else:
+            min_count = min_count
+
+        # Balance samples across classes
+        balanced_true_labels = []
+        balanced_predicted_labels = []
+
+        for label in np.unique(true_labels):
+            indices = np.where(np.array(true_labels) == label)[0]
+            selected_indices = np.random.choice(indices, min_count, replace=False)
+            balanced_true_labels.extend(np.array(true_labels)[selected_indices])
+            balanced_predicted_labels.extend(np.array(predicted_labels)[selected_indices])
+
+        return np.array(balanced_true_labels), np.array(balanced_predicted_labels)
+
+    def create_confusion_matrix(self, balanced_true: np.ndarray,
+                                balanced_predicted: np.ndarray) -> np.ndarray:
+        """
+        Create a confusion matrix from the balanced true and predicted labels.
+
+        Args:
+            balanced_true: Balanced array of ground truth labels
+            balanced_predicted: Balanced array of predicted labels
+
+        Returns:
+            Confusion matrix as a numpy array
+        """
+        # Process predictions to handle black class
+        processed_predictions = balanced_predicted.copy()
+        processed_predictions[processed_predictions == self.nblack] = self.nwhite
+
+        # Create confusion matrix
+        max_true = int(np.max(balanced_true))
+        max_pred = int(np.max(processed_predictions))
+        confusion_data = np.zeros((max_true, max_pred))
+
+        for true_label in range(1, max_true + 1):
+            for pred_label in range(1, max_pred + 1):
+                confusion_data[true_label - 1, pred_label - 1] = np.sum(
+                    (balanced_true == true_label) &
+                    (processed_predictions == pred_label)
+                )
+
+        # Clean up any NaN values
+        confusion_data[np.isnan(confusion_data)] = 0
+
+        return confusion_data
+
+    def test(self) -> Dict[str, Any]:
+        """
+        Test the segmentation model and evaluate its performance.
+
+        Returns:
+            Dictionary containing confusion matrix and performance metrics
+
+        Raises:
+            ValueError: If testing fails
+        """
+        print("Testing segmentation model......")
+
+        try:
+            # Step 1: Prepare test data
+            classified_path = self.prepare_test_data()
+
+            # Step 2: Collect prediction data
+            true_labels, predicted_labels = self.collect_prediction_data(classified_path)
+
+            # Step 3: Analyze class distribution
+            label_counts = self.analyze_class_distribution(true_labels)
+
+            # Step 4: Balance samples
+            balanced_true, balanced_predicted = self.balance_samples(
+                true_labels, predicted_labels, label_counts
+            )
+
+            # Step 5: Create confusion matrix
+            confusion_matrix = self.create_confusion_matrix(balanced_true, balanced_predicted)
+
+            # Step 6: Plot confusion matrix and get metrics
+            class_names = self.class_names[:-1]  # Remove 'black' class
+            confusion_with_metrics = plot_confusion_matrix(
+                confusion_matrix, class_names, self.model_path, self.model_type
+            )
+
+            # Extract metrics
+            metrics = {
+                'confusion_matrix': confusion_matrix,
+                'confusion_with_metrics': confusion_with_metrics
+            }
+
+            return metrics
+
+        except Exception as e:
+            raise ValueError(f"Model testing failed: {e}")
+
+
+def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str) -> None:
+    """
+    Test a segmentation model with the provided paths.
+
+    This function serves as a compatibility wrapper around the SegmentationModelTester class,
+    preserving the original function signature for backward compatibility.
+
+    Args:
+        pthDL: Path to the directory containing model data
+        pthtest: Path to the directory containing test annotations
+        pthtestim: Path to the directory containing test images
+    """
+    tester = SegmentationModelTester(pthDL, pthtest, pthtestim)
+    tester.test()
     return
