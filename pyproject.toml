@@ -39,7 +39,7 @@ dependencies = [
         'seaborn==0.13.2',
         'tifffile==2024.8.28',
         'jupyter==1.1.1',
-        'pip==24.2',
+#        'pip==24.2',
         'attrs==24.2.0',
         'wheel==0.43.0',
         'tornado==6.4.1',
