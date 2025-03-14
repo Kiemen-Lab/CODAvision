@@ -19,7 +19,7 @@ CODAvision is an open-source Python package designed for microanatomical tissue 
 
 3. **Install CUDA Toolkit and cuDNN**
   
-    CODA Vision requires the CUDA Toolkit and cuDNN to run on NVIDIA GPUs. Follow the instructions [here](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) to install the CUDA drivers. After installing the drivers, install the CUDA Toolkit and cuDNN using conda:
+    CODAvision requires the CUDA Toolkit and cuDNN to run on NVIDIA GPUs. Follow the instructions [here](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) to install the CUDA drivers. After installing the drivers, install the CUDA Toolkit and cuDNN using conda:
 
     ```sh
     conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
