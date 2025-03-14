@@ -15,6 +15,8 @@ from typing import Optional, Union, Tuple
 import numpy as np
 import tensorflow as tf
 
+from base.image_utils import read_image
+
 
 class SemanticSegmenter:
     """
@@ -41,26 +43,7 @@ class SemanticSegmenter:
         Returns:
             Preprocessed image tensor, or None if there was an error reading the image
         """
-        try:
-            if isinstance(image_input, np.ndarray):
-                # If input is a numpy array, just convert to tensor
-                image = tf.convert_to_tensor(image_input)
-                image = tf.image.resize(image, [image_size, image_size])
-            else:
-                # Otherwise, read from file
-                image = tf.io.read_file(image_input)
-                if mask:
-                    image = tf.image.decode_png(image, channels=1)
-                    image.set_shape([None, None, 1])
-                    image = tf.image.resize(images=image, size=[image_size, image_size])
-                else:
-                    image = tf.image.decode_png(image, channels=3)
-                    image.set_shape([None, None, 3])
-                    image = tf.image.resize(images=image, size=[image_size, image_size])
-            return image
-        except Exception as e:
-            print(f"Error reading image {image_input}: {e}")
-            return None
+        return read_image(image_input, image_size, mask)
 
     @staticmethod
     def infer(model: tf.keras.Model, image_tensor: tf.Tensor) -> np.ndarray:
@@ -106,7 +89,6 @@ class SemanticSegmenter:
         return prediction_mask
 
 
-# For backward compatibility
 def semantic_seg(image_path: Union[str, np.ndarray], image_size: int, model: tf.keras.Model) -> np.ndarray:
     """
     Perform semantic segmentation on an input image using a pre-trained model.

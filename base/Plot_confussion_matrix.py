@@ -8,7 +8,7 @@ Authors:
     Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated March 12, 2025
+Updated March 13, 2025
 """
 
 import os
@@ -90,15 +90,20 @@ class ConfusionMatrixVisualizer:
         Returns:
             Tuple containing precision, recall, accuracy, and the confusion matrix with metrics
         """
-        # Calculate precision, recall, and accuracy
-        precision = np.diag(confusion_data) / np.sum(confusion_data, axis=0)
-        recall = np.diag(confusion_data) / np.sum(confusion_data, axis=1)
-        accuracy = np.sum(np.diag(confusion_data)) / np.sum(confusion_data)
+        # Calculate metrics with handling for division by zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            precision = np.diag(confusion_data) / np.sum(confusion_data, axis=0)
+            recall = np.diag(confusion_data) / np.sum(confusion_data, axis=1)
+            accuracy = np.sum(np.diag(confusion_data)) / np.sum(confusion_data)
 
-        # Convert to percentages and round
-        precision = np.round(precision * 100, 1)
-        recall = np.round(recall * 100, 1)
+        # Convert to percentages and handle NaN values
+        precision = np.nan_to_num(precision * 100, nan=0.0)
+        recall = np.nan_to_num(recall * 100, nan=0.0)
         accuracy = np.round(accuracy * 100, 1)
+
+        # Round to one decimal place
+        precision = np.round(precision, 1)
+        recall = np.round(recall, 1)
 
         # Create confusion matrix with metrics
         confusion_with_metrics = np.zeros(
