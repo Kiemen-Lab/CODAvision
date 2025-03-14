@@ -1,6 +1,6 @@
- # CODA Vision
+ # CODAvision
 
-CODA Vision is an open-source Python package designed for microanatomical tissue labeling. It facilitates deep learning-based semantic segmentation of Whole Slide Images (WSI) through a user-friendly interface.
+CODAvision is an open-source Python package designed for microanatomical tissue labeling. It facilitates deep learning-based semantic segmentation of Whole Slide Images (WSI) through a user-friendly interface.
 
 ## Quick Install
 
@@ -13,9 +13,9 @@ CODA Vision is an open-source Python package designed for microanatomical tissue
     Open your terminal or command prompt and run the following commands:
     
     ```sh
-    conda create -n CODA_Vision python=3.9.19
+    conda create -n CODAvision python=3.9.19
     
-    conda activate CODA_Vision
+    conda activate CODAvision
 
 3. **Install CUDA Toolkit and cuDNN**
   
@@ -24,9 +24,9 @@ CODA Vision is an open-source Python package designed for microanatomical tissue
     ```sh
     conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
 
-4. **Install CODA Vision**
+4. **Install CODAvision**
   
-    Install the CODA Vision package using pip:
+    Install the CODAvision package using pip:
     
     ```sh
     pip install -e git+https://github.com/Valentinamatos/CODA_python.git#egg=ANACODA
