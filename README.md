@@ -8,7 +8,7 @@ CODAvision is an open-source Python package designed for microanatomical tissue 
 
    Follow the instructions [here](https://docs.anaconda.com/miniconda/) to download and install Miniconda.
 
-2. **Create and Activate the CODA Vision Environment**
+2. **Create and Activate the CODAvision Environment**
 
     Open your terminal or command prompt and run the following commands:
     
