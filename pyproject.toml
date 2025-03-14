@@ -7,7 +7,7 @@ name = "CODAvision"
 version = "0.1.0"
 description = "CODAvision is an open-source Python package designed for medical image labeling."
 readme = "README.md"
-license = { file = "LICENSED.txt" }
+license = { file = "LICENSE.txt" }
 
 authors = [
     { name = "Valentina Matos-Romero", email = "vmatosr1@jh.edu" },
