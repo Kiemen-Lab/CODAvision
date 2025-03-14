@@ -8,21 +8,21 @@ Authors:
     Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated March 11, 2025
+Updated March 13, 2025
 """
 
 import os
 import numpy as np
-import pickle
 from typing import Dict, List, Optional, Tuple, Union, Any
 
 from tifffile import imread
 from skimage.morphology import remove_small_objects
 from PIL import Image
 
-from .load_annotation_data import load_annotation_data
-from .classify_images import classify_images
-from .Plot_confussion_matrix import plot_confusion_matrix
+from base.load_annotation_data import load_annotation_data
+from base.classify_images import classify_images
+from base.Plot_confussion_matrix import ConfusionMatrixVisualizer
+from base.model_utils import load_model_metadata, get_model_paths
 
 import warnings
 
@@ -56,6 +56,7 @@ class SegmentationModelTester:
         self.nwhite = None
         self.class_names = None
         self.model_type = None
+        self.model_paths = None
 
         self._load_model_data()
 
@@ -67,22 +68,16 @@ class SegmentationModelTester:
             FileNotFoundError: If the model data file doesn't exist
             ValueError: If essential parameters are missing
         """
-        data_file = os.path.join(self.model_path, 'net.pkl')
-
-        if not os.path.exists(data_file):
-            raise FileNotFoundError(f"Model data file not found: {data_file}")
-
         try:
-            with open(data_file, 'rb') as f:
-                self.model_data = pickle.load(f)
+            self.model_data = load_model_metadata(self.model_path)
 
             self.nblack = self.model_data.get('nblack')
             self.nwhite = self.model_data.get('nwhite')
             self.class_names = self.model_data.get('classNames')
-            self.model_type = self.model_data.get('model_type')
+            self.model_type = self.model_data.get('model_type', "DeepLabV3_plus")
 
-            if None in [self.nblack, self.nwhite, self.class_names, self.model_type]:
-                raise ValueError("Missing required parameters in model data file")
+            # Get standard paths for model files
+            self.model_paths = get_model_paths(self.model_path, self.model_type)
 
         except Exception as e:
             raise ValueError(f"Failed to load model data: {e}")
@@ -118,7 +113,7 @@ class SegmentationModelTester:
             ValueError: If preparation fails
         """
         try:
-            # Prepare test data using existing functions
+            # Load test annotation data
             test_data_path = os.path.join(self.test_annotation_path, 'data py')
 
             # Load annotation data
@@ -162,10 +157,10 @@ class SegmentationModelTester:
             annotation_file_png = os.path.join(annotation_path, 'view_annotations.png')
             annotation_file_raw_png = os.path.join(annotation_path, 'view_annotations_raw.png')
 
-            # Check if annotation files exist
+            # Check if annotation file exists
             if os.path.exists(annotation_file_png) or os.path.exists(annotation_file_raw_png):
                 try:
-                    # Load annotation image
+                    # Load ground truth
                     if os.path.exists(annotation_file_png):
                         ground_truth = self.read_image_as_double(annotation_file_png)
                     else:
@@ -174,7 +169,7 @@ class SegmentationModelTester:
                     print(e)
                     continue
 
-                # Load prediction image
+                # Load prediction
                 try:
                     prediction = imread(os.path.join(classified_path, folder + '.tif'))
                     prediction_array = np.array(prediction)
@@ -182,14 +177,14 @@ class SegmentationModelTester:
                     print(f"Error loading prediction for {folder}: {e}")
                     continue
 
-                # Clean up small objects in ground truth
+                # Clean small objects from ground truth
                 for label in range(0, int(ground_truth.max())):
                     mask = ground_truth == label
                     ground_truth[mask] = 0
                     cleaned_mask = remove_small_objects(mask.astype(bool), min_size=25, connectivity=2)
                     ground_truth[cleaned_mask] = label
 
-                # Extract non-zero pixels for comparison
+                # Extract non-zero pixels
                 non_zero_indices = np.where(ground_truth > 0)
 
                 if len(non_zero_indices[0]) > 0:
@@ -214,15 +209,15 @@ class SegmentationModelTester:
         Raises:
             ValueError: If there are missing classes in the test dataset
         """
-        # Remove 'black' class from class names list for analysis
+        # Get class names excluding last one (usually background)
         class_names = self.class_names[:-1]
         num_classes = len(class_names)
 
-        # Count occurrences of each class
+        # Count labels
         label_counts = np.histogram(true_labels, bins=num_classes)[0]
         label_percentages = (label_counts / label_counts.max() * 100).astype(int)
 
-        # Display class distribution
+        # Display statistics
         print('\nCalculating total number of pixels in the testing dataset...')
         for i, count in enumerate(label_counts):
             if label_percentages[i] == 100:
@@ -238,7 +233,7 @@ class SegmentationModelTester:
                     print(f"\n No testing annotations exist for class {class_names[i]}.")
             raise ValueError("Cannot make confusion matrix. Please add testing annotations of missing class(es).")
 
-        # Warn about classes with few samples
+        # Check for insufficient annotations
         min_recommended_pixels = 15000
         for i, count in enumerate(label_counts):
             if count < min_recommended_pixels:
@@ -261,7 +256,7 @@ class SegmentationModelTester:
         Returns:
             Tuple of (balanced true labels, balanced predicted labels)
         """
-        # Determine minimum sample size (with adjustment based on count)
+        # Calculate minimum count for balanced sampling
         min_count = label_counts.min()
         if min_count < 100:
             min_count = min_count * 10
@@ -270,7 +265,7 @@ class SegmentationModelTester:
         else:
             min_count = min_count
 
-        # Balance samples across classes
+        # Create balanced datasets
         balanced_true_labels = []
         balanced_predicted_labels = []
 
@@ -294,7 +289,7 @@ class SegmentationModelTester:
         Returns:
             Confusion matrix as a numpy array
         """
-        # Process predictions to handle black class
+        # Process predictions
         processed_predictions = balanced_predicted.copy()
         processed_predictions[processed_predictions == self.nblack] = self.nwhite
 
@@ -310,7 +305,7 @@ class SegmentationModelTester:
                     (processed_predictions == pred_label)
                 )
 
-        # Clean up any NaN values
+        # Handle invalid values
         confusion_data[np.isnan(confusion_data)] = 0
 
         return confusion_data
@@ -328,30 +323,34 @@ class SegmentationModelTester:
         print("Testing segmentation model......")
 
         try:
-            # Step 1: Prepare test data
+            # Prepare test data
             classified_path = self.prepare_test_data()
 
-            # Step 2: Collect prediction data
+            # Collect prediction data
             true_labels, predicted_labels = self.collect_prediction_data(classified_path)
 
-            # Step 3: Analyze class distribution
+            # Analyze class distribution
             label_counts = self.analyze_class_distribution(true_labels)
 
-            # Step 4: Balance samples
+            # Balance samples for fair evaluation
             balanced_true, balanced_predicted = self.balance_samples(
                 true_labels, predicted_labels, label_counts
             )
 
-            # Step 5: Create confusion matrix
+            # Create confusion matrix
             confusion_matrix = self.create_confusion_matrix(balanced_true, balanced_predicted)
 
-            # Step 6: Plot confusion matrix and get metrics
-            class_names = self.class_names[:-1]  # Remove 'black' class
-            confusion_with_metrics = plot_confusion_matrix(
-                confusion_matrix, class_names, self.model_path, self.model_type
+            # Visualize confusion matrix
+            class_names = self.class_names[:-1]  # Exclude background class
+            visualizer = ConfusionMatrixVisualizer(
+                class_names=class_names,
+                output_dir=self.model_path,
+                model_name=self.model_type
             )
 
-            # Extract metrics
+            confusion_with_metrics = visualizer.visualize(confusion_matrix)
+
+            # Return results
             metrics = {
                 'confusion_matrix': confusion_matrix,
                 'confusion_with_metrics': confusion_with_metrics
