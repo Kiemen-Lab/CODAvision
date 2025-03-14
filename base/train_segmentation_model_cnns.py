@@ -30,6 +30,8 @@ import GPUtil
 
 from base.backbones import model_call, unfreeze_model
 from .logger import Logger
+from base.image_utils import read_image, create_dataset
+from base.model_utils import load_model_metadata, save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths
 
 # Suppress warnings and TensorFlow logs
 warnings.filterwarnings('ignore')
@@ -507,80 +509,33 @@ class SegmentationModelTrainer:
         # Initialize model data and parameters
         self._load_model_data()
 
-    def _setup_gpu(self) -> Dict[str, Any]:
+    def _setup_gpu(self):
         """
         Configure TensorFlow to use GPU and return GPU information.
-
-        Returns:
-            Dictionary with GPU information or empty dict if no GPU is available
         """
-        physical_devices = tf.config.list_physical_devices('GPU')
-        gpu_info = {}
-
-        if physical_devices:
-            try:
-                # Configure GPU memory growth
-                for device in physical_devices:
-                    tf.config.experimental.set_memory_growth(device, True)
-
-                # Use only the first GPU
-                tf.config.set_visible_devices(physical_devices[0], 'GPU')
-                logical_devices = tf.config.list_logical_devices('GPU')
-                print(f"TensorFlow is using the following GPU: {logical_devices[0]}")
-
-                # Get GPU memory information
-                gpus = GPUtil.getGPUs()
-                if gpus:
-                    gpu = gpus[0]  # Use the first GPU
-                    gpu_info = {
-                        'device': gpu.id,
-                        'total_memory': gpu.memoryTotal / 1024,  # GB
-                        'free_memory': gpu.memoryFree / 1024,    # GB
-                        'used_memory': gpu.memoryUsed / 1024     # GB
-                    }
-            except RuntimeError as e:
-                print(f"GPU setup error: {e}")
-        else:
-            print("No GPU available. Training will proceed on the CPU.")
-            print("Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
-
-        return gpu_info
+        return setup_gpu()
 
     def _load_model_data(self):
         """
         Load model data from the pickle file.
-
-        This method loads model configuration and parameters from
-        the provided model path.
-
-        Raises:
-            FileNotFoundError: If the model data file doesn't exist
-            ValueError: If essential parameters are missing
         """
-        data_file = os.path.join(self.model_path, 'net.pkl')
-
-        if not os.path.exists(data_file):
-            raise FileNotFoundError(f"Model data file not found: {data_file}")
-
         try:
-            with open(data_file, 'rb') as f:
-                self.model_data = pickle.load(f)
+            self.model_data = load_model_metadata(self.model_path)
 
-            # Extract key parameters
+            # Extract needed parameters
             self.class_names = self.model_data.get('classNames')
             self.image_size = self.model_data.get('sxy')
-            self.model_type = self.model_data.get('model_type')
-            self.batch_size = self.model_data.get('batch_size', 3)  # Default to 3 if not specified
+            self.model_type = self.model_data.get('model_type', "DeepLabV3_plus")
+            self.batch_size = self.model_data.get('batch_size', 3)
 
-            # Handle '+' in model_type
-            if self.model_type and '+' in self.model_type:
-                self.model_type = self.model_type.replace('+', '_plus')
+            # Get standard paths
+            self.model_paths = get_model_paths(self.model_path, self.model_type)
 
-            # Check for required parameters
+            # Validate essential parameters
             if None in [self.class_names, self.image_size, self.model_type]:
                 raise ValueError("Missing required parameters in model data file")
 
-            # Compute number of classes
+            # Set number of classes
             self.num_classes = len(self.class_names) if self.class_names else 0
 
         except Exception as e:
@@ -596,9 +551,9 @@ class SegmentationModelTrainer:
         Raises:
             ValueError: If no training or validation images are found
         """
-        # Create paths for training and validation data
-        train_path = os.path.join(self.model_path, 'training')
-        val_path = os.path.join(self.model_path, 'validation')
+        # Get paths
+        train_path = self.model_paths['train_data']
+        val_path = self.model_paths['val_data']
 
         # Find training images and masks
         train_images = sorted(glob(os.path.join(train_path, 'im', "*.png")))
@@ -615,58 +570,31 @@ class SegmentationModelTrainer:
         if not val_images or not val_masks:
             raise ValueError("No validation images or masks found")
 
-        # Create data generator and datasets
-        data_generator = DataGenerator(self.image_size, self.batch_size)
-        self.train_dataset = data_generator.create_dataset(train_images, train_masks)
-        self.val_dataset = data_generator.create_dataset(val_images, val_masks)
+        # Create datasets
+        self.train_dataset = create_dataset(
+            train_images,
+            train_masks,
+            self.image_size,
+            self.batch_size
+        )
+
+        self.val_dataset = create_dataset(
+            val_images,
+            val_masks,
+            self.image_size,
+            self.batch_size
+        )
 
         # Log the datasets if logger is available
         if self.logger:
             self.logger.log_dataset_info(self.train_dataset, "Training")
             self.logger.log_dataset_info(self.val_dataset, "Validation")
 
-    def _calculate_class_weights(self, mask_list: List[str]) -> np.ndarray:
+    def _calculate_class_weights(self, mask_list):
         """
         Calculate class weights based on pixel frequency in labels.
-
-        Args:
-            mask_list: List of paths to mask images
-
-        Returns:
-            Array of class weights
         """
-        # Initialize arrays for pixel counts and image counts
-        class_pixels = np.zeros(self.num_classes)
-        image_pixels = np.zeros(self.num_classes)
-        epsilon = 1e-5
-
-        total_pixels = self.image_size * self.image_size
-
-        # Count pixels for each class in all masks
-        for mask_path in mask_list:
-            mask = tf.keras.preprocessing.image.load_img(
-                mask_path, color_mode='grayscale')
-            mask = tf.keras.preprocessing.image.img_to_array(mask)
-            mask = mask.astype(int)
-
-            # Count pixels for each class
-            for i in range(self.num_classes):
-                pixels_in_class = np.sum(mask == i)
-                class_pixels[i] += pixels_in_class
-                if pixels_in_class > 0:
-                    image_pixels[i] += total_pixels
-
-        # Calculate frequencies
-        freq = class_pixels / (image_pixels + epsilon)
-
-        # Handle infinite or NaN values
-        freq[np.isinf(freq) | np.isnan(freq)] = epsilon
-
-        # Calculate weights using median frequency balancing
-        median_freq = np.median(freq)
-        class_weights = median_freq / (freq + epsilon)
-
-        return class_weights.astype(np.float32)
+        return calculate_class_weights(mask_list, self.num_classes)
 
     def _create_loss_function(self):
         """
@@ -804,16 +732,19 @@ class SegmentationModelTrainer:
         model_name = f"{self.model_type}.keras"
         model.save(os.path.join(self.model_path, model_name))
 
-        # Update model data with training history
-        self.model_data['history'] = history.history
-        with open(os.path.join(self.model_path, 'net.pkl'), 'wb') as f:
-            pickle.dump(self.model_data, f)
-
         # Calculate training time
         training_time = time.time() - start_time
         hours, rem = divmod(training_time, 3600)
         minutes, seconds = divmod(rem, 60)
         print(f"Training time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
+
+        # Save metadata
+        metadata_update = {
+            'history': history.history,
+            'training_completed': True,
+            'training_time': training_time
+        }
+        save_model_metadata(self.model_path, metadata_update)
 
         # Save summary if logger is available
         if self.logger:
@@ -987,7 +918,7 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
     try:
         with open(os.path.join(pthDL, 'net.pkl'), 'rb') as f:
             data = pickle.load(f)
-            model_type = data.get('model_type')
+            model_type = data.get('model_type', 'DeepLabV3_plus')
             model_name = data.get('nm', 'unknown_model')
 
         # Handle '+' in model_type
