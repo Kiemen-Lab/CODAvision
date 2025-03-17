@@ -7,7 +7,7 @@ name = "CODAvision"
 version = "0.1.0"
 description = "CODAvision is an open-source Python package designed for medical image labeling."
 readme = "README.md"
-license = { file = "LICENSE.txt" }
+license = {file = "LICENSE.txt" }
 
 authors = [
     { name = "Valentina Matos-Romero", email = "vmatosr1@jh.edu" },
@@ -19,7 +19,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.9",
-    "Topic :: Scientific/Engineering :: Image Recognition"
+    "Topic :: Scientific/Engineering :: Image Segmentation"
 ]
 
 keywords = ["medical imaging", "image labeling", "machine learning", "deep learning", "tissue labeling"]
@@ -68,3 +68,6 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 include = ["*.ipynb", "*.qss"]
+
+[project.scripts]
+CODAvision = "CODAvision:main"

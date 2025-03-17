@@ -7,7 +7,7 @@ configuring, and manipulating these models.
 
 The implementations follow object-oriented design principles and modern Python
 coding standards while maintaining backward compatibility with the rest of the
-CODA_python codebase.
+CODAvision codebase.
 
 Original DeepLabV3+ implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
 
