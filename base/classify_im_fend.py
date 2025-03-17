@@ -10,10 +10,11 @@ from base.quantify_objects import quantify_objects
 from base.quantify_images import quantify_images
 import os
 import cv2
+
 import pandas as pd
 from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush, QImage, QPixmap, QMouseEvent, QFont
 from PySide6.QtWidgets import (QColorDialog, QHeaderView, QDialog, QPushButton, QLabel, QVBoxLayout,
-                               QProgressBar, QGraphicsPixmapItem)
+                               QProgressBar, QProgressDialog, QGraphicsPixmapItem)
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 import pickle
 
@@ -261,84 +262,61 @@ class MainWindowClassify(QtWidgets.QMainWindow):
             self.ui.overlay.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             self.ui.overlay.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-    def apply_new_cmap(self, classification_path, image_path, overwrite = False):
-        save_path = os.path.join(classification_path, 'check_classification')
-        os.makedirs(save_path, exist_ok=True)
-        imlist = [im for im in os.listdir(classification_path) if im.lower().endswith(('.tif','.tiff'))]
-        count = 1
-        for im in imlist:
-            if im[-4:] == 'tiff' or im[-4:] == 'jpg2':
-                im_jpg = im[:-4]
-                im_jpg = im_jpg + 'jpg'
-            else:
-                im_jpg = im[:-3]
-                im_jpg = im_jpg + 'jpg'
-            print(f'  Applying colormap to image {count} of {len(imlist)}: {im}')
-            if (not os.path.isfile(os.path.join(save_path, im_jpg))) or overwrite:
-                im0 = cv2.imread(os.path.join(classification_path, im), cv2.IMREAD_GRAYSCALE)  # Mask
-                im1 = cv2.imread(os.path.join(image_path, im))  # Image
-                if im1 is None:
-                    im1 = cv2.imread(os.path.join(image_path, im[:-3]+'png'))  # Image
-                if im1 is None:
-                    im1 = cv2.imread(os.path.join(image_path, im[:-3]+'jpg'))  # Image
-                im1 = im1[:, :, ::-1]
-                r = np.zeros_like(im0).astype(np.uint8)
-                g = np.zeros_like(im0).astype(np.uint8)
-                b = np.zeros_like(im0).astype(np.uint8)
-                for l in range(1, len(self.classNames)):
-                    idx = im0 == l
-                    r[idx] = self.cmap[l - 1, 0]
-                    g[idx] = self.cmap[l - 1, 1]
-                    b[idx] = self.cmap[l - 1, 2]
-                prediction_cmap = np.stack([r, g, b], axis=2)
-                overlay = cv2.addWeighted(im1, 0.65, prediction_cmap, 0.35, 0)
-                overlay = overlay[:,:,::-1]
-                cv2.imwrite(os.path.join(save_path,im_jpg), overlay)
-            else:
-                print(f'  Image {im} already classified with this colormap')
-            count += 1
-
-
     def apply_changes(self):
-        for index in range(self.ui.classify_LW.count()):
-            item = self.ui.classify_LW.item(index)
-            image_path = item.text()
-            classification_path = os.path.join(item.text(),'classification_'+self.nm+'_'+self.model_type)
-            classify_images(os.path.normpath(item.text()),os.path.join(self.train_fold,self.nm), self.model_type,disp=False)
-            quantify_images(os.path.join(self.train_fold,self.nm), os.path.normpath(item.text()))
-            datafile = os.path.join(classification_path, 'cmap.pkl')
-            try:
-                with open(datafile, 'rb') as file:
-                    data = pickle.load(file)
-                    cmap = data['cmap']
-                    if np.array_equal(cmap, self.cmap):
-                        overwrite = False
-                    else:
-                        overwrite = True
-            except:
-                overwrite = True
-            if os.path.isdir(classification_path) and os.path.isdir(os.path.join(classification_path,'check_classification')) and not overwrite:
-                num_images = len([f for f in os.listdir(classification_path) if f.lower().endswith(('.tif', '.tiff','.jpg','.png'))])
-                num_check_images = len([f for f in os.listdir(os.path.join(classification_path,'check_classification')) if f.lower().endswith('.jpg')])
-                if num_images != num_check_images:
-                    self.apply_new_cmap(classification_path,image_path)
-                else:
-                    print('  All images already classified with this colormap')
-            else:
-                self.apply_new_cmap(classification_path,image_path, overwrite)
-            quantify_tissues = []
-            for row in range(self.ui.component_TW.rowCount()):
-                item = self.ui.component_TW.item(row, 0)
-                if item.checkState() == Qt.Checked and (not os.path.isfile(os.path.join(classification_path,item.text()+'_count_analysis.csv'))):
-                    quantify_tissues.append(row+1)
-            quantify_tissues = list(set(quantify_tissues))
-            if len(quantify_tissues) > 0:
-                for tissue in quantify_tissues:
-                    quantify_objects(self.pathDL,classification_path,tissue)
-            data = {'cmap':self.cmap.copy()}
-            with open(datafile, 'wb') as f:
-                pickle.dump(data, f)
         self.close()
+        self.progress_window = ProgressWindow(self.pathDL, self.classNames, self.cmap, self.ui.classify_LW, self.nm,
+                                              self.model_type,self.train_fold, self.ui.component_TW)
+        self.progress_window.show()
+
+
+class ProgressWindow(QDialog):
+    """Displays a progress bar in a dialog while a function runs."""
+    def __init__(self, pthDL, classNames, cmap, list, nm, model_type, train_fold, tissue_list):
+        super().__init__()
+
+        self.setWindowTitle("Processing...")
+        self.setWindowModality(Qt.ApplicationModal)
+        self.setMinimumWidth(800)
+
+        # Layout
+        layout = QVBoxLayout()
+
+        # Label for status
+        self.label = QLabel("Processing in progress...")
+        self.label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.label)
+
+        # Progress bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, list.count() * 4)  # Total steps
+        layout.addWidget(self.progress_bar)
+
+        # Status label
+        self.status_label = QLabel("Initializing...")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.status_label)
+
+        # Close button (hidden until processing is complete)
+        self.close_button = QPushButton("Close")
+        self.close_button.setVisible(False)
+        self.close_button.clicked.connect(self.accept)  # Close the dialog
+        layout.addWidget(self.close_button)
+
+        self.setLayout(layout)
+
+        # Start the worker thread
+        self.worker = WorkerThread(pthDL, classNames, cmap, list, nm, model_type, train_fold, tissue_list)
+        self.worker.progress_updated.connect(self.progress_bar.setValue)
+        self.worker.message_updated.connect(self.status_label.setText)
+        self.worker.finished_signal.connect(self.on_finished)
+        self.worker.start()
+
+    def on_finished(self):
+        """Handles completion by updating UI and delaying close."""
+        self.label.setText("Processing Complete!")
+        self.progress_bar.setValue(self.progress_bar.maximum())  # Ensure it's full
+        self.close_button.setVisible(True)  # Show close button
+        QTimer.singleShot(3000, self.accept)  # Delay close for 3 seconds
 
 class ImageLoader(QObject):
     loaded = Signal(QImage)
@@ -393,6 +371,122 @@ class ProcessThread(QThread):
 
     def run(self):
         self.loader.load_image()
+
+
+class WorkerThread(QThread):
+    """Runs a long task using input from the GUI without freezing the UI."""
+    progress_updated = Signal(int)
+    message_updated = Signal(str)
+    finished_signal = Signal()  # Signal to send results back
+
+    def __init__(self, pthDL,classNames, cmap, list, name, model_type, train_fold, tissue_list):
+        super().__init__()
+        self.classNames = classNames
+        self.pthDL = pthDL
+        self.cmap = cmap
+        self.list = list
+        self.nm = name
+        self.model_type = model_type
+        self.train_fold = train_fold
+        self.tissue_list = tissue_list
+
+    def apply_new_cmap(self, classification_path, image_path, overwrite = False):
+        save_path = os.path.join(classification_path, 'check_classification')
+        os.makedirs(save_path, exist_ok=True)
+        imlist = [im for im in os.listdir(classification_path) if im.lower().endswith(('.tif','.tiff'))]
+        count = 1
+        for im in imlist:
+            if im[-4:] == 'tiff' or im[-4:] == 'jpg2':
+                im_jpg = im[:-4]
+                im_jpg = im_jpg + 'jpg'
+            else:
+                im_jpg = im[:-3]
+                im_jpg = im_jpg + 'jpg'
+            print(f'  Applying colormap to image {count} of {len(imlist)}: {im}')
+            if (not os.path.isfile(os.path.join(save_path, im_jpg))) or overwrite:
+                im0 = cv2.imread(os.path.join(classification_path, im), cv2.IMREAD_GRAYSCALE)  # Mask
+                im1 = cv2.imread(os.path.join(image_path, im))  # Image
+                if im1 is None:
+                    im1 = cv2.imread(os.path.join(image_path, im[:-3]+'png'))  # Image
+                if im1 is None:
+                    im1 = cv2.imread(os.path.join(image_path, im[:-3]+'jpg'))  # Image
+                im1 = im1[:, :, ::-1]
+                r = np.zeros_like(im0).astype(np.uint8)
+                g = np.zeros_like(im0).astype(np.uint8)
+                b = np.zeros_like(im0).astype(np.uint8)
+                for l in range(1, len(self.classNames)):
+                    idx = im0 == l
+                    r[idx] = self.cmap[l - 1, 0]
+                    g[idx] = self.cmap[l - 1, 1]
+                    b[idx] = self.cmap[l - 1, 2]
+                prediction_cmap = np.stack([r, g, b], axis=2)
+                overlay = cv2.addWeighted(im1, 0.65, prediction_cmap, 0.35, 0)
+                overlay = overlay[:,:,::-1]
+                cv2.imwrite(os.path.join(save_path,im_jpg), overlay)
+            else:
+                print(f'  Image {im} already classified with this colormap')
+            count += 1
+
+    def run(self):
+        progress = 0
+        for index in range(self.list.count()):
+            item = self.list.item(index)
+            image_path = item.text()
+            classification_path = os.path.join(item.text(), 'classification_' + self.nm + '_' + self.model_type)
+            self.message_updated.emit(f'Classifying images from path {index+1}/{self.list.count()}: {image_path}')
+            classify_images(os.path.normpath(item.text()), os.path.join(self.train_fold, self.nm), self.model_type,
+                            disp=False)
+            progress +=  1
+            self.progress_updated.emit(progress)
+            self.message_updated.emit(f'Quantifying images from path {index + 1}/{self.list.count()}: {image_path}')
+            quantify_images(os.path.join(self.train_fold, self.nm), os.path.normpath(item.text()))
+            progress += 1
+            self.progress_updated.emit(progress)
+            self.message_updated.emit(f'Changing colormap of images from path {index + 1}/{self.list.count()}: {image_path}')
+            datafile = os.path.join(classification_path, 'cmap.pkl')
+            try:
+                with open(datafile, 'rb') as file:
+                    data = pickle.load(file)
+                    cmap = data['cmap']
+                    if np.array_equal(cmap, self.cmap):
+                        overwrite = False
+                    else:
+                        overwrite = True
+            except:
+                overwrite = True
+            if os.path.isdir(classification_path) and os.path.isdir(
+                    os.path.join(classification_path, 'check_classification')) and not overwrite:
+                num_images = len([f for f in os.listdir(classification_path) if
+                                  f.lower().endswith(('.tif', '.tiff', '.jpg', '.png'))])
+                num_check_images = len(
+                    [f for f in os.listdir(os.path.join(classification_path, 'check_classification')) if
+                     f.lower().endswith('.jpg')])
+                if num_images != num_check_images:
+                    self.apply_new_cmap(classification_path, image_path)
+                else:
+                    print('  All images already classified with this colormap')
+            else:
+                self.apply_new_cmap(classification_path, image_path, overwrite)
+            progress +=  1
+            self.progress_updated.emit(progress)
+            self.message_updated.emit(f'Quantifying tissues of images from path {index + 1}/{self.list.count()}: {image_path}')
+            quantify_tissues = []
+            for row in range(self.tissue_list.rowCount()):
+                item = self.tissue_list.item(row, 0)
+                if item.checkState() == Qt.Checked and (
+                not os.path.isfile(os.path.join(classification_path, item.text() + '_count_analysis.csv'))):
+                    quantify_tissues.append(row + 1)
+            quantify_tissues = list(set(quantify_tissues))
+            if len(quantify_tissues) > 0:
+                for tissue in quantify_tissues:
+                    quantify_objects(self.pthDL, classification_path, tissue)
+            progress += 1
+            self.progress_updated.emit(progress)
+            data = {'cmap': self.cmap.copy()}
+            with open(datafile, 'wb') as f:
+                pickle.dump(data, f)
+        self.message_updated.emit('')
+        self.finished_signal.emit()  # Send result back
 
 
 if __name__ == '__main__':
