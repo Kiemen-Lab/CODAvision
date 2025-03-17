@@ -15,7 +15,7 @@ from typing import Optional, Union, Tuple
 import numpy as np
 import tensorflow as tf
 
-from base.image_utils import read_image
+from base.image.utils import read_image
 
 
 class SemanticSegmenter:

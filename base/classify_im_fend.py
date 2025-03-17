@@ -5,7 +5,7 @@ Date: October 22, 2024
 
 from PySide6 import QtWidgets, QtCore
 from base.classify_im import Ui_MainWindow
-from base.classify_images import classify_images
+from base.images.classification import classify_images
 from base.quantify_objects import quantify_objects
 from base.quantify_images import quantify_images
 import os
