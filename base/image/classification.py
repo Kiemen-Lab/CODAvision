@@ -38,10 +38,10 @@ from PIL import Image
 from typing import Tuple, Optional, List
 from scipy.ndimage import binary_fill_holes
 
-from base.model_utils import load_model_metadata, get_model_paths
-from base.Semanticseg import semantic_seg
+from base.models.utils import load_model_metadata, get_model_paths
+from base.image.segmentation import semantic_seg
 from base.make_overlay import make_overlay
-from base.image_utils import decode_segmentation_masks, get_overlay
+from base.image.utils import decode_segmentation_masks, get_overlay
 
 
 class ImageClassifier:
@@ -133,7 +133,7 @@ class ImageClassifier:
                 if not os.path.exists(model_path):
                     raise FileNotFoundError(f"No model file found at {model_path}")
 
-            from base.backbones import model_call
+            from base.models.backbones import model_call
             model = model_call(self.model_type, IMAGE_SIZE=self.image_size, NUM_CLASSES=len(self.class_names))
             model.load_weights(model_path)
 

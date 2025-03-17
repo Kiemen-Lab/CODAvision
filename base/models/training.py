@@ -28,10 +28,10 @@ from tensorflow import data as tf_data
 from tensorflow import io as tf_io
 import GPUtil
 
-from base.backbones import model_call, unfreeze_model
-from .logger import Logger
-from base.image_utils import read_image, create_dataset
-from base.model_utils import load_model_metadata, save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths
+from base.models.backbones import model_call, unfreeze_model
+from base.utils.logger import Logger
+from base.image.utils import read_image, create_dataset
+from base.models.utils import load_model_metadata, save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths
 
 # Suppress warnings and TensorFlow logs
 warnings.filterwarnings('ignore')

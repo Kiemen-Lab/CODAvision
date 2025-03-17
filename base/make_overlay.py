@@ -17,7 +17,7 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
-from base.image_utils import convert_to_array, decode_segmentation_masks, get_overlay
+from base.image.utils import convert_to_array, decode_segmentation_masks, get_overlay
 
 
 def read_image_overlay(image_input):
