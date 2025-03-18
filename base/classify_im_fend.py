@@ -296,6 +296,11 @@ class ProgressWindow(QDialog):
         self.status_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.status_label)
 
+        # Cancel button
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.clicked.connect(self.cancel_operation)
+        layout.addWidget(self.cancel_button)
+
         # Close button (hidden until processing is complete)
         self.close_button = QPushButton("Close")
         self.close_button.setVisible(False)
@@ -311,12 +316,26 @@ class ProgressWindow(QDialog):
         self.worker.finished_signal.connect(self.on_finished)
         self.worker.start()
 
-    def on_finished(self):
+    def on_finished(self, reason):
         """Handles completion by updating UI and delaying close."""
-        self.label.setText("Processing Complete!")
-        self.progress_bar.setValue(self.progress_bar.maximum())  # Ensure it's full
-        self.close_button.setVisible(True)  # Show close button
-        QTimer.singleShot(3000, self.accept)  # Delay close for 3 seconds
+        if reason == 'Completed':
+            self.label.setText("Processing Complete!")
+            self.progress_bar.setValue(self.progress_bar.maximum())  # Ensure it's full
+            self.close_button.setVisible(True)  # Show close button
+            self.cancel_button.setVisible(False)
+            QTimer.singleShot(3000, self.accept)  # Delay close for 3 seconds
+        else:
+            self.close()
+
+    def cancel_operation(self):
+        """Handles cancel button click."""
+        self.worker.stop()  # Stop the worker thread
+        self.worker.wait()
+
+    def closeEvent(self, event):
+        """Handle X button click (window close)."""
+        self.cancel_operation()  # Call the same function as the cancel button
+        event.accept()
 
 class ImageLoader(QObject):
     loaded = Signal(QImage)
@@ -377,7 +396,7 @@ class WorkerThread(QThread):
     """Runs a long task using input from the GUI without freezing the UI."""
     progress_updated = Signal(int)
     message_updated = Signal(str)
-    finished_signal = Signal()  # Signal to send results back
+    finished_signal = Signal(str)  # Signal to send results back
 
     def __init__(self, pthDL,classNames, cmap, list, name, model_type, train_fold, tissue_list):
         super().__init__()
@@ -389,6 +408,11 @@ class WorkerThread(QThread):
         self.model_type = model_type
         self.train_fold = train_fold
         self.tissue_list = tissue_list
+        self.is_running=True
+
+    def stop(self):
+        """Stops the thread."""
+        self.is_running = False
 
     def apply_new_cmap(self, classification_path, image_path, overwrite = False):
         save_path = os.path.join(classification_path, 'check_classification')
@@ -434,12 +458,21 @@ class WorkerThread(QThread):
             image_path = item.text()
             classification_path = os.path.join(item.text(), 'classification_' + self.nm + '_' + self.model_type)
             self.message_updated.emit(f'Classifying images from path {index+1}/{self.list.count()}: {image_path}')
-            classify_images(os.path.normpath(item.text()), os.path.join(self.train_fold, self.nm), self.model_type,
+            if self.is_running:
+                classify_images(os.path.normpath(item.text()), os.path.join(self.train_fold, self.nm), self.model_type,
                             disp=False)
+            else:
+                self.finished_signal.emit('Cancel')
+                return
             progress +=  1
             self.progress_updated.emit(progress)
             self.message_updated.emit(f'Quantifying images from path {index + 1}/{self.list.count()}: {image_path}')
-            quantify_images(os.path.join(self.train_fold, self.nm), os.path.normpath(item.text()))
+
+            if self.is_running:
+                quantify_images(os.path.join(self.train_fold, self.nm), os.path.normpath(item.text()))
+            else:
+                self.finished_signal.emit('Cancel')
+                return
             progress += 1
             self.progress_updated.emit(progress)
             self.message_updated.emit(f'Changing colormap of images from path {index + 1}/{self.list.count()}: {image_path}')
@@ -454,39 +487,47 @@ class WorkerThread(QThread):
                         overwrite = True
             except:
                 overwrite = True
-            if os.path.isdir(classification_path) and os.path.isdir(
-                    os.path.join(classification_path, 'check_classification')) and not overwrite:
-                num_images = len([f for f in os.listdir(classification_path) if
-                                  f.lower().endswith(('.tif', '.tiff', '.jpg', '.png'))])
-                num_check_images = len(
-                    [f for f in os.listdir(os.path.join(classification_path, 'check_classification')) if
-                     f.lower().endswith('.jpg')])
-                if num_images != num_check_images:
-                    self.apply_new_cmap(classification_path, image_path)
+            if self.is_running:
+                if os.path.isdir(classification_path) and os.path.isdir(
+                        os.path.join(classification_path, 'check_classification')) and not overwrite:
+                    num_images = len([f for f in os.listdir(classification_path) if
+                                      f.lower().endswith(('.tif', '.tiff', '.jpg', '.png'))])
+                    num_check_images = len(
+                        [f for f in os.listdir(os.path.join(classification_path, 'check_classification')) if
+                         f.lower().endswith('.jpg')])
+                    if num_images != num_check_images:
+                        self.apply_new_cmap(classification_path, image_path)
+                    else:
+                        print('  All images already classified with this colormap')
                 else:
-                    print('  All images already classified with this colormap')
+                    self.apply_new_cmap(classification_path, image_path, overwrite)
             else:
-                self.apply_new_cmap(classification_path, image_path, overwrite)
+                self.finished_signal.emit('Cancel')
+                return
             progress +=  1
             self.progress_updated.emit(progress)
             self.message_updated.emit(f'Quantifying tissues of images from path {index + 1}/{self.list.count()}: {image_path}')
             quantify_tissues = []
-            for row in range(self.tissue_list.rowCount()):
-                item = self.tissue_list.item(row, 0)
-                if item.checkState() == Qt.Checked and (
-                not os.path.isfile(os.path.join(classification_path, item.text() + '_count_analysis.csv'))):
-                    quantify_tissues.append(row + 1)
-            quantify_tissues = list(set(quantify_tissues))
-            if len(quantify_tissues) > 0:
-                for tissue in quantify_tissues:
-                    quantify_objects(self.pthDL, classification_path, tissue)
+            if self.is_running:
+                for row in range(self.tissue_list.rowCount()):
+                    item = self.tissue_list.item(row, 0)
+                    if item.checkState() == Qt.Checked and (
+                    not os.path.isfile(os.path.join(classification_path, item.text() + '_count_analysis.csv'))):
+                        quantify_tissues.append(row + 1)
+                quantify_tissues = list(set(quantify_tissues))
+                if len(quantify_tissues) > 0:
+                    for tissue in quantify_tissues:
+                        quantify_objects(self.pthDL, classification_path, tissue)
+            else:
+                self.finished_signal.emit('Cancel')
+                return
             progress += 1
             self.progress_updated.emit(progress)
             data = {'cmap': self.cmap.copy()}
             with open(datafile, 'wb') as f:
                 pickle.dump(data, f)
         self.message_updated.emit('')
-        self.finished_signal.emit()  # Send result back
+        self.finished_signal.emit('Completed')  # Send result back
 
 
 if __name__ == '__main__':
