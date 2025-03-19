@@ -19,6 +19,27 @@ from base import save_model_metadata_GUI
 pd.set_option('display.max_columns', None)
 
 
+def read_xml_with_encoding(xml_path):
+    """Helper function to read XML files with proper encoding detection."""
+    encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'ISO-8859-1', 'cp1252']
+
+    # First try reading in binary mode to detect encoding
+    with open(xml_path, 'rb') as binary_file:
+        raw_data = binary_file.read()
+
+        # Try each encoding
+        for encoding in encodings_to_try:
+            try:
+                decoded_text = raw_data.decode(encoding)
+                # If successful, return the text and encoding
+                return decoded_text, encoding
+            except UnicodeDecodeError:
+                continue
+
+    # If all encodings fail, use latin-1 with error replacement
+    return raw_data.decode('latin-1', errors='replace'), 'latin-1'
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()  # Use super() to initialize the parent class
@@ -126,33 +147,45 @@ class MainWindow(QtWidgets.QMainWindow):
         if xml_file:
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
-                self.original_df = self.df.copy()  # Initialize original_df after loading data
+                self.original_df = self.df.copy()
                 print(f"Loaded XML file: {xml_file}")
                 print(self.df)
                 self.populate_table_widget()
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
+                import traceback
+                print(traceback.format_exc())
         else:
             QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
 
     def parse_xml_to_dataframe(self, xml_file):
-        with open(xml_file, 'r', encoding='utf-8') as file:
-            xml_content = file.read()
+        """
+        Parse XML file to DataFrame with improved encoding handling.
+        """
+        try:
+            # Use our helper function to detect encoding
+            xml_content, detected_encoding = read_xml_with_encoding(xml_file)
+            print(f'Detected XML encoding: {detected_encoding}')
 
-        xml_dict = xmltodict.parse(xml_content)
+            xml_dict = xmltodict.parse(xml_content)
 
-        annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
-        data = []
-        for layer in annotations:
-            layer_name = layer.get('@Name')
-            color = layer.get('@LineColor')
-            rgb = self.int_to_rgb(color)
-            data.append(
-                {'Layer Name': layer_name.replace(" ", "_") , 'Color': rgb, 'Whitespace Settings': None})  # Add whitespace settings
+            annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
+            data = []
+            for layer in annotations:
+                layer_name = layer.get('@Name')
+                color = layer.get('@LineColor')
+                rgb = self.int_to_rgb(color)
+                data.append(
+                    {'Layer Name': layer_name.replace(" ", "_"), 'Color': rgb, 'Whitespace Settings': None})
 
-        df = pd.DataFrame(data)
-        self.original_df = df.copy()  # Save the original dataframe for resetting
-        return df
+            df = pd.DataFrame(data)
+            self.original_df = df.copy()
+            return df
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
+            import traceback
+            print(traceback.format_exc())
+            return pd.DataFrame()
 
     def int_to_rgb(self, hex_color):
         hex_color = int(hex_color)
