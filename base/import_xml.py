@@ -7,6 +7,7 @@ import os
 import pickle
 import time
 import numpy as np
+import shutil
 
 
 def import_xml(annotations_file, xmlfile, dm=None, ra=None):
@@ -40,8 +41,10 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
         if ra == 1:
             reduced_annotations = ra
         xyout_df.iloc[:, 2:4] = xyout_df.iloc[:, 2:4] * reduced_annotations
-        # Create the necessary directories if they don't exist
+
+        # Create the necessary directories if they don't exist only for images which have annotations
         annotations_dir = os.path.dirname(annotations_file)
+
         if not os.path.exists(annotations_dir):
             os.makedirs(annotations_dir)
 
@@ -61,4 +64,11 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             print(' Creating file...')
             with open(annotations_file, 'wb') as f:
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
+    else:
+        # Delete the subfolder prior to the annotations file if xyout_df is empty
+        outpth = os.path.dirname(annotations_file)
+        print(f'   WARNING: No annotations found in {xmlfile}, deleting the subfolder {outpth}')
+        if os.path.isdir(outpth):
+                shutil.rmtree(outpth)
+
     return xyout_df, reduced_annotations
