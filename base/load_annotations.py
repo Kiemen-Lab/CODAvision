@@ -5,6 +5,8 @@ Date: May 05, 2024
 
 import xmltodict
 import pandas as pd
+import io
+import codecs
 
 
 def load_annotations(xml_file):
@@ -20,22 +22,34 @@ def load_annotations(xml_file):
        - xyout_df (pandas.DataFrame): DataFrame containing the annotation labels and coordinates, organized as:
            'Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'.
        """
+    # Try to detect encoding first
+    encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'ISO-8859-1', 'cp1252']
+    detected_encoding = None
 
-    # Use xmltodict to directly parse the XML file
-    encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'ISO-8859-1']
-    my_dict = None
+    # First try reading in binary mode to detect encoding
+    with open(xml_file, 'rb') as binary_file:
+        raw_data = binary_file.read()
 
-    for encoding in encodings_to_try:
-        try:
-            with open(xml_file, 'r', encoding=encoding) as file:
-                my_xml = file.read()
-                my_dict = xmltodict.parse(my_xml)
-                break  # If successful, exit the loop
-        except UnicodeDecodeError:
-            continue  # Try the next encoding
+        # Try each encoding
+        for encoding in encodings_to_try:
+            try:
+                decoded_text = raw_data.decode(encoding)
+                detected_encoding = encoding
+                break
+            except UnicodeDecodeError:
+                continue
 
-    if my_dict is None:
-        raise ValueError(f"Failed to parse XML file {xml_file} with any of the attempted encodings.")
+    if detected_encoding is None:
+        # If we can't detect the encoding, try a more desperate approach with error handling
+        detected_encoding = 'latin-1'  # This will read almost anything, but might produce wrong characters
+
+    # Now read with the detected encoding
+    try:
+        with open(xml_file, 'r', encoding=detected_encoding, errors='replace') as file:
+            my_xml = file.read()
+            my_dict = xmltodict.parse(my_xml)
+    except Exception as e:
+        raise ValueError(f"Failed to parse XML file {xml_file} with encoding {detected_encoding}: {str(e)}")
 
     xyout = []
 
