@@ -1,89 +1,24 @@
 """
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: April 15, 2024
+Updated to use xml_handler module.
+
+Authors:
+    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
+    Tyler Newton (JHU - DSAI)
+
+Updated: March 19, 2025
 """
 from .load_annotations import load_annotations
 import os
 import pickle
 import time
 import numpy as np
-
-
-def read_xml_with_encoding(xml_path, debug=True):
-    """
-    Helper function to read XML files with proper encoding detection.
-    Handles BOM and provides detailed debugging information.
-    """
-    import codecs
-
-    # First check if the file exists
-    if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
-
-    # Read the raw bytes
-    with open(xml_path, 'rb') as binary_file:
-        raw_data = binary_file.read()
-
-    # Debug: Print the first few bytes to examine content
-    if debug:
-        print(f"File size: {len(raw_data)} bytes")
-        print(f"First 20 bytes: {' '.join(f'{b:02x}' for b in raw_data[:20])}")
-
-    # Check for known BOMs and remove them
-    bom_encodings = {
-        codecs.BOM_UTF8: 'utf-8',
-        codecs.BOM_UTF16_LE: 'utf-16-le',
-        codecs.BOM_UTF16_BE: 'utf-16-be',
-        codecs.BOM_UTF32_LE: 'utf-32-le',
-        codecs.BOM_UTF32_BE: 'utf-32-be',
-    }
-
-    for bom, encoding in bom_encodings.items():
-        if raw_data.startswith(bom):
-            if debug:
-                print(f"Found BOM for encoding: {encoding}")
-            # Remove the BOM
-            raw_data = raw_data[len(bom):]
-            # Try to decode with the detected encoding
-            try:
-                return raw_data.decode(encoding), encoding
-            except UnicodeDecodeError:
-                # If it still fails, continue to try other encodings
-                pass
-
-    # Try various encodings
-    encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'ISO-8859-1', 'cp1252']
-    for encoding in encodings_to_try:
-        try:
-            decoded_text = raw_data.decode(encoding)
-            # Check if the decoded text looks like XML
-            if decoded_text.strip().startswith('<?xml') or decoded_text.strip().startswith('<Annotations'):
-                if debug:
-                    print(f"Successfully decoded with {encoding}, content starts with XML declaration")
-                return decoded_text, encoding
-            else:
-                if debug:
-                    first_chars = decoded_text.strip()[:50]
-                    print(f"Decoded with {encoding}, but content doesn't look like XML. Starts with: {first_chars}")
-        except UnicodeDecodeError:
-            if debug:
-                print(f"Failed to decode with {encoding}")
-
-    # If all above methods fail, try a desperate approach
-    try:
-        # Try using latin-1 which can decode any byte stream
-        decoded_text = raw_data.decode('latin-1', errors='replace')
-        if debug:
-            print("Falling back to latin-1 with error replacement")
-        return decoded_text, 'latin-1'
-    except Exception as e:
-        raise ValueError(f"Failed to decode the file with any encoding: {str(e)}")
-
+import pandas as pd
 
 def import_xml(annotations_file, xmlfile, dm=None, ra=None):
     """
    Reads an XML file and imports annotation data, saving it to a pickle file.
-   'load_annotations' function to extract the annotation coordinates from an XML file, is required
+   'load_annotations' function to extract the annotation coordinates from an XML file, is required.
+   Now uses the xml_handler module through load_annotations for robust XML parsing.
 
    Parameters:
    annotations_file (str): The file path for the output pickle file.
@@ -104,12 +39,9 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
     load_start = time.time()
 
     try:
-        # Use our helper function to detect encoding
-        xml_content, detected_encoding = read_xml_with_encoding(xmlfile)
-        print(f'  Detected XML encoding: {detected_encoding}')
-
-        # Call load_annotations which now has encoding handling too
+        # Use the load_annotations function which now uses xml_handler
         reduced_annotations, xyout_df = load_annotations(xmlfile)
+
     except Exception as e:
         print(f'  Error reading XML file: {str(e)}')
         import traceback
@@ -117,8 +49,7 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
         return pd.DataFrame(), 0
 
     elapsed_time = time.time() - load_start
-    print(
-        f'Loading annotation took {np.floor(elapsed_time / 60)} minutes and {elapsed_time - 60 * np.floor(elapsed_time / 60)} seconds')
+    print(f'Loading annotation took {np.floor(elapsed_time / 60)} minutes and {elapsed_time-60*np.floor(elapsed_time / 60)} seconds')
     reduced_annotations = float(reduced_annotations)
     if not xyout_df.empty:
 

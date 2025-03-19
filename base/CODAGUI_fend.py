@@ -16,78 +16,8 @@ from PySide6.QtCore import Qt,QRegularExpression
 import pickle
 import numpy as np
 from base import save_model_metadata_GUI
+from base.utils.xml_handler import extract_annotation_layers
 pd.set_option('display.max_columns', None)
-
-
-def read_xml_with_encoding(xml_path, debug=True):
-    """
-    Helper function to read XML files with proper encoding detection.
-    Handles BOM and provides detailed debugging information.
-    """
-    import codecs
-
-    # First check if the file exists
-    if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
-
-    # Read the raw bytes
-    with open(xml_path, 'rb') as binary_file:
-        raw_data = binary_file.read()
-
-    # Debug: Print the first few bytes to examine content
-    if debug:
-        print(f"File size: {len(raw_data)} bytes")
-        print(f"First 20 bytes: {' '.join(f'{b:02x}' for b in raw_data[:20])}")
-
-    # Check for known BOMs and remove them
-    bom_encodings = {
-        codecs.BOM_UTF8: 'utf-8',
-        codecs.BOM_UTF16_LE: 'utf-16-le',
-        codecs.BOM_UTF16_BE: 'utf-16-be',
-        codecs.BOM_UTF32_LE: 'utf-32-le',
-        codecs.BOM_UTF32_BE: 'utf-32-be',
-    }
-
-    for bom, encoding in bom_encodings.items():
-        if raw_data.startswith(bom):
-            if debug:
-                print(f"Found BOM for encoding: {encoding}")
-            # Remove the BOM
-            raw_data = raw_data[len(bom):]
-            # Try to decode with the detected encoding
-            try:
-                return raw_data.decode(encoding), encoding
-            except UnicodeDecodeError:
-                # If it still fails, continue to try other encodings
-                pass
-
-    # Try various encodings
-    encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'ISO-8859-1', 'cp1252']
-    for encoding in encodings_to_try:
-        try:
-            decoded_text = raw_data.decode(encoding)
-            # Check if the decoded text looks like XML
-            if decoded_text.strip().startswith('<?xml') or decoded_text.strip().startswith('<Annotations'):
-                if debug:
-                    print(f"Successfully decoded with {encoding}, content starts with XML declaration")
-                return decoded_text, encoding
-            else:
-                if debug:
-                    first_chars = decoded_text.strip()[:50]
-                    print(f"Decoded with {encoding}, but content doesn't look like XML. Starts with: {first_chars}")
-        except UnicodeDecodeError:
-            if debug:
-                print(f"Failed to decode with {encoding}")
-
-    # If all above methods fail, try a desperate approach
-    try:
-        # Try using latin-1 which can decode any byte stream
-        decoded_text = raw_data.decode('latin-1', errors='replace')
-        if debug:
-            print("Falling back to latin-1 with error replacement")
-        return decoded_text, 'latin-1'
-    except Exception as e:
-        raise ValueError(f"Failed to decode the file with any encoding: {str(e)}")
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -210,53 +140,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def parse_xml_to_dataframe(self, xml_file):
         """
-        Parse XML file to DataFrame with improved encoding handling.
+        Parse XML file to DataFrame using the xml_handler module.
         """
         try:
-            # Use our improved helper function to detect encoding, with debug enabled
-            xml_content, detected_encoding = read_xml_with_encoding(xml_file, debug=True)
-            print(f'Detected XML encoding: {detected_encoding}')
+            # Use the extract_annotation_layers function from xml_handler
+            df = extract_annotation_layers(xml_file)
 
-            # Check if the XML content appears to be valid
-            if not xml_content.strip().startswith('<?xml') and not xml_content.strip().startswith('<Annotations'):
-                # If it doesn't look like XML, print the first part for debugging
-                print("Warning: The file doesn't appear to be valid XML. First 100 characters:")
-                print(xml_content[:100])
+            if df.empty:
+                QtWidgets.QMessageBox.warning(self, 'Warning', 'No annotation layers found in the XML file.')
+                return pd.DataFrame()
 
-            # Try to parse the XML
-            try:
-                xml_dict = xmltodict.parse(xml_content)
-            except Exception as xml_parse_error:
-                print(f"XML parsing error: {str(xml_parse_error)}")
-                # Try a more detailed diagnostic
-                import xml.sax
-                try:
-                    xml.sax.parseString(xml_content, xml.sax.ContentHandler())
-                    print("SAX parser could parse the XML, but xmltodict failed.")
-                except xml.sax.SAXParseException as sax_error:
-                    print(f"SAX parser also failed: {str(sax_error)}")
-                    print(f"Error at line {sax_error.getLineNumber()}, column {sax_error.getColumnNumber()}")
-                    # Print problematic lines
-                    lines = xml_content.split('\n')
-                    if sax_error.getLineNumber() <= len(lines):
-                        error_line = lines[sax_error.getLineNumber() - 1]
-                        print(f"Error line content: {error_line}")
-                raise
-
-            annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
-            if not annotations:
-                print("Warning: No annotations found in the XML file.")
-
-            data = []
-            for layer in annotations:
-                layer_name = layer.get('@Name')
-                color = layer.get('@LineColor')
-                rgb = self.int_to_rgb(color)
-                data.append(
-                    {'Layer Name': layer_name.replace(" ", "_"), 'Color': rgb, 'Whitespace Settings': None})
-
-            df = pd.DataFrame(data)
             self.original_df = df.copy()
+            print(f"Loaded XML file: {xml_file}")
+            print(df)
             return df
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
