@@ -22,12 +22,6 @@ def read_xml_file(xml_path: str, debug: bool = True) -> Tuple[str, str]:
     """
     Comprehensive XML file reader that handles different encodings and Mac-to-Windows transfers.
     
-    This function combines multiple approaches to handle problematic XML files:
-    1. Detects and handles BOMs (Byte Order Marks)
-    2. Tries multiple encodings to find one that works
-    3. Handles Mac OS X metadata prepended to files
-    4. Detects and skips any non-XML content at the beginning of files
-    
     Args:
         xml_path: Path to the XML file
         debug: Whether to print debug information
@@ -35,77 +29,44 @@ def read_xml_file(xml_path: str, debug: bool = True) -> Tuple[str, str]:
     Returns:
         Tuple containing (clean_xml_content, detected_encoding)
     """
-    # First check if the file exists
-    if not os.path.exists(xml_path):
-        raise FileNotFoundError(f"XML file not found: {xml_path}")
-    
-    # Read the raw bytes
     with open(xml_path, 'rb') as binary_file:
         raw_data = binary_file.read()
-    
-    # Debug: Print the first few bytes to examine content
-    if debug:
-        print(f"File size: {len(raw_data)} bytes")
-        print(f"First 20 bytes: {' '.join(f'{b:02x}' for b in raw_data[:20])}")
-    
-    # Check for known BOMs and remove them
-    bom_encodings = {
-        codecs.BOM_UTF8: 'utf-8',
-        codecs.BOM_UTF16_LE: 'utf-16-le',
-        codecs.BOM_UTF16_BE: 'utf-16-be',
-        codecs.BOM_UTF32_LE: 'utf-32-le',
-        codecs.BOM_UTF32_BE: 'utf-32-be',
-    }
-    
-    for bom, encoding in bom_encodings.items():
-        if raw_data.startswith(bom):
-            if debug:
-                print(f"Found BOM for encoding: {encoding}")
-            # Remove the BOM
-            raw_data = raw_data[len(bom):]
-            # Try to decode with the detected encoding
-            try:
-                decoded_text = raw_data.decode(encoding)
-                return clean_xml_content(decoded_text, debug), encoding
-            except UnicodeDecodeError:
-                # If it still fails, continue to try other encodings
-                pass
-    
-    # Look for Mac OS X metadata
-    str_content_latin1 = raw_data.decode('latin-1', errors='replace')
-    
-    if "Mac OS X" in str_content_latin1[:100]:
+
+    # Convert to string using latin-1 (which won't fail on any byte values)
+    str_content = raw_data.decode('latin-1')
+
+    # Look for XML start markers with more flexibility
+    xml_markers = ['<?xml', '<Annotations', '<annotation', '<ANNOTATIONS']
+    start_index = -1
+
+    for marker in xml_markers:
+        pos = str_content.find(marker)
+        if pos != -1:
+            start_index = pos
+            break
+
+    if start_index != -1:
+        clean_content = str_content[start_index:]
         if debug:
-            print("Detected Mac OS X metadata")
-        
-        # Try to find XML markers after Mac metadata
-        clean_content, encoding = find_xml_after_mac_metadata(str_content_latin1, debug)
-        if clean_content:
-            return clean_content, encoding
-    
-    # Try various encodings if no Mac metadata was found or cleaning failed
-    encodings_to_try = ['utf-8', 'latin-1', 'windows-1252', 'ISO-8859-1', 'cp1252']
-    for encoding in encodings_to_try:
+            print(f"Found XML marker at position {start_index}")
+
+        # Try to figure out the encoding from the XML declaration
+        encoding = 'utf-8'  # Default encoding
+        if clean_content.startswith('<?xml'):
+            encoding_match = re.search(r'encoding=["\'](.*?)["\']', clean_content)
+            if encoding_match:
+                encoding = encoding_match.group(1)
+
+        # Re-encode the content with the detected encoding
         try:
-            decoded_text = raw_data.decode(encoding)
-            # Check if decoded content looks like XML and clean if needed
-            clean_content = clean_xml_content(decoded_text, debug)
-            if clean_content.strip().startswith('<?xml') or clean_content.strip().startswith('<Annotations'):
-                if debug:
-                    print(f"Successfully decoded with {encoding}")
-                return clean_content, encoding
+            bytes_content = clean_content.encode('latin-1')
+            return bytes_content.decode(encoding), encoding
         except UnicodeDecodeError:
-            if debug:
-                print(f"Failed to decode with {encoding}")
-    
-    # If all else fails, use latin-1 which can decode any byte stream
-    decoded_text = raw_data.decode('latin-1', errors='replace')
-    if debug:
-        print("Falling back to latin-1 with error replacement")
-    
-    # Try to clean the content even with the fallback encoding
-    clean_content = clean_xml_content(decoded_text, debug)
-    return clean_content, 'latin-1'
+            # If that fails, stick with latin-1
+            return clean_content, 'latin-1'
+
+    # If no XML start marker was found, return the original content
+    return str_content, 'latin-1'
 
 def find_xml_after_mac_metadata(content: str, debug: bool = True) -> Tuple[str, str]:
     """
