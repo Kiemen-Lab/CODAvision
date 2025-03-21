@@ -36,9 +36,27 @@ def create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles):
         classNames = classNames[:-1]
     print('')
 
-    # Calculate pixel composition for each annotation class
+    # Check if numann0 is empty or malformed
+    if not numann0 or len(numann0) == 0:
+        raise ValueError(
+            'No annotation data found. Please ensure that annotation files exist and contain valid annotations.')
+
+    # Calculate total number of pixels in the training dataset...
     print('Calculating total number of pixels in the training dataset...')
     count_annotations = sum(numann0)
+
+    # Check if count_annotations is a scalar or empty array
+    if isinstance(count_annotations, (int, float)) or (
+            hasattr(count_annotations, 'size') and count_annotations.size == 0):
+        raise ValueError(
+            'No valid annotations were found. This usually happens when no annotation files are present or they contain no valid annotations. '
+            'Please check your annotation directory and ensure annotations are correctly formatted.')
+
+    # Check if there are actual values in the count_annotations array
+    if max(count_annotations) == 0:
+        raise ValueError(
+            'All annotation classes have zero pixels. Please check your annotation files and ensure they contain valid annotations.')
+
     annotation_composition = count_annotations / max(count_annotations) * 100
     for b, count in enumerate(annotation_composition):
         if annotation_composition[b] == 100:

@@ -57,6 +57,14 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
     numclass = np.max(WS[2])
     imlist = [f for f in os.listdir(pth) if f.endswith('.xml')]
+
+    # Check if any annotation files were found
+    if not imlist:
+        raise ValueError(
+            'No annotation files (.xml) found in the specified directory. '
+            'Please ensure that annotation files exist in the directory: ' + pth
+        )
+
     numann0 = []
     ctlist0 = {'tile_name': [], 'tile_pth': []}
     outim = os.path.join(pth, 'check_annotations')
@@ -111,19 +119,16 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
         create_new_tiles = True
 
-
         if os.path.isdir(outpth):
             shutil.rmtree(outpth)
         os.makedirs(outpth)
 
         # 1 read xml annotation files and save as pkl files
-
         import_xml(annotations_file, os.path.join(pth, f'{imnm}.xml'), date_modified)
 
-
         if os.path.exists(annotations_file):
-            with open(annotations_file, 'rb') as f:  #
-                data = pickle.load(f)  #
+            with open(annotations_file, 'rb') as f:
+                data = pickle.load(f)
                 data['WS'] = WS
                 data['umpix'] = umpix
                 data['nwhite'] = nwhite
@@ -132,8 +137,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
                 pickle.dump(data, f)
                 f.close()
 
-            # 2 fill annotation outlines and delete unwanted pixels
-            with open(annotations_file, 'rb') as f:  #
+            with open(annotations_file, 'rb') as f:
                 data = pickle.load(f)
 
             I0, TA, _ = calculate_tissue_mask(pthim, imnm)
@@ -144,7 +148,6 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
             io.imsave(os.path.join(outpth, 'view_annotations.png'), J0.astype(np.uint8))
 
-            # show mask in color
             I = I0[::2, ::2, :].astype(np.float64) / 255
             J = J0[::2, ::2].astype(int)
             J1 = cmap2[J, 0]
@@ -159,14 +162,19 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
                 os.remove(os.path.join(outim, f'{imnm}.png'))
             io.imsave(os.path.join(outim, f'{imnm}.png'), (I * 255).astype(np.uint8))
 
-            # create annotation bounding boxes and update data to annotation.pkl file
             numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
             numann0.extend(numann)
 
             #ctlist0 is now a dictionary
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
-
             print(f' Finished image in {round(time.time() - image_time)} seconds.')
+
+        # Check if we found any valid annotations
+        if not numann0:
+            raise ValueError(
+                'No valid annotations were found in the XML files. '
+                'Please check that your annotation files contain valid annotations.'
+            )
 
     return ctlist0, numann0, create_new_tiles
