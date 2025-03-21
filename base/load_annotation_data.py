@@ -57,6 +57,14 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
     numclass = np.max(WS[2])
     imlist = [f for f in os.listdir(pth) if f.endswith('.xml')]
+
+    # Check if any annotation files were found
+    if not imlist:
+        raise ValueError(
+            'No annotation files (.xml) found in the specified directory. '
+            'Please ensure that annotation files exist in the directory: ' + pth
+        )
+
     numann0 = []
     ctlist0 = {'tile_name': [], 'tile_pth': []}
     outim = os.path.join(pth, 'check_annotations')
@@ -161,4 +169,12 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
 
             print(f' Finished image in {round(time.time() - image_time)} seconds.')
+
+        # Check if we found any valid annotations
+        if not numann0:
+            raise ValueError(
+                'No valid annotations were found in the XML files. '
+                'Please check that your annotation files contain valid annotations.'
+            )
+
     return ctlist0, numann0, create_new_tiles
