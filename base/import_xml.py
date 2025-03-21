@@ -5,7 +5,7 @@ Authors:
     Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated: March 19, 2025
+Updated: March 21, 2025
 """
 from .load_annotations import load_annotations
 import os
@@ -13,22 +13,23 @@ import pickle
 import time
 import numpy as np
 import pandas as pd
+import shutil
 
 def import_xml(annotations_file, xmlfile, dm=None, ra=None):
     """
-   Reads an XML file and imports annotation data, saving it to a pickle file.
-   'load_annotations' function to extract the annotation coordinates from an XML file, is required.
-   Now uses the xml_handler module through load_annotations for robust XML parsing.
+    Reads an XML file and imports annotation data, saving it to a pickle file.
+    'load_annotations' function to extract the annotation coordinates from an XML file, is required.
+    Now uses the xml_handler module through load_annotations for robust XML parsing.
 
-   Parameters:
-   annotations_file (str): The file path for the output pickle file.
-   xmlfile (str): The file path for the input XML file.
-   dm (str): String indicating date and time the xml file was modified.
-   ra (float, optional): The reduced annotations value. Defaults to 0.
+    Parameters:
+    annotations_file (str): The file path for the output pickle file.
+    xmlfile (str): The file path for the input XML file.
+    dm (str): String indicating date and time the xml file was modified.
+    ra (float, optional): The reduced annotations value. Defaults to 0.
 
-   Returns:
-   xyout_df (pandas.DataFrame): A DataFrame containing the annotation labels and coordinates.
-   reduced_annotations (float): The value of 'MicronsPerPixel' under 'Annotations' if present, otherwise None.
+    Returns:
+    xyout_df (pandas.DataFrame): A DataFrame containing the annotation labels and coordinates.
+    reduced_annotations (float): The value of 'MicronsPerPixel' under 'Annotations' if present, otherwise None.
    """
     if ra is None:
         ra = 0
@@ -39,7 +40,7 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
     load_start = time.time()
 
     try:
-        # Use the load_annotations function which now uses xml_handler
+
         reduced_annotations, xyout_df = load_annotations(xmlfile)
 
     except Exception as e:
@@ -57,7 +58,9 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             reduced_annotations = ra
         xyout_df.iloc[:, 2:4] = xyout_df.iloc[:, 2:4] * reduced_annotations
 
+        # Create the necessary directories if they don't exist only for images which have annotations
         annotations_dir = os.path.dirname(annotations_file)
+
         if not os.path.exists(annotations_dir):
             os.makedirs(annotations_dir)
 
@@ -77,4 +80,11 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
             print(' Creating file...')
             with open(annotations_file, 'wb') as f:
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': dm}, f)
+    else:
+        # Delete the subfolder prior to the annotations file if xyout_df is empty
+        outpth = os.path.dirname(annotations_file)
+        print(f' WARNING: No annotations found in {xmlfile}, deleting the subfolder {outpth}')
+        if os.path.isdir(outpth):
+            shutil.rmtree(outpth)
+
     return xyout_df, reduced_annotations

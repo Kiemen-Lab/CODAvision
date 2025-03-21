@@ -111,59 +111,54 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
 
         create_new_tiles = True
 
-
         if os.path.isdir(outpth):
             shutil.rmtree(outpth)
         os.makedirs(outpth)
 
         # 1 read xml annotation files and save as pkl files
-
         import_xml(annotations_file, os.path.join(pth, f'{imnm}.xml'), date_modified)
 
-        with open(annotations_file, 'rb') as f:  #
-            data = pickle.load(f)  #
-            data['WS'] = WS
-            data['umpix'] = umpix
-            data['nwhite'] = nwhite
-            data['pthim'] = pthim
-        with open(annotations_file, 'wb') as f:
-            pickle.dump(data, f)
-            f.close()
+        if os.path.exists(annotations_file):
+            with open(annotations_file, 'rb') as f:
+                data = pickle.load(f)
+                data['WS'] = WS
+                data['umpix'] = umpix
+                data['nwhite'] = nwhite
+                data['pthim'] = pthim
+            with open(annotations_file, 'wb') as f:
+                pickle.dump(data, f)
+                f.close()
 
-        # 2 fill annotation outlines and delete unwanted pixels
-        with open(annotations_file, 'rb') as f:  #
-            data = pickle.load(f)
+            with open(annotations_file, 'rb') as f:
+                data = pickle.load(f)
 
-        I0, TA, _ = calculate_tissue_mask(pthim, imnm)
-        if scale:
-            J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
-        else:
-            J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
+            I0, TA, _ = calculate_tissue_mask(pthim, imnm)
+            if scale:
+                J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
+            else:
+                J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1)
 
-        io.imsave(os.path.join(outpth, 'view_annotations.png'), J0.astype(np.uint8))
+            io.imsave(os.path.join(outpth, 'view_annotations.png'), J0.astype(np.uint8))
 
-        # show mask in color
-        I = I0[::2, ::2, :].astype(np.float64) / 255
-        J = J0[::2, ::2].astype(int)
-        J1 = cmap2[J, 0]
-        J1 = J1.reshape(J.shape)
-        J2 = cmap2[J, 1]
-        J2 = J2.reshape(J.shape)
-        J3 = cmap2[J, 2]
-        J3 = J3.reshape(J.shape)
-        mask = np.dstack((J1, J2, J3))
-        I = (I * 0.5) + (mask * 0.5)
-        if os.path.isfile(os.path.join(outim, f'{imnm}.png')):
-            os.remove(os.path.join(outim, f'{imnm}.png'))
-        io.imsave(os.path.join(outim, f'{imnm}.png'), (I * 255).astype(np.uint8))
+            I = I0[::2, ::2, :].astype(np.float64) / 255
+            J = J0[::2, ::2].astype(int)
+            J1 = cmap2[J, 0]
+            J1 = J1.reshape(J.shape)
+            J2 = cmap2[J, 1]
+            J2 = J2.reshape(J.shape)
+            J3 = cmap2[J, 2]
+            J3 = J3.reshape(J.shape)
+            mask = np.dstack((J1, J2, J3))
+            I = (I * 0.5) + (mask * 0.5)
+            if os.path.isfile(os.path.join(outim, f'{imnm}.png')):
+                os.remove(os.path.join(outim, f'{imnm}.png'))
+            io.imsave(os.path.join(outim, f'{imnm}.png'), (I * 255).astype(np.uint8))
 
-        # create annotation bounding boxes and update data to annotation.pkl file
-        numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
-        numann0.extend(numann)
+            numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
+            numann0.extend(numann)
 
-        #ctlist0 is now a dictionary
-        ctlist0['tile_name'].extend(ctlist['tile_name'])
-        ctlist0['tile_pth'].extend(ctlist['tile_pth'])
+            ctlist0['tile_name'].extend(ctlist['tile_name'])
+            ctlist0['tile_pth'].extend(ctlist['tile_pth'])
 
-        print(f' Finished image in {round(time.time() - image_time)} seconds.')
+            print(f' Finished image in {round(time.time() - image_time)} seconds.')
     return ctlist0, numann0, create_new_tiles
