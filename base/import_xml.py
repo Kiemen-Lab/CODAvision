@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import shutil
 
+
 def import_xml(annotations_file, xmlfile, dm=None, ra=None):
     """
     Reads an XML file and imports annotation data, saving it to a pickle file.
@@ -83,6 +84,7 @@ def import_xml(annotations_file, xmlfile, dm=None, ra=None):
     else:
         # Delete the subfolder prior to the annotations file if xyout_df is empty
         outpth = os.path.dirname(annotations_file)
+
         print(f' WARNING: No annotations found in {xmlfile}, deleting the subfolder {outpth}')
         if os.path.isdir(outpth):
             shutil.rmtree(outpth)

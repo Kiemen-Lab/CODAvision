@@ -165,9 +165,9 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
             numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
             numann0.extend(numann)
 
+            #ctlist0 is now a dictionary
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
-
             print(f' Finished image in {round(time.time() - image_time)} seconds.')
 
         # Check if we found any valid annotations
