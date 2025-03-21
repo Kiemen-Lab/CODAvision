@@ -8,7 +8,7 @@ Authors:
     Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated: March 20, 2025
+Updated: March 21, 2025
 """
 
 import os
@@ -24,7 +24,8 @@ import io
 
 def clean_xml_file(input_path, output_path):
     """
-    Comprehensively clean an XML file to ensure cross-platform compatibility between Mac and PC.
+    Comprehensively clean an XML file to ensure cross-platform compatibility between Mac and PC. Skips processing files
+    with names beginning with underscore (_).
 
     This function addresses:
     1. Byte Order Mark (BOM) removal
@@ -43,6 +44,11 @@ def clean_xml_file(input_path, output_path):
         bool: True if cleaning succeeded, False otherwise
     """
     file_name = os.path.basename(input_path)
+
+    # Skip files that start with underscore
+    if file_name.startswith('_'):
+        print(f"Skipping hidden file: {file_name}")
+        return False
     print(f"Processing XML file: {file_name}")
 
     try:
@@ -174,13 +180,18 @@ def clean_xml_file(input_path, output_path):
 
 def clean_xml_folder(folder_path):
     """
-    Clean all XML files in a folder.
+    Clean all XML files in a folder, skipping hidden files that begin with underscore.
 
     Example:
     clean_xml_folder("/Users/tnewton3/Desktop/liver_tissue_data")
     """
     print(f"Cleaning all XML files in folder: {folder_path}")
     for filename in os.listdir(folder_path):
+        # Skip files starting with underscore
+        if filename.startswith('_'):
+            print(f"Skipping hidden file: {filename}")
+            continue
+
         if filename.endswith('.xml'):
             input_file = os.path.join(folder_path, filename)
             output_file = os.path.join(folder_path, "cleaned_" + filename)
@@ -215,28 +226,7 @@ def read_xml_file(xml_path: str, debug: bool = True) -> Tuple[str, str]:
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {xml_path}")
 
-    # Create a temporary cleaned file
-    temp_cleaned_path = xml_path + ".cleaned.tmp"
-    success = clean_xml_file(xml_path, temp_cleaned_path)
-
-    if success and os.path.exists(temp_cleaned_path):
-        try:
-            # Read the cleaned file
-            with open(temp_cleaned_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-            # Remove the temporary file
-            os.remove(temp_cleaned_path)
-            if debug:
-                print(f"  {file_name}: Successfully read cleaned XML file")
-            return content, 'utf-8-cleaned'
-        except Exception as e:
-            if debug:
-                print(f"  {file_name}: Error reading cleaned file: {e}")
-            # Remove the temporary file if it exists
-            if os.path.exists(temp_cleaned_path):
-                os.remove(temp_cleaned_path)
-
-    # Fall back to the original method if cleaning failed
+    # Read the raw binary data
     with open(xml_path, 'rb') as binary_file:
         raw_data = binary_file.read()
 
@@ -789,11 +779,8 @@ def load_xml_annotations(xml_path: str, debug: bool = True) -> Tuple[float, pd.D
     """
     Complete function to load XML annotations from a file with robust cross-platform handling.
 
-    This function handles all the steps:
-    1. Read and clean the XML file content
-    2. Parse the XML content
-    3. Extract annotation coordinates
-    4. Fall back to manual extraction if parsing fails
+    This function first tries to load the XML file directly. If that fails, it then tries
+    cleaning the file and loading the cleaned version. Skips processing files with names beginning with underscore (_).
 
     Args:
         xml_path: Path to the XML file
@@ -803,38 +790,83 @@ def load_xml_annotations(xml_path: str, debug: bool = True) -> Tuple[float, pd.D
         Tuple of (reduced_annotations, DataFrame with coordinates)
     """
     file_name = os.path.basename(xml_path)
+
+    # Skip files that start with underscore
+    if file_name.startswith('_'):
+        print(f"Skipping hidden file: {file_name}")
+        return 1.0, pd.DataFrame(columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
+
     print(f"Loading XML annotations from: {file_name}")
 
-    # First, try to use the clean_xml_file function to create a temporary clean version
+    # First, try processing the original file without cleaning
+    try:
+        if debug:
+            print(f"  {file_name}: Attempting to load original file without cleaning")
+
+        # Try to read and parse the original file
+        xml_content, encoding = read_xml_file(xml_path, debug)
+
+        if debug:
+            print(f"  {file_name}: Read original XML content with encoding {encoding}")
+
+        xml_dict = parse_xml(xml_content, debug, file_name)
+
+        if xml_dict:
+            if debug:
+                print(f"  {file_name}: Successfully parsed original XML file")
+            return extract_annotation_coordinates(xml_dict, debug, file_name)
+
+        # If standard parsing failed, try manual extraction on original file
+        if debug:
+            print(f"  {file_name}: Standard parsing failed. Attempting manual extraction...")
+
+        manual_dict = manual_extract_annotations(xml_content, debug, file_name)
+        if manual_dict:
+            if debug:
+                print(f"  {file_name}: Successfully extracted annotations manually from original file")
+            return extract_annotation_coordinates(manual_dict, debug, file_name)
+
+        # If we reached here, both standard parsing and manual extraction failed on the original file
+        if debug:
+            print(f"  {file_name}: Failed to parse original file. Attempting to clean and retry...")
+    except Exception as e:
+        if debug:
+            print(f"  {file_name}: Error loading original XML file: {str(e)}")
+            print(f"  {file_name}: Attempting to clean and retry...")
+
+    # If loading the original file failed, try cleaning it
     temp_path = xml_path + ".clean.tmp"
     clean_success = clean_xml_file(xml_path, temp_path)
 
     if clean_success and os.path.exists(temp_path):
         try:
             # Try to process the cleaned file
-            original_xml_path = xml_path
-            xml_path = temp_path
+            if debug:
+                print(f"  {file_name}: Attempting to load cleaned XML file")
 
-            # Continue with normal processing but using the cleaned file
-            xml_content, encoding = read_xml_file(xml_path, debug)
+            xml_content, encoding = read_xml_file(temp_path, debug)
 
             if debug:
-                print(f"  {file_name}: Using cleaned XML file with encoding {encoding}")
+                print(f"  {file_name}: Read cleaned XML file with encoding {encoding}")
 
             xml_dict = parse_xml(xml_content, debug, file_name)
 
             if xml_dict:
+                if debug:
+                    print(f"  {file_name}: Successfully parsed cleaned XML file")
                 result = extract_annotation_coordinates(xml_dict, debug, file_name)
                 # Cleanup temp file
                 os.remove(temp_path)
                 return result
 
-            # If standard parsing failed, try manual extraction
+            # If standard parsing failed, try manual extraction on cleaned file
             if debug:
-                print(f"  {file_name}: Standard parsing failed. Attempting manual extraction...")
+                print(f"  {file_name}: Standard parsing failed on cleaned file. Attempting manual extraction...")
 
             manual_dict = manual_extract_annotations(xml_content, debug, file_name)
             if manual_dict:
+                if debug:
+                    print(f"  {file_name}: Successfully extracted annotations manually from cleaned file")
                 result = extract_annotation_coordinates(manual_dict, debug, file_name)
                 # Cleanup temp file
                 os.remove(temp_path)
@@ -842,7 +874,6 @@ def load_xml_annotations(xml_path: str, debug: bool = True) -> Tuple[float, pd.D
 
             # Cleanup temp file
             os.remove(temp_path)
-
         except Exception as e:
             if debug:
                 print(f"  {file_name}: Error processing cleaned XML file: {str(e)}")
@@ -850,41 +881,19 @@ def load_xml_annotations(xml_path: str, debug: bool = True) -> Tuple[float, pd.D
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
-    # If the cleaned approach failed or wasn't possible, try the original approach
-    try:
-        xml_content, encoding = read_xml_file(xml_path, debug)
-
-        if debug:
-            print(f"  {file_name}: Cleaned XML content with encoding {encoding}. Preview: {xml_content[:100]}")
-
-        xml_dict = parse_xml(xml_content, debug, file_name)
-
-        if xml_dict:
-            return extract_annotation_coordinates(xml_dict, debug, file_name)
-
-        if debug:
-            print(f"  {file_name}: Standard parsing failed. Attempting manual extraction...")
-
-        manual_dict = manual_extract_annotations(xml_content, debug, file_name)
-        if manual_dict:
-            return extract_annotation_coordinates(manual_dict, debug, file_name)
-
-        if debug:
-            print(f"  {file_name}: All parsing methods failed. Returning empty DataFrame.")
-        return 1.0, pd.DataFrame(columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
-
-    except Exception as e:
-        if debug:
-            print(f"  {file_name}: Error loading XML annotations: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-
-        return 1.0, pd.DataFrame(columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
+    # If all methods fail
+    if debug:
+        print(f"  {file_name}: All parsing methods failed. Returning empty DataFrame.")
+    return 1.0, pd.DataFrame(columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
 
 
 def extract_annotation_layers(xml_path: str, debug: bool = True) -> pd.DataFrame:
     """
     Extract annotation layers from an XML file for the GUI.
+
+    This function first tries to extract layers from the original file. If that fails,
+    it then tries cleaning the file and extracting from the cleaned version. Skips processing files with names beginning
+    with underscore (_).
 
     Args:
         xml_path: Path to the XML file
@@ -894,14 +903,23 @@ def extract_annotation_layers(xml_path: str, debug: bool = True) -> pd.DataFrame
         DataFrame with layer names and colors
     """
     file_name = os.path.basename(xml_path)
+
+    # Skip files that start with underscore
+    if file_name.startswith('_'):
+        print(f"Skipping hidden file: {file_name}")
+        return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
     print(f"Extracting annotation layers from: {file_name}")
 
+    # First try with the original file
     try:
-        # First try reading and cleaning the XML content
+        if debug:
+            print(f"  {file_name}: Attempting to extract from original file without cleaning")
+
+        # Read the XML content
         xml_content, encoding = read_xml_file(xml_path, debug)
 
         if debug:
-            print(f"  {file_name}: Cleaned XML content with encoding {encoding}. Preview: {xml_content[:100]}")
+            print(f"  {file_name}: Read original XML content with encoding {encoding}")
 
         # Try parsing with standard methods
         xml_dict = parse_xml(xml_content, debug, file_name)
@@ -972,14 +990,95 @@ def extract_annotation_layers(xml_path: str, debug: bool = True) -> pd.DataFrame
                     print(f"  {file_name}: Successfully extracted {len(data)} annotation layers using regex")
                 return pd.DataFrame(data)
 
-        # If all methods fail
-        print(f"  {file_name}: All extraction methods failed. No annotation layers found.")
-        return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
-
+        # If we reached here, all attempts with the original file failed
+        if debug:
+            print(f"  {file_name}: Failed to extract from original file. Attempting to clean and retry...")
     except Exception as e:
         if debug:
-            print(f"  {file_name}: Error extracting annotation layers: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-        
-        return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
+            print(f"  {file_name}: Error extracting from original file: {str(e)}")
+            print(f"  {file_name}: Attempting to clean and retry...")
+
+    # If extraction from the original file failed, try cleaning it
+    temp_path = xml_path + ".clean.tmp"
+    clean_success = clean_xml_file(xml_path, temp_path)
+
+    if clean_success and os.path.exists(temp_path):
+        try:
+            if debug:
+                print(f"  {file_name}: Attempting to extract from cleaned file")
+
+            # Read the cleaned XML content
+            xml_content, encoding = read_xml_file(temp_path, debug)
+
+            if debug:
+                print(f"  {file_name}: Read cleaned XML content with encoding {encoding}")
+
+            # Process with the same methods as before
+            xml_dict = parse_xml(xml_content, debug, file_name)
+
+            if not xml_dict:
+                xml_dict = manual_extract_annotations(xml_content, debug, file_name)
+
+            if xml_dict:
+                annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
+
+                if not annotations:
+                    os.remove(temp_path)
+                    return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
+
+                if not isinstance(annotations, list):
+                    annotations = [annotations]
+
+                data = []
+                for layer in annotations:
+                    try:
+                        layer_name = layer.get('@Name', '')
+                        color = layer.get('@LineColor', '0')
+                        rgb = rgb_from_linecolor(color)
+                        data.append({
+                            'Layer Name': layer_name.replace(" ", "_"),
+                            'Color': rgb,
+                            'Whitespace Settings': None
+                        })
+                    except Exception as e:
+                        if debug:
+                            print(f"  {file_name}: Error processing layer: {str(e)}")
+
+                if data:
+                    os.remove(temp_path)
+                    return pd.DataFrame(data)
+
+            # Try regex as a last resort on the cleaned file
+            annotation_pattern = re.compile(r'<Annotation[^>]*?Id="(\d+)"[^>]*?Name="([^"]*)"[^>]*?LineColor="([^"]*)"')
+            annotations = annotation_pattern.findall(xml_content)
+
+            if annotations:
+                data = []
+                for _, name, color in annotations:
+                    try:
+                        rgb = rgb_from_linecolor(color)
+                        data.append({
+                            'Layer Name': name.replace(" ", "_"),
+                            'Color': rgb,
+                            'Whitespace Settings': None
+                        })
+                    except Exception as e:
+                        if debug:
+                            print(f"  {file_name}: Error processing color value: {str(e)}")
+
+                if data:
+                    os.remove(temp_path)
+                    return pd.DataFrame(data)
+
+            # Clean up
+            os.remove(temp_path)
+        except Exception as e:
+            if debug:
+                print(f"  {file_name}: Error extracting from cleaned file: {str(e)}")
+            # Clean up
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    # If all methods fail
+    print(f"  {file_name}: All extraction methods failed. No annotation layers found.")
+    return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
