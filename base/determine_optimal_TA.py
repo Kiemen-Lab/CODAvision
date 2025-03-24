@@ -6,6 +6,9 @@ import pickle
 # Import pyqt stuff
 from PySide6 import QtGui, QtWidgets, QtCore
 from PySide6.QtCore import Qt, QRect, QMetaObject, QCoreApplication
+from networkx.classes import is_empty
+from numpy.ma.extras import average
+
 from .determine_optimal_TA_UIs import Ui_choose_area, Ui_disp_crop, Ui_choose_TA
 import cv2
 
@@ -243,22 +246,46 @@ def determine_optimal_TA(pthim,numims):
     if not imlist:
         print("No TIFF, PNG or JPG image files found in", pthim)
     print('   ')
-    numims = min(numims,len(imlist))
-    imlist = np.random.choice(imlist, size = numims, replace=False)
-    print(f'Evaluating {numims} randomly selected images to choose a good whitespace detection...')
+    i = 0
+    for image in imlist:
+        imlist[i] = image[len(pthim)+1:]
+        i += 1
 
-    outpath = os.path.join(pthim,'TA')
+    outpath = os.path.join(pthim, 'TA')
+    cts = {}
+    mode = 'H&E'
     if not os.path.exists(outpath):
         os.makedirs(outpath)
-    if os.path.isfile(os.path.join(outpath,'TA_cutoff.pkl')):
-        print('   Optimal cutoff already chosen, skip this step')
-        return
 
-    cts = np.zeros([1,numims])
+    if os.path.isfile(os.path.join(outpath,'TA_cutoff.pkl')):
+        if numims>0:
+            print('   Optimal cutoff already chosen, skip this step')
+            return
+        else:
+            with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'rb') as f:
+                data = pickle.load(f)
+                cts = data['cts']
+                mode = data['mode']
+                done = []
+                for index in cts:
+                    done.append(index)
+                imlist = list(set(imlist) - set(done))
+                if not imlist:
+                    print('   Optimal cutoff already chosen for all images, skip this step')
+                    return
+
+    if numims>0:
+        numims = min(numims,len(imlist))
+        imlist = np.random.choice(imlist, size=numims, replace=False)
+        print(f'Evaluating {numims} randomly selected images to choose a good whitespace detection...')
+        average_TA = True
+    else:
+        numims = len(imlist)
+        print(f'Evaluating all training images to choose a good whitespace detection...')
+        average_TA = False
+
     count = 0
-    mode = 'H&E'
-    for image in imlist:
-        nm = image[len(pthim)+1:]
+    for nm in imlist:
         count += 1
         print(f'    Loading image {count} of {numims}: {nm}')
         im0 = cv2.imread(os.path.join(pthim,nm))
@@ -277,7 +304,7 @@ def determine_optimal_TA(pthim,numims):
         do_again = 1
         while do_again == 1:
             do_again, CT0, mode = select_TA(szz, cropped, CT0, mode)
-        cts[0,count-1] = CT0
+        cts = {**cts, nm: CT0}
     with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'wb') as f:
-        pickle.dump({'cts':cts,'imlist':imlist, 'mode': mode}, f)
+        pickle.dump({'cts':cts,'imlist':imlist, 'mode': mode, 'average_TA': average_TA}, f)
     return

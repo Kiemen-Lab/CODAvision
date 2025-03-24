@@ -9,7 +9,10 @@ from skimage import morphology
 import cv2
 import pickle as pkl
 
-def calculate_tissue_mask(pth, imnm):
+from tensorflow.python.keras.layers import average
+
+
+def calculate_tissue_mask(pth, imnm, test):
     """
         Reads an image and returns the image as a numpy array and a binary copy of the image's green value after it has been thresholded.
 
@@ -48,16 +51,23 @@ def calculate_tissue_mask(pth, imnm):
         return im0, TA, outpth
 
     print('  Calculating TA image')
+    mode = 'H&E'
     if os.path.isfile(os.path.join(outpth, 'TA_cutoff.pkl')): # Check if the TA value has already been calculated
         with open(os.path.join(outpth, 'TA_cutoff.pkl'), 'rb') as f:  #
             data = pkl.load(f)  #
             cts = data['cts']
             mode = data['mode']
-        ct=0
-        for i in cts:
-            for j in i:
-                ct += j
-            ct = ct/len(i)
+            average_TA = data['average_TA']
+            if test:
+                average_TA = True
+        if average_TA:
+            ct = 0
+            for value in cts.values():
+                ct += value
+            ct = ct/len(cts)
+        else:
+            imnm = imnm + '.tif'
+            ct = cts[imnm]
     else:
         # ct = 210 #If there is no previous TA value, use 210
         ct = 205
