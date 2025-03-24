@@ -117,9 +117,8 @@ def determine_optimal_TA(pthim,numims):
                              np.round(1.5 * szz+100), np.round(370+szz/2))
             self.ui.raise_ta.setGeometry(QRect(50, 170+szz/2, 6+szz*0.75, 90))
             self.ui.decrease_ta.setGeometry(QRect(56+szz*0.75, 170+szz/2, 6+szz*0.75, 90))
-            self.ui.high_ta.setGeometry(QRect(50, 80+szz/2, 3+szz/2, 90))
-            self.ui.medium_ta.setGeometry(QRect(54+szz/2, 80 + szz / 2, 4 +  szz / 2, 90))
-            self.ui.low_ta.setGeometry(QRect(58+szz, 80 + szz / 2, 4+ szz / 2, 90))
+            self.ui.high_ta.setGeometry(QRect(50, 80+szz/2, 6+szz*0.75, 90))
+            self.ui.low_ta.setGeometry(QRect(56+szz*0.75, 80 + szz / 2, 6+szz*0.75, 90))
             self.ui.change_mode.setGeometry(QRect(50, 260 + szz / 2, 12+szz*1.5, 90))
             self.ui.text.setGeometry(QRect(50, 10, np.round(8+szz*1.5), 20))
             self.ui.text_high.setGeometry(QRect(50, 40, 3+szz/2, 20))
@@ -133,6 +132,8 @@ def determine_optimal_TA(pthim,numims):
                 self.ui.change_mode.setStyleSheet("background-color: white; color: black;")
                 self.ui.change_mode.setText(f'Change mode \n Current mode: H&&E')
             else:
+                self.ui.raise_ta.setText('Keep more whitespace')
+                self.ui.decrease_ta.setText('Keep more tissue')
                 self.ui.change_mode.setStyleSheet("""
                     QPushButton {
                         background-color: black;
@@ -147,7 +148,6 @@ def determine_optimal_TA(pthim,numims):
             self.ui.change_mode.clicked.connect(self.on_mode)
             self.ui.high_ta.clicked.connect(self.on_high)
             self.ui.low_ta.clicked.connect(self.on_low)
-            self.ui.medium_ta.clicked.connect(self.on_med)
             self.ui.raise_ta.clicked.connect(self.on_raise)
             self.ui.decrease_ta.clicked.connect(self.on_decrease)
 
@@ -156,14 +156,9 @@ def determine_optimal_TA(pthim,numims):
             self.TA = self.CTA
             self.close()
 
-        def on_med(self):
-            self.do_again = 0
-            self.TA = self.CT0
-            self.close()
-
         def on_low(self):
             self.do_again = 0
-            self.TA = self.CTC
+            self.TA = self.CT0
             self.close()
 
         def on_raise(self):
@@ -176,7 +171,7 @@ def determine_optimal_TA(pthim,numims):
 
         def on_mode(self):
             if self.mode == 'H&E':
-                self.mode = 'MRI'
+                self.mode = 'Grayscale'
             else:
                 self.mode = 'H&E'
             self.close()
@@ -184,12 +179,24 @@ def determine_optimal_TA(pthim,numims):
         def update_image(self, szz, cropped):
             if self.mode == 'H&E':
                 image_array_high = np.ascontiguousarray(((cropped[:,:,1]>self.CTA)*255).astype(np.uint8))
-                image_array_medium = np.ascontiguousarray(((cropped[:,:,1]>self.CT0)*255).astype(np.uint8))
-                image_array_low = np.ascontiguousarray(((cropped[:,:,1]>self.CTC)*255).astype(np.uint8))
+                image_array_medium = np.ascontiguousarray(cropped)
+                image_array_low = np.ascontiguousarray(((cropped[:,:,1]>self.CT0)*255).astype(np.uint8))
             else:
                 image_array_high = np.ascontiguousarray(((cropped[:, :, 1] < self.CTA) * 255).astype(np.uint8))
-                image_array_medium = np.ascontiguousarray(((cropped[:, :, 1] < self.CT0) * 255).astype(np.uint8))
-                image_array_low = np.ascontiguousarray(((cropped[:, :, 1] < self.CTC) * 255).astype(np.uint8))
+                image_array_medium = np.ascontiguousarray(cropped)
+                image_array_low = np.ascontiguousarray(((cropped[:, :, 1] < self.CT0) * 255).astype(np.uint8))
+
+            height, width = image_array_medium.shape[:2]
+            bytes_per_line = 3 * width
+            qimage = QtGui.QImage(image_array_medium.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
+            pixmap = QtGui.QPixmap.fromImage(qimage)
+            self.ui.medium_im.setGeometry(QRect(54 + szz / 2, 70, szz / 2, szz / 2))
+            self.ui.medium_im.setPixmap(pixmap.scaled(
+                self.ui.medium_im.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            ))
+            self.ui.medium_im.setScaledContents(True)
             height, width = image_array_high.shape[:2]
             qimage = QtGui.QImage(image_array_high.data, width, height, image_array_high.strides[0], QtGui.QImage.Format_Grayscale8)
             pixmap = QtGui.QPixmap.fromImage(qimage)
@@ -200,16 +207,6 @@ def determine_optimal_TA(pthim,numims):
                 Qt.SmoothTransformation
             ))
             self.ui.high_im.setScaledContents(True)
-            qimage = QtGui.QImage(image_array_medium.data, width, height, image_array_medium.strides[0],
-                                  QtGui.QImage.Format_Grayscale8)
-            pixmap = QtGui.QPixmap.fromImage(qimage)
-            self.ui.medium_im.setGeometry(QRect(54+szz/2, 70, szz / 2, szz / 2))
-            self.ui.medium_im.setPixmap(pixmap.scaled(
-                self.ui.medium_im.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            ))
-            self.ui.medium_im.setScaledContents(True)
             qimage = QtGui.QImage(image_array_low.data, width, height, image_array_low.strides[0],
                                   QtGui.QImage.Format_Grayscale8)
             pixmap = QtGui.QPixmap.fromImage(qimage)
