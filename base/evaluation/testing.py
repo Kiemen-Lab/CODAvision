@@ -19,7 +19,7 @@ from tifffile import imread
 from skimage.morphology import remove_small_objects
 from PIL import Image
 
-from base.load_annotation_data import load_annotation_data
+from base.data.annotation import load_annotation_data
 from base.image.classification import classify_images
 from base.evaluation.confusion_matrix import ConfusionMatrixVisualizer
 from base.models.utils import load_model_metadata, get_model_paths
