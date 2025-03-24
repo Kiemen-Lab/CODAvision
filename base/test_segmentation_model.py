@@ -36,7 +36,7 @@ def test_segmentation_model(pthDL,pthtest, pthtestim):
         model_type = data['model_type']
 
     pthtestdata = os.path.join(pthtest, 'data py')
-    load_annotation_data(pthDL, pthtest, pthtestim)
+    load_annotation_data(pthDL, pthtest, pthtestim, True)
 
     pthclassifytest = classify_images(pthtestim, pthDL,model_type, color_overlay_HE=True, color_mask=False)
 

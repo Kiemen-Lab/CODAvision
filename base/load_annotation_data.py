@@ -18,7 +18,7 @@ import time
 import warnings
 
 
-def load_annotation_data(pthDL,pth,pthim,classcheck=0):
+def load_annotation_data(pthDL,pth,pthim,test=False):
     """
       Loads the annotation data from the .xml files, creates tissue mask and bounding boxes and saves the bounding boxes
       as tif images, both for the H&E image and the labeled image
@@ -27,7 +27,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
       pthDL (str): The file path to save the model data.
       pth (str): The file path to the annotations.
       pthim (str): The file path to the tif images of the desired resolution.
-      classcheck (float, optional): Used in validate_annotations.
+      test (bool, optional): Used in calculate_tissue_mask.
 
       Returns:
       ctlist0 (list): List containing the bounding boxes filenames and the path to them.
@@ -134,7 +134,7 @@ def load_annotation_data(pthDL,pth,pthim,classcheck=0):
         with open(annotations_file, 'rb') as f:  #
             data = pickle.load(f)
 
-        I0, TA, _ = calculate_tissue_mask(pthim, imnm)
+        I0, TA, _ = calculate_tissue_mask(pthim, imnm, test)
         if scale:
             J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
         else:
