@@ -103,7 +103,7 @@ def determine_optimal_TA(pthim,numims):
         return window.do_again
 
     class chooseTA(QtWidgets.QMainWindow):
-        def __init__(self, szz, CTA, CT0, CTC, parent=None):
+        def __init__(self, szz, CTA, CT0, CTC, mode, parent=None):
 
             # Inherit from the aforementioned class and set up the gui
             super(chooseTA, self).__init__()
@@ -114,18 +114,37 @@ def determine_optimal_TA(pthim,numims):
             self.CTC = CTC
             self.ui.setupUi(self, CTA, CT0, CTC)
             self.setGeometry(30+np.round(1500-1.5*szz+100)/2, 50,
-                             np.round(1.5 * szz+100), np.round(270+szz/2))
+                             np.round(1.5 * szz+100), np.round(370+szz/2))
             self.ui.raise_ta.setGeometry(QRect(50, 170+szz/2, 6+szz*0.75, 90))
             self.ui.decrease_ta.setGeometry(QRect(56+szz*0.75, 170+szz/2, 6+szz*0.75, 90))
             self.ui.high_ta.setGeometry(QRect(50, 80+szz/2, 3+szz/2, 90))
             self.ui.medium_ta.setGeometry(QRect(54+szz/2, 80 + szz / 2, 4 +  szz / 2, 90))
             self.ui.low_ta.setGeometry(QRect(58+szz, 80 + szz / 2, 4+ szz / 2, 90))
+            self.ui.change_mode.setGeometry(QRect(50, 260 + szz / 2, 12+szz*1.5, 90))
             self.ui.text.setGeometry(QRect(50, 10, np.round(8+szz*1.5), 20))
             self.ui.text_high.setGeometry(QRect(50, 40, 3+szz/2, 20))
             self.ui.text_mid.setGeometry(QRect(54+szz/2, 40, 3 + szz / 2, 20))
             self.ui.text_low.setGeometry(QRect(58+szz, 40, 3 + szz / 2, 20))
             self.setWindowTitle("Which one of the images looks good?")
             self.do_again = 1
+            self.mode = mode
+            self.ui.change_mode.setText(f'Change mode \n Current mode: {mode}')
+            if mode == 'H&E':
+                self.ui.change_mode.setStyleSheet("background-color: white; color: black;")
+                self.ui.change_mode.setText(f'Change mode \n Current mode: H&&E')
+            else:
+                self.ui.change_mode.setStyleSheet("""
+                    QPushButton {
+                        background-color: black;
+                        color: white;
+                        font-size: 12px;
+                    }
+                    QPushButton:hover {
+                        background-color: #333333;  /* Dark gray instead of white */
+                        color: white;  /* Keep the text readable */
+                    }
+                """)
+            self.ui.change_mode.clicked.connect(self.on_mode)
             self.ui.high_ta.clicked.connect(self.on_high)
             self.ui.low_ta.clicked.connect(self.on_low)
             self.ui.medium_ta.clicked.connect(self.on_med)
@@ -155,10 +174,22 @@ def determine_optimal_TA(pthim,numims):
             self.TA = self.CT0 - 10
             self.close()
 
+        def on_mode(self):
+            if self.mode == 'H&E':
+                self.mode = 'MRI'
+            else:
+                self.mode = 'H&E'
+            self.close()
+
         def update_image(self, szz, cropped):
-            image_array_high = np.ascontiguousarray(((cropped[:,:,1]>self.CTA)*255).astype(np.uint8))
-            image_array_medium = np.ascontiguousarray(((cropped[:,:,1]>self.CT0)*255).astype(np.uint8))
-            image_array_low = np.ascontiguousarray(((cropped[:,:,1]>self.CTC)*255).astype(np.uint8))
+            if self.mode == 'H&E':
+                image_array_high = np.ascontiguousarray(((cropped[:,:,1]>self.CTA)*255).astype(np.uint8))
+                image_array_medium = np.ascontiguousarray(((cropped[:,:,1]>self.CT0)*255).astype(np.uint8))
+                image_array_low = np.ascontiguousarray(((cropped[:,:,1]>self.CTC)*255).astype(np.uint8))
+            else:
+                image_array_high = np.ascontiguousarray(((cropped[:, :, 1] < self.CTA) * 255).astype(np.uint8))
+                image_array_medium = np.ascontiguousarray(((cropped[:, :, 1] < self.CT0) * 255).astype(np.uint8))
+                image_array_low = np.ascontiguousarray(((cropped[:, :, 1] < self.CTC) * 255).astype(np.uint8))
             height, width = image_array_high.shape[:2]
             qimage = QtGui.QImage(image_array_high.data, width, height, image_array_high.strides[0], QtGui.QImage.Format_Grayscale8)
             pixmap = QtGui.QPixmap.fromImage(qimage)
@@ -191,17 +222,17 @@ def determine_optimal_TA(pthim,numims):
             self.ui.low_im.setScaledContents(True)
 
 
-    def select_TA(szz, cropped, CT0):
+    def select_TA(szz, cropped, CT0, mode):
         CTA = CT0 + 5
         CTC = CT0 - 5
         app = QtWidgets.QApplication.instance()
         if app is None:
             app = QtWidgets.QApplication(sys.argv)
-        window = chooseTA(szz,CTA,CT0,CTC)
+        window = chooseTA(szz,CTA,CT0,CTC, mode)
         window.show()
         window.update_image(szz, cropped)
         app.exec()
-        return window.do_again, window.TA
+        return window.do_again, window.TA, window.mode
 
 
     imlist = sorted(glob(os.path.join(pthim, '*.tif')))
@@ -228,6 +259,7 @@ def determine_optimal_TA(pthim,numims):
 
     cts = np.zeros([1,numims])
     count = 0
+    mode = 'H&E'
     for image in imlist:
         nm = image[len(pthim)+1:]
         count += 1
@@ -247,8 +279,8 @@ def determine_optimal_TA(pthim,numims):
             do_again = check_region(szz, cropped)
         do_again = 1
         while do_again == 1:
-            do_again, CT0 = select_TA(szz, cropped, CT0)
+            do_again, CT0, mode = select_TA(szz, cropped, CT0, mode)
         cts[0,count-1] = CT0
     with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'wb') as f:
-        pickle.dump({'cts':cts,'imlist':imlist}, f)
+        pickle.dump({'cts':cts,'imlist':imlist, 'mode': mode}, f)
     return

@@ -80,6 +80,7 @@ class Ui_choose_TA(object):
         self.medium_ta = QPushButton(self.centralwidget)
         self.raise_ta = QPushButton(self.centralwidget)
         self.decrease_ta = QPushButton(self.centralwidget)
+        self.change_mode = QPushButton(self.centralwidget)
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow, CTA,CT0,CTC)
@@ -91,7 +92,7 @@ class Ui_choose_TA(object):
         self.high_im.setText("")
         self.high_ta.setText(QCoreApplication.translate("MainWindow", u"Image A\nTA = "+ str(CTA), None))
         self.low_ta.setText(QCoreApplication.translate("MainWindow", u"Image C\nTA = "+ str(CTC), None))
-        self.text.setText(QCoreApplication.translate("MainWindow", u"Which one of the images look good?", None))
+        self.text.setText(QCoreApplication.translate("MainWindow", u"Select the image where only the tissue is marked in black", None))
         self.text_high.setText(QCoreApplication.translate("MainWindow", u"Image A", None))
         self.text_mid.setText(QCoreApplication.translate("MainWindow", u"Image B", None))
         self.text_low.setText(QCoreApplication.translate("MainWindow", u"Image C", None))
@@ -100,3 +101,4 @@ class Ui_choose_TA(object):
         self.medium_ta.setText(QCoreApplication.translate("MainWindow", u"Image B\nTA = "+ str(CT0), None))
         self.raise_ta.setText(QCoreApplication.translate("MainWindow", u"None, keep more tissue", None))
         self.decrease_ta.setText(QCoreApplication.translate("MainWindow", u"No, keep more whitespace", None))
+        self.change_mode.setText(QCoreApplication.translate("MainWindow", u"Change mode \n Current mode: White background", None))

@@ -52,6 +52,7 @@ def calculate_tissue_mask(pth, imnm):
         with open(os.path.join(outpth, 'TA_cutoff.pkl'), 'rb') as f:  #
             data = pkl.load(f)  #
             cts = data['cts']
+            mode = data['mode']
         ct=0
         for i in cts:
             for j in i:
@@ -61,7 +62,10 @@ def calculate_tissue_mask(pth, imnm):
         # ct = 210 #If there is no previous TA value, use 210
         ct = 205
 
-    TA = im0[:, :, 1] < ct # Threshold the image green values
+    if mode == 'H&E':
+        TA = im0[:, :, 1] < ct # Threshold the image green values
+    else:
+        TA = im0[:, :, 1] > ct  # Threshold the image green values
     kernel_size = 3
     TA = TA.astype(np.uint8)
     kernel = morphology.disk(kernel_size)  # Larger kernel for closing
