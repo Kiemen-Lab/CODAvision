@@ -16,7 +16,7 @@ from PySide6.QtCore import Qt,QRegularExpression
 import pickle
 import numpy as np
 from base import save_model_metadata_GUI
-from base.utils.xml_handler import extract_annotation_layers
+from base.data.annotation import extract_annotation_layers
 pd.set_option('display.max_columns', None)
 
 
