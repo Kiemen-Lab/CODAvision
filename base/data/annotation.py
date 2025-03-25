@@ -103,7 +103,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
         annotations_file = os.path.join(outpth, 'annotations.pkl')
 
         # Check if model parameters have changed
-        reload_xml = check_if_model_parameters_changed(annotations_file, WS, umpix, nwhite, image_path)
+        reload_xml = check_if_model_parameters_changed(annotations_file, WS, umpix, nwhite, image_path, imnm)
 
         # Check if annotations were already processed
         if os.path.isfile(annotations_file):
@@ -1501,20 +1501,7 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
 # Utility Function
 # ---------------
 
-def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhite: int, pthim: str) -> int:
-    """
-    Check if model parameters have changed compared to the data loaded from a pickle file.
-
-    Args:
-        datafile: Path to the pickle file containing the model parameters
-        WS: Current value of the 'WS' parameter
-        umpix: Current value of the 'umpix' parameter
-        nwhite: Current value of the 'nwhite' parameter
-        pthim: Current value of the 'pthim' parameter
-
-    Returns:
-        int: Indicates if XML reload is needed (0: No, 1: Yes)
-    """
+def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhite: int, pthim: str, image_name: str) -> int:
     try:
         reload_xml = 0
 
@@ -1545,11 +1532,11 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
                     print('Reload annotation data with updated pthim.')
                     reload_xml = 1
 
-        TA_pkl = os.path.join(pthim,'TA','TA_cutoff.pkl')
+        TA_pkl = os.path.join(pthim, 'TA', 'TA_cutoff.pkl')
         if not os.path.exists(TA_pkl):
             print('Tissue mask evaluation has not been performed')
         else:
-            file = os.path.join(pthim,'TA',imnm+'.tif')
+            file = os.path.join(pthim, 'TA', image_name + '.tif')
             if os.path.exists(file):
                 pkl_modification_time = os.path.getmtime(TA_pkl)
                 tif_modification_time = os.path.getmtime(file)
@@ -1557,7 +1544,7 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
                     reload_xml = 1
                     os.remove(file)
             else:
-                reload_xml=1
+                reload_xml = 1
         return reload_xml
 
     except Exception as e:
