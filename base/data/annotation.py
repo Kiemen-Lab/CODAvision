@@ -1600,17 +1600,17 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
     if os.path.isfile(os.path.join(output_path, 'TA_cutoff.pkl')):
         with open(os.path.join(output_path, 'TA_cutoff.pkl'), 'rb') as f:
             data = pickle.load(f)
-            cutoffs = data['cts']
+            cutoffs_list = data['cts']
             mode = data['mode']
             average_TA = data['average_TA']
             if test:
                 average_TA = True
         if average_TA:
             cutoff = 0
-            for cutoff_list in cutoffs:
-                for value in cutoff_list.values():
-                    cutoff += value
-                cutoff = cutoff / len(cutoff_list)
+
+            for value in cutoffs_list.values():
+                cutoff += value
+            cutoff = cutoff / len(cutoffs_list)
     else:
         # Use default threshold
         cutoff = 205
