@@ -66,12 +66,11 @@ def calculate_tissue_mask(pth, imnm, test):
                 ct += value
             ct = ct/len(cts)
         else:
-            imnm = imnm + '.tif'
-            ct = cts[imnm]
+            ct = cts[imnm + '.tif']
     else:
         # ct = 210 #If there is no previous TA value, use 210
         ct = 205
-
+    print(ct)
     if mode == 'H&E':
         TA = im0[:, :, 1] < ct # Threshold the image green values
     else:

@@ -84,7 +84,7 @@ def load_annotation_data(pthDL,pth,pthim,test=False):
         annotations_file = os.path.join(outpth, 'annotations.pkl')
 
         # check if model parameters have changed
-        reload_xml = check_if_model_parameters_changed(annotations_file, WS, umpix, nwhite, pthim)
+        reload_xml = check_if_model_parameters_changed(annotations_file, WS, umpix, nwhite, pthim, imnm)
 
         # skip if file hasn't been updated since last load
         if os.path.isfile(annotations_file):
@@ -103,8 +103,6 @@ def load_annotation_data(pthDL,pth,pthim,test=False):
                 data = pickle.load(f)
                 numann, ctlist = data.get('numann', []), data.get('ctlist', [])
             numann0.extend(numann)
-            # ctlist0.extend(ctlist)
-            #ctlist0 is now a dictionary
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
             continue
@@ -129,10 +127,6 @@ def load_annotation_data(pthDL,pth,pthim,test=False):
         with open(annotations_file, 'wb') as f:
             pickle.dump(data, f)
             f.close()
-
-        # 2 fill annotation outlines and delete unwanted pixels
-        with open(annotations_file, 'rb') as f:  #
-            data = pickle.load(f)
 
         I0, TA, _ = calculate_tissue_mask(pthim, imnm, test)
         if scale:

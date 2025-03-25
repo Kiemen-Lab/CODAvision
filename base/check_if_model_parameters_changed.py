@@ -4,9 +4,11 @@ Date: April 18, 2024
 """
 import pickle
 import os
+import glob
+import time
 
 
-def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim):
+def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim, imnm):
     """
        Check if model parameters have changed compared to the data loaded from a pickle file.
 
@@ -53,6 +55,20 @@ def check_if_model_parameters_changed(datafile, WS, umpix, nwhite, pthim):
                 if data['pthim'] != pthim:
                     print('Reload annotation data with updated pthim.')
                     reload_xml = 1
+
+        TA_pkl = os.path.join(pthim,'TA','TA_cutoff.pkl')
+        if not os.path.exists(TA_pkl):
+            print('Tissue mask evaluation has not been performed')
+        else:
+            file = os.path.join(pthim,'TA',imnm+'.tif')
+            if os.path.exists(file):
+                pkl_modification_time = os.path.getmtime(TA_pkl)
+                tif_modification_time = os.path.getmtime(file)
+                if tif_modification_time < pkl_modification_time:
+                    reload_xml = 1
+                    os.remove(file)
+            else:
+                reload_xml=1
         return reload_xml
 
     except Exception as e:

@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt, QRect, QMetaObject, QCoreApplication
 from networkx.classes import is_empty
 from numpy.ma.extras import average
 
-from .determine_optimal_TA_UIs import Ui_choose_area, Ui_disp_crop, Ui_choose_TA
+from .determine_optimal_TA_UIs import Ui_choose_area, Ui_disp_crop, Ui_choose_TA, Ui_choose_images_reevaluated, Ui_use_current_TA
 import cv2
 
 def determine_optimal_TA(pthim,numims):
@@ -235,6 +235,114 @@ def determine_optimal_TA(pthim,numims):
         return window.do_again, window.TA, window.mode
 
 
+    class confirm_TA_ui(QtWidgets.QMainWindow):
+        def __init__(self):
+            super(confirm_TA_ui, self).__init__()
+            self.ui = Ui_use_current_TA()
+            self.ui.setupUi(self)
+            self.setGeometry(550, 300,
+                             550, 130)
+            self.ui.text.setGeometry(QRect(25, 10, 500, 60))
+            self.ui.keep_ta.setGeometry(QRect(25, 80, 248, 40))
+            self.ui.new_ta.setGeometry(QRect(275 , 80, 248, 40))
+            self.setWindowTitle("Confirm tissue mask evaluation")
+            self.ui.keep_ta.clicked.connect(self.on_keep_TA)
+            self.ui.new_ta.clicked.connect(self.on_new_TA)
+
+
+        def on_keep_TA(self):
+            self.keep_TA = True
+            self.close()
+
+        def on_new_TA(self):
+            self.keep_TA = False
+            self.close()
+
+    def confirm_TA():
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = QtWidgets.QApplication(sys.argv)
+        window = confirm_TA_ui()
+        window.show()
+        app.exec()
+        return window.keep_TA
+
+    class choose_images_TA_ui(QtWidgets.QMainWindow):
+        def __init__(self):
+            super(choose_images_TA_ui, self).__init__()
+            self.ui = Ui_choose_images_reevaluated()
+            self.ui.setupUi(self)
+            self.setGeometry(450, 300,
+                            600, 250)
+            self.ui.image_LE.setGeometry(QRect(25, 10, 448, 30))
+            self.ui.image_LW.setGeometry(QRect(25, 45, 550, 100))
+            self.ui.browse_PB.setGeometry(QRect(475, 10, 100, 30))
+            self.ui.delete_PB.setGeometry(QRect(375, 150, 200, 30))
+            self.ui.apply_PB.setGeometry(QRect(477, 185, 100, 30))
+            self.ui.apply_all_PB.setGeometry(QRect(375, 185, 100, 30))
+            self.setWindowTitle("Confirm tissue mask evaluation")
+            self.ui.delete_PB.clicked.connect(self.on_delete_image)
+            self.ui.browse_PB.clicked.connect(self.on_browse)
+            self.ui.apply_PB.clicked.connect(self.on_apply)
+            self.ui.apply_all_PB.clicked.connect(self.on_apply_all)
+            self.images = []
+            self.apply_all = False
+
+        def closeEvent(self, event):
+            if event.spontaneous():
+                self.images = []
+                QtWidgets.QMessageBox.information(self, 'Info',
+                                              'Keeping previous tissue mask evaluation')
+
+        def on_delete_image(self):
+            delete_row = self.ui.image_LW.currentRow()
+            if delete_row == -1:
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                              'Please select path to delete')
+                return
+            del self.images[delete_row]
+            self.ui.image_LW.takeItem(delete_row)
+
+        def on_browse(self):
+            file_path,_ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Image to Reevaluate",
+                                                                "","TIFF Images (*.tif *.tiff)")
+            if file_path:
+                if os.path.isfile(file_path):
+                    self.ui.image_LE.setText(file_path)
+                    if not (file_path.endswith(('.tif')) or file_path.endswith(('.tiff'))):
+                        QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                      'Select a .tif image.')
+                    elif any(np.isin(self.images, file_path)):
+                        QtWidgets.QMessageBox.warning(self, 'Warning',
+                                                      'The selected image is already on the list')
+                    else:
+                        self.images.append(file_path)
+                        self.ui.image_LW.addItem(file_path)
+                    self.ui.image_LE.setText('')
+            else:
+                QtWidgets.QMessageBox.warning(self, 'Warning',
+                                             'Seleced image does not exist')
+
+        def on_apply(self):
+            i = 0
+            for image in self.images:
+                self.images[i] = os.path.basename(image)
+                i +=1
+            self.close()
+
+        def on_apply_all(self):
+            self.apply_all = True
+            self.close()
+
+    def choose_images_TA():
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = QtWidgets.QApplication(sys.argv)
+        window = choose_images_TA_ui()
+        window.show()
+        app.exec()
+        return window.apply_all, window.images
+
     imlist = sorted(glob(os.path.join(pthim, '*.tif')))
     if not imlist:
         jpg_files = glob(os.path.join(pthim, "*.jpg"))
@@ -259,8 +367,10 @@ def determine_optimal_TA(pthim,numims):
 
     if os.path.isfile(os.path.join(outpath,'TA_cutoff.pkl')):
         if numims>0:
-            print('   Optimal cutoff already chosen, skip this step')
-            return
+            keep_TA = confirm_TA()
+            if keep_TA:
+                print('   Optimal cutoff already chosen, skip this step')
+                return
         else:
             with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'rb') as f:
                 data = pickle.load(f)
@@ -269,10 +379,16 @@ def determine_optimal_TA(pthim,numims):
                 done = []
                 for index in cts:
                     done.append(index)
-                imlist = list(set(imlist) - set(done))
-                if not imlist:
-                    print('   Optimal cutoff already chosen for all images, skip this step')
-                    return
+                imlist_temp = list(set(imlist) - set(done))
+                if not imlist_temp:
+                    keep_TA = confirm_TA()
+                    if keep_TA:
+                        print('   Optimal cutoff already chosen for all images, skip this step')
+                        return
+                    else:
+                        apply_all, redo_list = choose_images_TA()
+                        if not apply_all:
+                            imlist = redo_list
 
     if numims>0:
         numims = min(numims,len(imlist))
@@ -304,7 +420,10 @@ def determine_optimal_TA(pthim,numims):
         do_again = 1
         while do_again == 1:
             do_again, CT0, mode = select_TA(szz, cropped, CT0, mode)
-        cts = {**cts, nm: CT0}
+        if nm in cts:
+            cts[nm] = CT0
+        else:
+            cts = {**cts, nm: CT0}
     with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'wb') as f:
         pickle.dump({'cts':cts,'imlist':imlist, 'mode': mode, 'average_TA': average_TA}, f)
     return
