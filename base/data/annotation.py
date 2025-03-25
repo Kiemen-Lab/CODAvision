@@ -1608,12 +1608,13 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
         if average_TA:
             cutoff = 0
             for cutoff_list in cutoffs:
-                for value in cutoff_list:
+                for value in cutoff_list.values():
                     cutoff += value
                 cutoff = cutoff / len(cutoff_list)
     else:
         # Use default threshold
         cutoff = 205
+
     if mode == 'H&E':
         tissue_mask = image[:, :, 1] < cutoff  # Threshold the image green values
     else:
