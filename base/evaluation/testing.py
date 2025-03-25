@@ -117,7 +117,7 @@ class SegmentationModelTester:
             test_data_path = os.path.join(self.test_annotation_path, 'data py')
 
             # Load annotation data
-            load_annotation_data(self.model_path, self.test_annotation_path, self.test_image_path)
+            load_annotation_data(self.model_path, self.test_annotation_path, self.test_image_path,0, True)
 
             # Classify test images
             classified_path = classify_images(

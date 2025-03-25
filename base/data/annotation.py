@@ -22,6 +22,7 @@ import re
 import numpy as np
 import pandas as pd
 from PIL import Image
+from skimage import morphology
 from skimage.morphology import remove_small_objects
 from scipy.ndimage import binary_fill_holes
 import cv2
@@ -37,7 +38,8 @@ from collections import defaultdict
 # XML Parsing and Loading Utilities
 # ---------------------------------
 
-def load_annotation_data(model_path: str, annotation_path: str, image_path: str, class_check: int = 0) -> Tuple:
+def load_annotation_data(model_path: str, annotation_path: str, image_path: str, class_check: int = 0,
+                         test: bool = False) -> Tuple:
     """
     Loads annotation data from XML files, creates tissue masks and bounding boxes.
 
@@ -45,7 +47,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
         model_path: Path to the directory for saving model data
         annotation_path: Path to the directory containing XML annotation files
         image_path: Path to the directory containing image files
-        class_check: Flag for validation (default: 0)
+        test (bool, optional): Used in calculate_tissue_mask.
 
     Returns:
         Tuple of (bounding box file list, annotation counts array, create_new_tiles flag)
@@ -67,7 +69,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
     # Prepare color map and get class count
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
     numclass = np.max(WS[2])
-    
+
     # Find XML files
     imlist = [f for f in os.listdir(annotation_path) if f.endswith('.xml')]
     if not imlist:
@@ -148,8 +150,8 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
                 pickle.dump(data, f)
 
             # Load tissue mask
-            I0, TA, _ = calculate_tissue_mask(image_path, base_name)
-            
+            I0, TA, _ = calculate_tissue_mask(image_path, base_name, test)
+
             # Save annotation mask
             if scale:
                 J0 = save_annotation_mask(I0, outpth, WS, umpix, TA, 1, scale)
@@ -1542,6 +1544,20 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
                 if data['pthim'] != pthim:
                     print('Reload annotation data with updated pthim.')
                     reload_xml = 1
+
+        TA_pkl = os.path.join(pthim,'TA','TA_cutoff.pkl')
+        if not os.path.exists(TA_pkl):
+            print('Tissue mask evaluation has not been performed')
+        else:
+            file = os.path.join(pthim,'TA',imnm+'.tif')
+            if os.path.exists(file):
+                pkl_modification_time = os.path.getmtime(TA_pkl)
+                tif_modification_time = os.path.getmtime(file)
+                if tif_modification_time < pkl_modification_time:
+                    reload_xml = 1
+                    os.remove(file)
+            else:
+                reload_xml=1
         return reload_xml
 
     except Exception as e:
@@ -1549,7 +1565,7 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
         return 1
 
 
-def calculate_tissue_mask(path: str, image_name: str) -> Tuple[np.ndarray, np.ndarray, str]:
+def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray, np.ndarray, str]:
     """
     Reads an image and returns it along with a binary mask of tissue areas.
 
@@ -1567,7 +1583,7 @@ def calculate_tissue_mask(path: str, image_name: str) -> Tuple[np.ndarray, np.nd
     output_path = os.path.join(path.rstrip(os.path.sep), 'TA')
     if not os.path.isdir(output_path):
         os.mkdir(output_path)
-    
+
     # Try to load image with different extensions
     try:
         image = cv2.imread(os.path.join(path, f'{image_name}.tif'))
@@ -1583,7 +1599,7 @@ def calculate_tissue_mask(path: str, image_name: str) -> Tuple[np.ndarray, np.nd
             except:
                 image = cv2.imread(os.path.join(path, f'{image_name}.png'))
                 image = image[:, :, ::-1]
-    
+
     # Check if mask already exists
     if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
         tissue_mask = cv2.imread(os.path.join(output_path, f'{image_name}.tif'), cv2.IMREAD_GRAYSCALE)
@@ -1592,32 +1608,36 @@ def calculate_tissue_mask(path: str, image_name: str) -> Tuple[np.ndarray, np.nd
 
     # Calculate tissue mask
     print('  Calculating TA image')
-    
+    mode = 'H&E'
     # Try to load saved threshold
     if os.path.isfile(os.path.join(output_path, 'TA_cutoff.pkl')):
         with open(os.path.join(output_path, 'TA_cutoff.pkl'), 'rb') as f:
             data = pickle.load(f)
             cutoffs = data['cts']
-        cutoff = 0
-        for cutoff_list in cutoffs:
-            for value in cutoff_list:
-                cutoff += value
-            cutoff = cutoff / len(cutoff_list)
+            mode = data['mode']
+            average_TA = data['average_TA']
+            if test:
+                average_TA = True
+        if average_TA:
+            cutoff = 0
+            for cutoff_list in cutoffs:
+                for value in cutoff_list:
+                    cutoff += value
+                cutoff = cutoff / len(cutoff_list)
     else:
         # Use default threshold
         cutoff = 205
-
-    # Create tissue mask using green channel
-    tissue_mask = image[:, :, 1] < cutoff
-    
-    # Clean up mask
+    if mode == 'H&E':
+        tissue_mask = image[:, :, 1] < cutoff  # Threshold the image green values
+    else:
+        tissue_mask = image[:, :, 1] > cutoff
     kernel_size = 3
     tissue_mask = tissue_mask.astype(np.uint8)
     kernel = morphology.disk(kernel_size)
     tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, kernel.astype(np.uint8))
     tissue_mask = remove_small_objects(tissue_mask.astype(bool), min_size=10)
-    
+
     # Save mask
     cv2.imwrite(os.path.join(output_path, f'{image_name}.tif'), tissue_mask.astype(np.uint8))
-    
+
     return image, tissue_mask, output_path

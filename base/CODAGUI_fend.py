@@ -60,6 +60,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.resolution_CB.currentIndexChanged.connect(self.check_for_trained_model)
         self.ui.use_anotated_images_CB.stateChanged.connect(self.check_for_trained_model)
         self.ui.create_downsample_CB.stateChanged.connect(self.check_for_trained_model)
+        self.ui.TA_CB.stateChanged.connect(self.TA_change)
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
@@ -773,9 +774,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 elif any(f.endswith(('.tif')) for f in os.listdir(custom_test)):
                     self.test_img_type = '.tif'
                 elif any(f.endswith(('.jpg')) for f in os.listdir(custom_test)):
-                    self.img_type = '.jpg'
+                    self.test_img_type = '.jpg'
                 elif any(f.endswith(('.png')) for f in os.listdir(custom_test)):
-                    self.img_type = '.png'
+                    self.test_img_type = '.png'
                 else:
                     QtWidgets.QMessageBox.warning(self, 'Warning',
                                                   'The selected uncompressed testing images path does not contain'
@@ -1262,6 +1263,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.populate_combo_boxes()
         self.combined_df['Component analysis'] = np.nan
 
+    def TA_change(self):
+        if self.ui.TA_CB.isChecked():
+            self.ui.TA_SB.setEnabled(False)
+            self.ui.TA_SB.setStyleSheet("QSpinBox { color: grey; }")
+        else:
+            self.ui.TA_SB.setEnabled(True)
+            self.ui.TA_SB.setStyleSheet("QSpinBox { color: white; }")
+
     # Add or update these methods in the MainWindow class:
     def save_advanced_settings_and_close(self, train: bool):
 
@@ -1300,7 +1309,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tile_size = int(self.ui.tts_CB.currentText())
         self.ntrain = self.ui.ttn_SB.value()
         self.nval = self.ui.vtn_SB.value()
-        self.TA = self.ui.TA_SB.value()
+        if self.ui.TA_CB.isChecked():
+            self.TA = -20
+        else:
+            self.TA = self.ui.TA_SB.value()
         self.train = train
 
         #Save model metadata onto pickle file
@@ -1406,6 +1418,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.ttn_SB.setValue(self.ntrain)
             self.ui.vtn_SB.setValue(self.nval)
             self.ui.TA_SB.setValue(self.TA)
+            if self.TA <0:
+                self.ui.TA_CB.setChecked(True)
 
     # Load paths
     def get_pthDL(self):
