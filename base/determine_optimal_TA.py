@@ -415,7 +415,40 @@ def determine_optimal_TA(pthim,numims):
             y = click.y()
             x_norm = int(np.round(x/rsf))
             y_norm = int(np.round(y/rsf))
-            cropped = im0[y_norm-szz:y_norm+szz, x_norm-szz:x_norm+szz, :]
+            cropped_temp = im0[:,:,:]
+            cropped = np.array([])
+            if 2*szz>im0.shape[0] and 2*szz>im0.shape[1]:
+                max_dim = np.max([im0.shape[0],im0.shape[1]])
+                pad_x = (max_dim - im0.shape[0]) // 2
+                pad_y = (max_dim - im0.shape[1]) // 2
+                # Ensure even padding (if odd difference, add extra on one side)
+                pad_x1, pad_x2 = pad_x, pad_x + (max_dim - im0.shape[0]) % 2
+                pad_y1, pad_y2 = pad_y, pad_y + (max_dim - im0.shape[1]) % 2
+                cropped = np.pad(im0, ((pad_x1, pad_x2), (pad_y1, pad_y2), (0, 0)), mode='constant')
+            elif 2*szz>im0.shape[0]:
+                pad_x = (2*szz - im0.shape[0]) // 2
+                pad_x1, pad_x2 = pad_x, pad_x + (2*szz - im0.shape[0]) % 2
+                padded = np.pad(im0, ((pad_x1, pad_x2), (0, 0), (0, 0)), mode='constant')
+                cropped_temp = padded[y_norm-szz:y_norm+szz,x_norm-szz:x_norm+szz, :]
+            elif 2*szz>im0.shape[1]:
+                pad_y = (2*szz - im0.shape[1]) // 2
+                pad_y1, pad_y2 = pad_y, pad_y + (2*szz - im0.shape[1]) % 2
+                padded = np.pad(im0, ((0,0), (pad_y1, pad_y2), (0, 0)), mode='constant')
+                cropped_temp = padded[y_norm-szz:y_norm+szz,x_norm-szz:x_norm+szz, :]
+            if y_norm<szz:
+                cropped_temp = cropped_temp[0: 2*szz, :, :]
+            elif y_norm+szz>im0.shape[0]:
+                cropped_temp = cropped_temp[-2*szz:, :, :]
+            else:
+                cropped_temp = cropped_temp[y_norm-szz:y_norm+szz,:,:]
+            if x_norm<szz:
+                cropped_temp = cropped_temp[:,0: 2*szz, :]
+            elif x_norm+szz>im0.shape[0]:
+                cropped_temp = cropped_temp[:,-2*szz:, :]
+            else:
+                cropped_temp = cropped_temp[:,x_norm-szz:x_norm+szz,:]
+            if cropped.size == 0:
+                cropped = cropped_temp
             do_again = check_region(szz, cropped)
         do_again = 1
         while do_again == 1:
