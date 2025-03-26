@@ -3,11 +3,8 @@ from glob import glob
 import os
 import sys
 import pickle
-# Import pyqt stuff
 from PySide6 import QtGui, QtWidgets, QtCore
-from PySide6.QtCore import Qt, QRect, QMetaObject, QCoreApplication
-from networkx.classes import is_empty
-from numpy.ma.extras import average
+from PySide6.QtCore import Qt, QRect
 
 from .determine_optimal_TA_UIs import Ui_choose_area, Ui_disp_crop, Ui_choose_TA, Ui_choose_images_reevaluated, Ui_use_current_TA
 import cv2
@@ -364,31 +361,33 @@ def determine_optimal_TA(pthim,numims):
     mode = 'H&E'
     if not os.path.exists(outpath):
         os.makedirs(outpath)
-
     if os.path.isfile(os.path.join(outpath,'TA_cutoff.pkl')):
         if numims>0:
             keep_TA = confirm_TA()
             if keep_TA:
                 print('   Optimal cutoff already chosen, skip this step')
                 return
+            with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'rb') as f:
+                data = pickle.load(f)
+                mode = data['mode']
         else:
             with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'rb') as f:
                 data = pickle.load(f)
                 cts = data['cts']
                 mode = data['mode']
-                done = []
-                for index in cts:
-                    done.append(index)
-                imlist_temp = list(set(imlist) - set(done))
-                if not imlist_temp:
-                    keep_TA = confirm_TA()
-                    if keep_TA:
-                        print('   Optimal cutoff already chosen for all images, skip this step')
-                        return
-                    else:
-                        apply_all, redo_list = choose_images_TA()
-                        if not apply_all:
-                            imlist = redo_list
+            done = []
+            for index in cts:
+                done.append(index)
+            imlist_temp = list(set(imlist) - set(done))
+            if not imlist_temp:
+                keep_TA = confirm_TA()
+                if keep_TA:
+                    print('   Optimal cutoff already chosen for all images, skip this step')
+                    return
+                else:
+                    apply_all, redo_list = choose_images_TA()
+                    if not apply_all:
+                        imlist = redo_list
 
     if numims>0:
         numims = min(numims,len(imlist))

@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt,QRegularExpression
 import pickle
 import numpy as np
 from base import save_model_metadata_GUI
+from base.data.annotation import extract_annotation_layers
 pd.set_option('display.max_columns', None)
 
 
@@ -127,33 +128,38 @@ class MainWindow(QtWidgets.QMainWindow):
         if xml_file:
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
-                self.original_df = self.df.copy()  # Initialize original_df after loading data
+                self.original_df = self.df.copy()
                 print(f"Loaded XML file: {xml_file}")
                 print(self.df)
                 self.populate_table_widget()
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
+                import traceback
+                print(traceback.format_exc())
         else:
             QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
 
     def parse_xml_to_dataframe(self, xml_file):
-        with open(xml_file, 'r', encoding='utf-8') as file:
-            xml_content = file.read()
+        """
+        Parse XML file to DataFrame using the xml_handler module.
+        """
+        try:
+            # Use the extract_annotation_layers function from xml_handler
+            df = extract_annotation_layers(xml_file)
 
-        xml_dict = xmltodict.parse(xml_content)
+            if df.empty:
+                QtWidgets.QMessageBox.warning(self, 'Warning', 'No annotation layers found in the XML file.')
+                return pd.DataFrame()
 
-        annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
-        data = []
-        for layer in annotations:
-            layer_name = layer.get('@Name')
-            color = layer.get('@LineColor')
-            rgb = self.int_to_rgb(color)
-            data.append(
-                {'Layer Name': layer_name.replace(" ", "_") , 'Color': rgb, 'Whitespace Settings': None})  # Add whitespace settings
-
-        df = pd.DataFrame(data)
-        self.original_df = df.copy()  # Save the original dataframe for resetting
-        return df
+            self.original_df = df.copy()
+            print(f"Loaded XML file: {xml_file}")
+            print(df)
+            return df
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
+            import traceback
+            print(traceback.format_exc())
+            return pd.DataFrame()
 
     def int_to_rgb(self, hex_color):
         hex_color = int(hex_color)
