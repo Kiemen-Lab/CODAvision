@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt,QRegularExpression
 import pickle
 import numpy as np
 from base import save_model_metadata_GUI
+from base.data.annotation import extract_annotation_layers
 pd.set_option('display.max_columns', None)
 
 
@@ -59,6 +60,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.resolution_CB.currentIndexChanged.connect(self.check_for_trained_model)
         self.ui.use_anotated_images_CB.stateChanged.connect(self.check_for_trained_model)
         self.ui.create_downsample_CB.stateChanged.connect(self.check_for_trained_model)
+        self.ui.TA_CB.stateChanged.connect(self.TA_change)
         self.combo_colors = {}
         self.original_df = None  # Initialize original_df
         self.df = None
@@ -126,33 +128,38 @@ class MainWindow(QtWidgets.QMainWindow):
         if xml_file:
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
-                self.original_df = self.df.copy()  # Initialize original_df after loading data
+                self.original_df = self.df.copy()
                 print(f"Loaded XML file: {xml_file}")
                 print(self.df)
                 self.populate_table_widget()
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
+                import traceback
+                print(traceback.format_exc())
         else:
             QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
 
     def parse_xml_to_dataframe(self, xml_file):
-        with open(xml_file, 'r', encoding='utf-8') as file:
-            xml_content = file.read()
+        """
+        Parse XML file to DataFrame using the xml_handler module.
+        """
+        try:
+            # Use the extract_annotation_layers function from xml_handler
+            df = extract_annotation_layers(xml_file)
 
-        xml_dict = xmltodict.parse(xml_content)
+            if df.empty:
+                QtWidgets.QMessageBox.warning(self, 'Warning', 'No annotation layers found in the XML file.')
+                return pd.DataFrame()
 
-        annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
-        data = []
-        for layer in annotations:
-            layer_name = layer.get('@Name')
-            color = layer.get('@LineColor')
-            rgb = self.int_to_rgb(color)
-            data.append(
-                {'Layer Name': layer_name.replace(" ", "_") , 'Color': rgb, 'Whitespace Settings': None})  # Add whitespace settings
-
-        df = pd.DataFrame(data)
-        self.original_df = df.copy()  # Save the original dataframe for resetting
-        return df
+            self.original_df = df.copy()
+            print(f"Loaded XML file: {xml_file}")
+            print(df)
+            return df
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
+            import traceback
+            print(traceback.format_exc())
+            return pd.DataFrame()
 
     def int_to_rgb(self, hex_color):
         hex_color = int(hex_color)
@@ -767,9 +774,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 elif any(f.endswith(('.tif')) for f in os.listdir(custom_test)):
                     self.test_img_type = '.tif'
                 elif any(f.endswith(('.jpg')) for f in os.listdir(custom_test)):
-                    self.img_type = '.jpg'
+                    self.test_img_type = '.jpg'
                 elif any(f.endswith(('.png')) for f in os.listdir(custom_test)):
-                    self.img_type = '.png'
+                    self.test_img_type = '.png'
                 else:
                     QtWidgets.QMessageBox.warning(self, 'Warning',
                                                   'The selected uncompressed testing images path does not contain'
@@ -1256,6 +1263,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.populate_combo_boxes()
         self.combined_df['Component analysis'] = np.nan
 
+    def TA_change(self):
+        if self.ui.TA_CB.isChecked():
+            self.ui.TA_SB.setEnabled(False)
+            self.ui.TA_SB.setStyleSheet("QSpinBox { color: grey; }")
+        else:
+            self.ui.TA_SB.setEnabled(True)
+            self.ui.TA_SB.setStyleSheet("QSpinBox { color: white; }")
+
     # Add or update these methods in the MainWindow class:
     def save_advanced_settings_and_close(self, train: bool):
 
@@ -1294,7 +1309,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tile_size = int(self.ui.tts_CB.currentText())
         self.ntrain = self.ui.ttn_SB.value()
         self.nval = self.ui.vtn_SB.value()
-        self.TA = self.ui.TA_SB.value()
+        if self.ui.TA_CB.isChecked():
+            self.TA = -20
+        else:
+            self.TA = self.ui.TA_SB.value()
         self.train = train
 
         #Save model metadata onto pickle file
@@ -1400,6 +1418,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.ttn_SB.setValue(self.ntrain)
             self.ui.vtn_SB.setValue(self.nval)
             self.ui.TA_SB.setValue(self.TA)
+            if self.TA <0:
+                self.ui.TA_CB.setChecked(True)
 
     # Load paths
     def get_pthDL(self):

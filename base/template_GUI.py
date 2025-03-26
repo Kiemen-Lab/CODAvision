@@ -16,7 +16,7 @@ def CODAVision():
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication(sys.argv)
-
+    app.setStyle("Windows")
     # Load and apply the dark theme stylesheet
     base_dir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(base_dir,'dark_theme.qss'), 'r') as file:
