@@ -24,6 +24,7 @@ def quantify_images(pthDL, pthim):
         classNames = data['classNames']
         nwhite = data['nwhite']
         nm = data['nm']
+        model_type = data['model_type']
 
     # Define the headers for the pixel count and tissue composition quantifications
     classQuantification = ['Image name'] + \
@@ -31,7 +32,7 @@ def quantify_images(pthDL, pthim):
                           [f"{classNames[i]} tissue composition (%)" for i in range(len(classNames) - 1) if i != nwhite - 1]
 
     # Save headers to CSV
-    quantPath = os.path.join(pthim, 'classification_' + nm)
+    quantPath = os.path.join(pthim, 'classification_' + nm + '_'+ model_type)
     file = os.path.join(quantPath, 'image_quantifications.csv')
     df = pd.DataFrame(columns=classQuantification)
     df.to_csv(file, index=False)

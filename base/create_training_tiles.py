@@ -1,16 +1,18 @@
+
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Date: May 22, 2024
 """
 
 import glob
+import shutil
 import numpy as np
 import time
 from .combine_annotations_into_tiles import combine_annotations_into_tiles
 import os
 import pickle
 
-def create_training_tiles(pthDL, numann0, ctlist0):
+def create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles):
     """
     Builds training and validation tiles using the annotation bounding boxes and saves them to the model name folder
 
@@ -20,7 +22,7 @@ def create_training_tiles(pthDL, numann0, ctlist0):
         ctlist0 (list): List of image paths.
 
     Outputs:
-        HE and Label big tiles, they are saved within the function.
+        HE and Label tiles, they are saved within the function.
         The code returns NONE
     """
 
@@ -34,9 +36,27 @@ def create_training_tiles(pthDL, numann0, ctlist0):
         classNames = classNames[:-1]
     print('')
 
-    # Calculate pixel composition for each annotation class
+    # Check if numann0 is empty or malformed
+    if not numann0 or len(numann0) == 0:
+        raise ValueError(
+            'No annotation data found. Please ensure that annotation files exist and contain valid annotations.')
+
+    # Calculate total number of pixels in the training dataset...
     print('Calculating total number of pixels in the training dataset...')
     count_annotations = sum(numann0)
+
+    # Check if count_annotations is a scalar or empty array
+    if isinstance(count_annotations, (int, float)) or (
+            hasattr(count_annotations, 'size') and count_annotations.size == 0):
+        raise ValueError(
+            'No valid annotations were found. This usually happens when no annotation files are present or they contain no valid annotations. '
+            'Please check your annotation directory and ensure annotations are correctly formatted.')
+
+    # Check if there are actual values in the count_annotations array
+    if max(count_annotations) == 0:
+        raise ValueError(
+            'All annotation classes have zero pixels. Please check your annotation files and ensure they contain valid annotations.')
+
     annotation_composition = count_annotations / max(count_annotations) * 100
     for b, count in enumerate(annotation_composition):
         if annotation_composition[b] == 100:
@@ -59,6 +79,8 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     percann = np.dstack((percann, percann))
     percann0 = percann.copy()
     ty = 'training'
+    if create_new_tiles and os.path.isdir(os.path.join(pthDL, ty)):
+        shutil.rmtree(os.path.join(pthDL, ty))
     obg = os.path.join(pthDL, ty, 'big_tiles')
     # Generate tiles until enough are made
     train_start = time.time()
@@ -87,10 +109,10 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     minutes, seconds = divmod(rem, 60)
     print(f'  Elapsed time to create training big tiles: {hours}h {minutes}m {seconds}s')
 
-    print('')
-
     # Build validation tiles
     ty = 'validation'
+    if create_new_tiles and os.path.isdir(os.path.join(pthDL, ty)):
+        shutil.rmtree(os.path.join(pthDL, ty))
     obg = os.path.join(pthDL, ty, 'big_tiles')
     numann = numann0.copy()
     percann = (numann0 > 0).astype(float)
@@ -98,16 +120,15 @@ def create_training_tiles(pthDL, numann0, ctlist0):
     percann0 = percann.copy()
     validation_start_time = time.time()
 
-    print('')
     print('Building validation tiles...')
     if len(glob.glob(os.path.join(obg, 'HE*.jpg'))) >= nvalidate:
-        print('Already done.')
+        print('  Already done.')
     else:
         while len(glob.glob(os.path.join(obg, 'HE*.jpg'))) < nvalidate:
             numann, percann = combine_annotations_into_tiles(numann0, numann, percann, ctlist0, nblack, pthDL, ty, sxy)
             elapsed_time = time.time() - validation_start_time
             print(
-                f'{len(glob.glob(os.path.join(obg, "HE*.jpg")))} of {nvalidate} validation images completed in {int(elapsed_time / 60)} minutes')
+                f'{  len(glob.glob(os.path.join(obg, "HE*.jpg")))} of {nvalidate} validation images completed in {int(elapsed_time / 60)} minutes')
 
             baseclass1 = np.sum(percann0[:, :, 0], axis=0)
             usedclass1 = np.sum(percann[:, :, 0], axis=0)
@@ -118,9 +139,10 @@ def create_training_tiles(pthDL, numann0, ctlist0):
             tmp2 = usedclass2 / baseclass2 * 100
 
             for b, class_name in enumerate(classNames):
-                print(f'Used {tmp1[b]:.1f}% counts and {tmp2[b]:.1f}% unique annotations of {class_name}')
+                print(f'  Used {tmp1[b]:.1f}% counts and {tmp2[b]:.1f}% unique annotations of {class_name}')
 
     total_time_validation_bigtiles = time.time() - validation_start_time
     hours, rem = divmod(total_time_validation_bigtiles, 3600)
     minutes, seconds = divmod(rem, 60)
-    print(f'Elapsed time to create validation big tiles: {hours}h {minutes}m {seconds}s')
+    print(f'  Elapsed time to create validation big tiles: {hours}h {minutes}m {seconds}s')
+    print('')

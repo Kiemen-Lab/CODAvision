@@ -102,5 +102,3 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
     # plot color legend
     plot_cmap_legend(cmap, classNames)
     plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
-
-

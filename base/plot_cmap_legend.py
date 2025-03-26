@@ -36,4 +36,3 @@ def plot_cmap_legend(cmap, titles):
     else:
         plt.figure()
         plt.imshow(im)
-

@@ -102,7 +102,6 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.chapter_body(f"This folder contains grayscale images with labels of the segmented annotation classes. "
                      f"A subfolder in this path, 'check_classification', contains JPG images like the one shown on this page, "
                      f"with a mask overlay using the chosen color map for the classification.")
-    print(pdf.get_y())
     check_classification_image = os.path.join(check_classification_path, os.listdir(check_classification_path)[0])
     pdf.ln()
     pdf.add_image(check_classification_image, pdf.l_margin, pdf.get_y(), page_width, 0)
@@ -114,8 +113,6 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
        f'Pixel and tissue composition quantifications of the first image. The quantification of this and the other images has been saved in the CSV file.\nPath:')
     pdf.path_bold(f'{fit_path_in_line(quantifications_csv_path)}\n')
     df = pd.read_csv(quantifications_csv_path)
-    print(df)
-    print(df.head(5).columns)
     quantifications = df.head(5)
 
     # Set font for table
@@ -142,7 +139,6 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.cell(cell_width-20, 10, df['Image name'][0], 1, align = 'C')
     pdf.ln()
     vertical_limit = False
-    print(page_heigh)
 
     # Print rows
     for row in df.head().columns[1:int(len(df.head().columns)/2)+1]:
@@ -201,7 +197,7 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
 # Example usage
 if __name__ == '__main__':
     create_output_pdf(
-        output_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report1.pdf',
+        output_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report.pdf',
         confusion_matrix_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\confusion_matrix.jpg',
         color_legend_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_color_legend.png',
         check_annotations_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\check_annotations',

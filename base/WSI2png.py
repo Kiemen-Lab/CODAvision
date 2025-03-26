@@ -7,6 +7,7 @@ from PIL import Image
 import numpy as np
 import os
 import glob
+# from openslide import OpenSlide
 
 # Add the OpenSlide DLL directory
 try:
@@ -24,7 +25,6 @@ else:
     if openslide_path not in os.environ['PATH']:
         os.environ['PATH'] = openslide_path + os.pathsep + os.environ['PATH']
     from openslide import OpenSlide
-
 
 def process_missing_images(pth, pthim, missing_images, umpix):
     """Process missing images by converting .ndpi or .svs files to .png"""
@@ -55,6 +55,8 @@ def process_missing_images(pth, pthim, missing_images, umpix):
 
 
 def WSI2png(pth, resolution, umpix):
+    print(' Making down-sampled images...')
+
     pthim = os.path.join(pth, f'{resolution}')
 
     # Ensure the image directory exists
@@ -76,6 +78,9 @@ def WSI2png(pth, resolution, umpix):
     if images_names_png != images_names_wsi:
         missing_images = images_names_wsi - images_names_png
         process_missing_images(pth, pthim, missing_images, umpix)
+    else:
+        print("All down-sampled images already exist in the directory.")
+
 
 
 if __name__ == '__main__':
