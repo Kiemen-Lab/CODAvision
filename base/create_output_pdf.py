@@ -39,8 +39,21 @@ class PDF(FPDF):
         self.multi_cell(0, 6, body, align='L')
 
     def add_image(self, image_path, x, y, w, h):
+        # Check if the image file has a supported extension
+        supported_extensions = ['jpg', 'jpeg', 'png']
+        file_extension = image_path.split('.')[-1].lower()
+
+        if file_extension not in supported_extensions:
+            raise RuntimeError(f'Unsupported image type: {file_extension}')
+
+        # Add the image to the PDF
         self.image(image_path, x, y, w, h)
 
+def get_first_image(directory, supported_extensions=['jpg', 'jpeg', 'png']):
+    for file in os.listdir(directory):
+        if file.split('.')[-1].lower() in supported_extensions:
+            return os.path.join(directory, file)
+    raise RuntimeError(f"No supported image files found in {directory}")
 
 def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path, check_classification_path, quantifications_csv_path):
     print('Generating model evaluation report...')
@@ -89,7 +102,7 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.chapter_body(
         f"These images, including the one shown on this page, facilitate the visualization of annotation layout for the "
         f"annotations employed in training the model.")
-    check_annotations_image = os.path.join(check_annotations_path, os.listdir(check_annotations_path)[0])
+    check_annotations_image = get_first_image(check_annotations_path)
     pdf.ln()
     pdf.add_image(check_annotations_image, pdf.l_margin, pdf.get_y(), page_width, 0)
 
@@ -102,7 +115,7 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.chapter_body(f"This folder contains grayscale images with labels of the segmented annotation classes. "
                      f"A subfolder in this path, 'check_classification', contains JPG images like the one shown on this page, "
                      f"with a mask overlay using the chosen color map for the classification.")
-    check_classification_image = os.path.join(check_classification_path, os.listdir(check_classification_path)[0])
+    check_classification_image = get_first_image(check_classification_path)
     pdf.ln()
     pdf.add_image(check_classification_image, pdf.l_margin, pdf.get_y(), page_width, 0)
 
