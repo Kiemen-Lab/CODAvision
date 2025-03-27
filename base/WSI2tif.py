@@ -122,7 +122,6 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         int(np.ceil(wsi.dimensions[0] / scale)),
                         int(np.ceil(wsi.dimensions[1] / scale))
                     )
-
                     # Resize and save the image
                     svs_img = svs_img.resize(resize_dimension, resample=Image.NEAREST)
                     output_path = os.path.join(pthim, missing_image + '.tif')
@@ -148,8 +147,8 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                     pixel_array_numpy = ds.pixel_array
                     image8b = np.uint8((pixel_array_numpy / np.max(pixel_array_numpy) * 255))
                     resize_dimension = (
-                        int(np.ceil(image8b.shape[0] / scale)),
-                        int(np.ceil(image8b.shape[1] / scale))
+                        int(np.ceil(image8b.shape[1] / scale)),
+                        int(np.ceil(image8b.shape[0] / scale))
                     )
                     image8b = Image.fromarray(image8b)
                     # Resize and save the image
@@ -175,13 +174,16 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         image_path = os.path.join(pth, missing_image + image_format)
                         image = Image.open(image_path)
                         image = np.array(image)
+                        print(image.shape)
                         resize_dimension = (
-                            int(np.ceil(image.shape[0] / scale)),
-                            int(np.ceil(image.shape[1] / scale))
+                            int(np.ceil(image.shape[1] / scale)),
+                            int(np.ceil(image.shape[0] / scale))
                         )
                         image = Image.fromarray(image)
                         # Resize and save the image
                         image = image.resize(resize_dimension, resample=Image.NEAREST)
+                        imtemp = np.array(image)
+                        print(imtemp.shape)
                         output_path = os.path.join(pthim, missing_image + '.tif')
                         image.save(output_path, resolution=1, resolution_unit=1, quality=100, compression=None)
                     except Exception as e:
