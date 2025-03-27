@@ -7,11 +7,14 @@ import shutil
 import pickle
 from base.CODAGUI_fend import MainWindow
 import sys
+import time
 from PySide6 import QtWidgets
 from base.classify_im_fend import MainWindowClassify
 from base import *
 
 def CODAVision():
+    start_time = time.time()
+
     # 1 Execute the GUI
     app = QtWidgets.QApplication.instance()
     if app is None:
@@ -19,7 +22,7 @@ def CODAVision():
     app.setStyle("Windows")
     # Load and apply the dark theme stylesheet
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(base_dir,'dark_theme.qss'), 'r') as file:
+    with open(os.path.join(base_dir, 'dark_theme.qss'), 'r') as file:
         app.setStyleSheet(file.read())
 
     window = MainWindow()
@@ -29,7 +32,7 @@ def CODAVision():
         if window.classification_source == 1:
             pkl_pth = window.pth_net
         else:
-            pkl_pth = os.path.join(window.pthim, window.nm,'net.pkl')
+            pkl_pth = os.path.join(window.pthim, window.nm, 'net.pkl')
         with open(pkl_pth, 'rb') as f:
             data = pickle.load(f)
             pthim = data['pthim']
@@ -87,7 +90,7 @@ def CODAVision():
                     pthim = uncomp_pth
                     pthtestim = uncomp_test_pth
                 if scale_images: # Additional function i accidentally added, might include it in the future
-                    WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale,pth)
+                    WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale, pth)
 
         else:
             WSI2tif(pth, resolution, umpix)
@@ -154,7 +157,7 @@ def CODAVision():
         final_df = data['final_df']
         model_name = data['nm']
         classNames = data['classNames']
-        quantpath = os.path.join(pthim, 'classification_'+model_name+'_'+model_type)
+        quantpath = os.path.join(pthim, 'classification_' + model_name + '_' + model_type)
 
         # Identify annotation classes for component analysis
         tissues = []
@@ -163,23 +166,31 @@ def CODAVision():
             if final_df['Delete layer'][index]:
                 count += 1
             if row['Component analysis']:
-                tissues.append(final_df['Combined layers'][index]-count)
+                tissues.append(final_df['Combined layers'][index] - count)
         tissues = list(set(tissues))
 
         # Check if the tissue list has elements
         for tissue in tissues:
-            if not os.path.isfile(os.path.join(quantpath, classNames[tissue-1]+'_count_analysis.csv')):
+            if not os.path.isfile(os.path.join(quantpath, classNames[tissue - 1] + '_count_analysis.csv')):
                 # Call the quantify_objects function
                 quantify_objects(pthDL, quantpath, tissue)
             else:
-                print(f'Object quantification already done for {classNames[tissue-1]}')
+                print(f'Object quantification already done for {classNames[tissue - 1]}')
 
-        output_path = os.path.join(pthDL, model_type+ '_evaluation_report.pdf')
-        confusion_matrix_path = os.path.join(pthDL, 'confusion_matrix_'+model_type+'.png')
+        output_path = os.path.join(pthDL, model_type + '_evaluation_report.pdf')
+        confusion_matrix_path = os.path.join(pthDL, 'confusion_matrix_' + model_type + '.png')
         color_legend_path = os.path.join(pthDL, 'model_color_legend.jpg')
         check_annotations_path = os.path.join(pth, 'check_annotations')
         check_quant = os.path.join(quantpath, 'image_quantifications.csv')
         check_classification_path = os.path.join(pthim, 'classification_' + model_name + '_' + model_type,
-                                                     'check_classification')
+                                                 'check_classification')
         create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path,
                           check_classification_path, check_quant)
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+
+    hours, remainder = divmod(execution_time, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    print(f"Execution time: {int(hours)} hours, {int(minutes)} minutes, and {seconds:.2f} seconds")

@@ -271,6 +271,9 @@ class SegmentationModelTester:
 
         for label in np.unique(true_labels):
             indices = np.where(np.array(true_labels) == label)[0]
+            # Ensure min_count is not larger than the population size
+            if min_count > len(indices):
+                min_count = len(indices)
             selected_indices = np.random.choice(indices, min_count, replace=False)
             balanced_true_labels.extend(np.array(true_labels)[selected_indices])
             balanced_predicted_labels.extend(np.array(predicted_labels)[selected_indices])
