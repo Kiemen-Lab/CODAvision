@@ -8,12 +8,12 @@ Authors:
     Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated March 13, 2025
+Updated March 2025
 """
 
 import os
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Dict, Tuple, Any
 
 from tifffile import imread
 from skimage.morphology import remove_small_objects
@@ -22,7 +22,8 @@ from PIL import Image
 from base.data.annotation import load_annotation_data
 from base.image.classification import classify_images
 from base.evaluation.confusion_matrix import ConfusionMatrixVisualizer
-from base.models.utils import load_model_metadata, get_model_paths
+from base.models.utils import get_model_paths
+from base.data.loaders import load_model_metadata
 
 import warnings
 

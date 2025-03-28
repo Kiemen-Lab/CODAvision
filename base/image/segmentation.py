@@ -8,14 +8,14 @@ Authors:
     Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated March 13, 2025
+Updated March 2025
 """
 
 from typing import Optional, Union, Tuple
 import numpy as np
 import tensorflow as tf
 
-from base.image.utils import read_image
+from base.data.loaders import read_image
 
 
 class SemanticSegmenter:
