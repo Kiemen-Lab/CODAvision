@@ -12,13 +12,13 @@ import numpy as np
 from PySide6.QtCore import (
     QCoreApplication, QMetaObject, QRect, QSize, Qt, QRectF
 )
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtGui import QFont, QPixmap, QPainter
 from PySide6.QtWidgets import (
-    QWidget, QGroupBox, QLabel, QPushButton, QLineEdit, 
-    QComboBox, QSpinBox, QTabWidget, QCheckBox, 
+    QWidget, QGroupBox, QLabel, QPushButton, QLineEdit,
+    QComboBox, QSpinBox, QTabWidget, QCheckBox,
     QTableWidget, QHeaderView, QStatusBar, QGraphicsScene,
     QGraphicsView, QDialog, QProgressBar, QVBoxLayout,
-    QMessageBox, QGraphicsPixmapItem, QListWidget
+    QMessageBox, QGraphicsPixmapItem, QListWidget, QGridLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QTableView
 )
 
 
