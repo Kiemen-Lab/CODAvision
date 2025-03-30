@@ -6,7 +6,11 @@ import pickle
 from PySide6 import QtGui, QtWidgets, QtCore
 from PySide6.QtCore import Qt, QRect
 
-from .determine_optimal_TA_UIs import Ui_choose_area, Ui_disp_crop, Ui_choose_TA, Ui_choose_images_reevaluated, Ui_use_current_TA
+# Import GUI components
+from gui.components.dialogs import (
+    Ui_choose_area, Ui_disp_crop, Ui_choose_TA,
+    Ui_choose_images_reevaluated, Ui_use_current_TA
+)
 import cv2
 
 def determine_optimal_TA(pthim,numims):

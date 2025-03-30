@@ -1,4 +1,4 @@
-from base.template_GUI import CODAVision
+from gui.application import CODAVision
 
 def main():
     CODAVision()
