@@ -1412,17 +1412,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.uncomp_test_pth = self.ui.custom_test_img_LE.text()
             self.scale = self.ui.custom_scale_LE.text()
             pthim = pthim + '_Scale_' + str(float(self.scale))
-            save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
-                                                            tile_size, classNames, ntrain, nvalidate, nTA, final_df,
-                                                            combined_df, model_type, batch_size,
-                                                            uncomp_train_pth=self.uncomp_train_pth,
-                                                            uncomp_test_pth=self.uncomp_test_pth, scale=self.scale,
-                                                            create_down=self.create_down,
-                                                            downsamp_annotated=self.downsamp_annotated_images)
+            save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+                                    tile_size, classNames, ntrain, nvalidate, nTA, final_df,
+                                    combined_df, model_type, batch_size,
+                                    uncomp_train_pth=self.uncomp_train_pth,
+                                    uncomp_test_pth=self.uncomp_test_pth, scale=self.scale,
+                                    create_down=self.create_down,
+                                    downsamp_annotated=self.downsamp_annotated_images)
         else:
-            save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
-                                                            tile_size, classNames, ntrain, nvalidate, nTA, final_df,
-                                                            combined_df, model_type, batch_size)
+            save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+                                    tile_size, classNames, ntrain, nvalidate, nTA, final_df,
+                                    combined_df, model_type, batch_size)
 
     def load_saved_values(self):
         if self.prerecorded_data:
