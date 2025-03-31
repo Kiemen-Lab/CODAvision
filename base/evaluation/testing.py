@@ -8,12 +8,12 @@ Authors:
     Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated March 13, 2025
+Updated March 2025
 """
 
 import os
 import numpy as np
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Dict, Tuple, Any
 
 from tifffile import imread
 from skimage.morphology import remove_small_objects
@@ -22,7 +22,8 @@ from PIL import Image
 from base.data.annotation import load_annotation_data
 from base.image.classification import classify_images
 from base.evaluation.confusion_matrix import ConfusionMatrixVisualizer
-from base.models.utils import load_model_metadata, get_model_paths
+from base.models.utils import get_model_paths
+from base.data.loaders import load_model_metadata
 
 import warnings
 
@@ -271,6 +272,9 @@ class SegmentationModelTester:
 
         for label in np.unique(true_labels):
             indices = np.where(np.array(true_labels) == label)[0]
+            # Ensure min_count is not larger than the population size
+            if min_count > len(indices):
+                min_count = len(indices)
             selected_indices = np.random.choice(indices, min_count, replace=False)
             balanced_true_labels.extend(np.array(true_labels)[selected_indices])
             balanced_predicted_labels.extend(np.array(predicted_labels)[selected_indices])

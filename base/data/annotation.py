@@ -103,7 +103,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
         annotations_file = os.path.join(outpth, 'annotations.pkl')
 
         # Check if model parameters have changed
-        reload_xml = check_if_model_parameters_changed(annotations_file, WS, umpix, nwhite, image_path, imnm)
+        reload_xml = check_if_model_parameters_changed(annotations_file, WS, umpix, nwhite, image_path, base_name)
 
         # Check if annotations were already processed
         if os.path.isfile(annotations_file):
@@ -117,7 +117,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
         date_modified = modification_time
 
         # Skip if already processed and parameters haven't changed
-        if dm == str(date_modified) and bb == 1 and not reload_xml:
+        if str(dm)== str(date_modified) and bb == 1 and reload_xml == 0:
             print(' annotation data previously loaded')
             with open(annotations_file, 'rb') as f:
                 data = pickle.load(f)
