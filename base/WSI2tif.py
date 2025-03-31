@@ -148,8 +148,8 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                     pixel_array_numpy = ds.pixel_array
                     image8b = np.uint8((pixel_array_numpy / np.max(pixel_array_numpy) * 255))
                     resize_dimension = (
-                        int(np.ceil(image8b.shape[0] / scale)),
-                        int(np.ceil(image8b.shape[1] / scale))
+                        int(np.ceil(image8b.shape[1] / scale)),
+                        int(np.ceil(image8b.shape[0] / scale))
                     )
                     image8b = Image.fromarray(image8b)
                     # Resize and save the image
@@ -176,8 +176,8 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         image = Image.open(image_path)
                         image = np.array(image)
                         resize_dimension = (
-                            int(np.ceil(image.shape[0] / scale)),
-                            int(np.ceil(image.shape[1] / scale))
+                            int(np.ceil(image.shape[1] / scale)),
+                            int(np.ceil(image.shape[0] / scale))
                         )
                         image = Image.fromarray(image)
                         # Resize and save the image
