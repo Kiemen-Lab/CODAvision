@@ -1607,10 +1607,12 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
                 average_TA = True
         if average_TA:
             cutoff = 0
-
             for value in cutoffs_list.values():
                 cutoff += value
             cutoff = cutoff / len(cutoffs_list)
+        else:
+             imnm = os.path.basename(image_name)
+             cutoff = cutoffs_list[imnm+'.tif']
     else:
         # Use default threshold
         cutoff = 205

@@ -103,7 +103,7 @@ def determine_optimal_TA(pthim,numims):
         return window.do_again
 
     class chooseTA(QtWidgets.QMainWindow):
-        def __init__(self, szz, CTA, CT0, CTC, mode, parent=None):
+        def __init__(self, szz, CTA, CT0, mode, parent=None):
 
             # Inherit from the aforementioned class and set up the gui
             super(chooseTA, self).__init__()
@@ -111,8 +111,7 @@ def determine_optimal_TA(pthim,numims):
             self.TA = CT0
             self.CTA = CTA
             self.CT0 = CT0
-            self.CTC = CTC
-            self.ui.setupUi(self, CTA, CT0, CTC)
+            self.ui.setupUi(self, CTA, CT0)
             self.setGeometry(30+np.round(1500-1.5*szz+100)/2, 50,
                              np.round(1.5 * szz+100), np.round(370+szz/2))
             self.ui.raise_ta.setGeometry(QRect(50, 170+szz/2, 6+szz*0.75, 90))
@@ -162,19 +161,77 @@ def determine_optimal_TA(pthim,numims):
             self.close()
 
         def on_raise(self):
-            self.TA = self.CT0 + 10
-            self.close()
+            self.CT0 = self.CT0 + 10
+            self.CTA = self.CTA + 10
+            self.change_TA('TA')
 
         def on_decrease(self):
-            self.TA = self.CT0 - 10
-            self.close()
+            self.CT0 = self.CT0 - 10
+            self.CTA = self.CTA - 10
+            self.change_TA('TA')
 
         def on_mode(self):
             if self.mode == 'H&E':
                 self.mode = 'Grayscale'
+                self.CT0 = 50
+                self.CTA = 55
             else:
                 self.mode = 'H&E'
-            self.close()
+                self.CT0 = 205
+                self.CTA = 210
+            self.change_TA('mode')
+
+        def change_TA(self, change):
+            if change == 'mode':
+                if self.mode == 'H&E':
+                    self.ui.change_mode.setStyleSheet("background-color: white; color: black;")
+                    self.ui.change_mode.setText(f'Change mode \n Current mode: H&&E')
+                    self.ui.decrease_ta.setText('Keep more whitespace')
+                    self.ui.raise_ta.setText('Keep more tissue')
+                else:
+                    self.ui.raise_ta.setText('Keep more whitespace')
+                    self.ui.decrease_ta.setText('Keep more tissue')
+                    self.ui.change_mode.setStyleSheet("""
+                                        QPushButton {
+                                            background-color: black;
+                                            color: white;
+                                            font-size: 12px;
+                                        }
+                                        QPushButton:hover {
+                                            background-color: #333333;  /* Dark gray instead of white */
+                                            color: white;  /* Keep the text readable */
+                                        }
+                                    """)
+            if self.mode == 'H&E':
+                image_array_high = np.ascontiguousarray(((cropped[:, :, 1] > self.CTA) * 255).astype(np.uint8))
+                image_array_low = np.ascontiguousarray(((cropped[:, :, 1] > self.CT0) * 255).astype(np.uint8))
+            else:
+                image_array_high = np.ascontiguousarray(((cropped[:, :, 1] < self.CTA) * 255).astype(np.uint8))
+                image_array_low = np.ascontiguousarray(((cropped[:, :, 1] < self.CT0) * 255).astype(np.uint8))
+            self.ui.high_ta.setText(f'Image A\nTA = {str(self.CTA)}')
+            self.ui.low_ta.setText(f'Image A\nTA = {str(self.CT0)}')
+            height, width = image_array_high.shape[:2]
+            qimage = QtGui.QImage(image_array_high.data, width, height, image_array_high.strides[0],
+                                  QtGui.QImage.Format_Grayscale8)
+            pixmap = QtGui.QPixmap.fromImage(qimage)
+            self.ui.high_im.setGeometry(QRect(50, 70, szz / 2, szz / 2))
+            self.ui.high_im.setPixmap(pixmap.scaled(
+                self.ui.high_im.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            ))
+            self.ui.high_im.setScaledContents(True)
+            qimage = QtGui.QImage(image_array_low.data, width, height, image_array_low.strides[0],
+                                  QtGui.QImage.Format_Grayscale8)
+            pixmap = QtGui.QPixmap.fromImage(qimage)
+            self.ui.low_im.setGeometry(QRect(58 + szz, 70, szz / 2, szz / 2))
+            self.ui.low_im.setPixmap(pixmap.scaled(
+                self.ui.low_im.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            ))
+            self.ui.low_im.setScaledContents(True)
+
 
         def update_image(self, szz, cropped):
             if self.mode == 'H&E':
@@ -221,11 +278,10 @@ def determine_optimal_TA(pthim,numims):
 
     def select_TA(szz, cropped, CT0, mode):
         CTA = CT0 + 5
-        CTC = CT0 - 5
         app = QtWidgets.QApplication.instance()
         if app is None:
             app = QtWidgets.QApplication(sys.argv)
-        window = chooseTA(szz,CTA,CT0,CTC, mode)
+        window = chooseTA(szz,CTA,CT0, mode)
         window.show()
         window.update_image(szz, cropped)
         app.exec()

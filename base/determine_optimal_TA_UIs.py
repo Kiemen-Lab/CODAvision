@@ -48,7 +48,7 @@ class Ui_disp_crop(object):
         self.text.setText(QCoreApplication.translate("MainWindow", u"Is this a good location to evaluate tissue and whitespace detection?", None))
 
 class Ui_choose_TA(object):
-    def setupUi(self, MainWindow, CTA,CT0, CTC):
+    def setupUi(self, MainWindow, CTA,CT0):
         self.centralwidget = QWidget(MainWindow)
         self.high_im = QLabel(self.centralwidget)
         self.high_im.setFrameShape(QFrame.Box)
@@ -83,11 +83,11 @@ class Ui_choose_TA(object):
         self.change_mode = QPushButton(self.centralwidget)
         MainWindow.setCentralWidget(self.centralwidget)
 
-        self.retranslateUi(MainWindow, CTA,CT0,CTC)
+        self.retranslateUi(MainWindow, CTA,CT0)
 
         QMetaObject.connectSlotsByName(MainWindow)
 
-    def retranslateUi(self, MainWindow, CTA,CT0, CTC):
+    def retranslateUi(self, MainWindow, CTA,CT0):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.high_im.setText("")
         self.high_ta.setText(QCoreApplication.translate("MainWindow", u"Image A\nTA = "+ str(CTA), None))
