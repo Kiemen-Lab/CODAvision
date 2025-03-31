@@ -122,7 +122,6 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         int(np.ceil(wsi.dimensions[0] / scale)),
                         int(np.ceil(wsi.dimensions[1] / scale))
                     )
-
                     # Resize and save the image
                     svs_img = svs_img.resize(resize_dimension, resample=Image.NEAREST)
                     output_path = os.path.join(pthim, missing_image + '.tif')
@@ -175,6 +174,7 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         image_path = os.path.join(pth, missing_image + image_format)
                         image = Image.open(image_path)
                         image = np.array(image)
+                        print(image.shape)
                         resize_dimension = (
                             int(np.ceil(image.shape[1] / scale)),
                             int(np.ceil(image.shape[0] / scale))
@@ -182,6 +182,8 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         image = Image.fromarray(image)
                         # Resize and save the image
                         image = image.resize(resize_dimension, resample=Image.NEAREST)
+                        imtemp = np.array(image)
+                        print(imtemp.shape)
                         output_path = os.path.join(pthim, missing_image + '.tif')
                         image.save(output_path, resolution=1, resolution_unit=1, quality=100, compression=None)
                     except Exception as e:
