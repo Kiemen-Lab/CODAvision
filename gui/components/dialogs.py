@@ -1,14 +1,24 @@
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QFrame, QLabel, QMainWindow,
-    QPushButton, QSizePolicy, QWidget, QLineEdit,QListWidget)
+"""
+Dialog Components for CODAvision GUI
 
-class Ui_choose_area(object):
+This module provides dialog windows and UI components used in the CODAvision application
+for tasks such as tissue analysis optimization, image selection, and progress display.
+
+Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Updated: March 2025
+"""
+
+from PySide6.QtCore import QCoreApplication, QPoint, QRect, QSize, Qt, QMetaObject
+from PySide6.QtGui import QFont, QPixmap, QCursor, QTransform
+from PySide6.QtWidgets import (
+    QApplication, QFrame, QLabel, QMainWindow, QPushButton, QSizePolicy,
+    QWidget, QLineEdit, QListWidget, QDialog, QVBoxLayout, QProgressBar
+)
+
+
+class Ui_choose_area:
+    """UI definition for the area selection dialog."""
+
     def setupUi(self, MainWindow):
         self.centralwidget = QWidget(MainWindow)
         self.whole_im = QLabel(self.centralwidget)
@@ -22,7 +32,10 @@ class Ui_choose_area(object):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.whole_im.setText("")
 
-class Ui_disp_crop(object):
+
+class Ui_disp_crop:
+    """UI definition for the crop display dialog."""
+
     def setupUi(self, MainWindow):
         self.centralwidget = QWidget(MainWindow)
         self.cropped = QLabel(self.centralwidget)
@@ -45,10 +58,15 @@ class Ui_disp_crop(object):
         self.cropped.setText("")
         self.looks_good.setText(QCoreApplication.translate("MainWindow", u"Looks good", None))
         self.new_loc.setText(QCoreApplication.translate("MainWindow", u"No, select a new location", None))
-        self.text.setText(QCoreApplication.translate("MainWindow", u"Is this a good location to evaluate tissue and whitespace detection?", None))
+        self.text.setText(QCoreApplication.translate("MainWindow",
+                                                     u"Is this a good location to evaluate tissue and whitespace detection?",
+                                                     None))
 
-class Ui_choose_TA(object):
-    def setupUi(self, MainWindow, CTA,CT0):
+
+class Ui_choose_TA:
+    """UI definition for the tissue analysis selection dialog."""
+
+    def setupUi(self, MainWindow, CTA, CT0, CTC):
         self.centralwidget = QWidget(MainWindow)
         self.high_im = QLabel(self.centralwidget)
         self.high_im.setFrameShape(QFrame.Box)
@@ -83,16 +101,18 @@ class Ui_choose_TA(object):
         self.change_mode = QPushButton(self.centralwidget)
         MainWindow.setCentralWidget(self.centralwidget)
 
-        self.retranslateUi(MainWindow, CTA,CT0)
+        self.retranslateUi(MainWindow, CTA, CT0, CTC)
 
         QMetaObject.connectSlotsByName(MainWindow)
 
-    def retranslateUi(self, MainWindow, CTA,CT0):
+    def retranslateUi(self, MainWindow, CTA, CT0, CTC):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.high_im.setText("")
-        self.high_ta.setText(QCoreApplication.translate("MainWindow", u"Image A\nTA = "+ str(CTA), None))
-        self.low_ta.setText(QCoreApplication.translate("MainWindow", u"Image B\nTA = "+ str(CT0), None))
-        self.text.setText(QCoreApplication.translate("MainWindow", u"Select the image where only the tissue is marked in black", None))
+        self.high_ta.setText(QCoreApplication.translate("MainWindow", u"Image A\nTA = " + str(CTA), None))
+        self.low_ta.setText(QCoreApplication.translate("MainWindow", u"Image B\nTA = " + str(CT0), None))
+        self.text.setText(
+            QCoreApplication.translate("MainWindow", u"Select the image where only the tissue is marked in black",
+                                       None))
         self.text_high.setText(QCoreApplication.translate("MainWindow", u"Image A", None))
         self.text_mid.setText(QCoreApplication.translate("MainWindow", u"Original image", None))
         self.text_low.setText(QCoreApplication.translate("MainWindow", u"Image B", None))
@@ -100,10 +120,12 @@ class Ui_choose_TA(object):
         self.low_im.setText("")
         self.raise_ta.setText(QCoreApplication.translate("MainWindow", u"Keep more tissue", None))
         self.decrease_ta.setText(QCoreApplication.translate("MainWindow", u"Keep more whitespace", None))
-        self.change_mode.setText(QCoreApplication.translate("MainWindow", u"Change mode \n Current mode: White background", None))
+        self.change_mode.setText(
+            QCoreApplication.translate("MainWindow", u"Change mode \n Current mode: White background", None))
 
 
-class Ui_use_current_TA(object):
+class Ui_use_current_TA:
+    """UI definition for the current tissue analysis confirmation dialog."""
     def setupUi(self, MainWindow):
         self.centralwidget = QWidget(MainWindow)
         self.text = QLabel(self.centralwidget)
@@ -122,11 +144,16 @@ class Ui_use_current_TA(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
-        self.text.setText(QCoreApplication.translate("MainWindow", u"The tissue mask has already been evaluated.\n Do you want to choose a new tissue mask evaluation?", None))
+        self.text.setText(QCoreApplication.translate("MainWindow",
+                                                     u"The tissue mask has already been evaluated.\n Do you want to choose a new tissue mask evaluation?",
+                                                     None))
         self.keep_ta.setText(QCoreApplication.translate("MainWindow", u"Keep current tissue mask evaluation", None))
         self.new_ta.setText(QCoreApplication.translate("MainWindow", u"Evaluate tissue mask again", None))
 
-class Ui_choose_images_reevaluated(object):
+
+class Ui_choose_images_reevaluated:
+    """UI definition for the image reevaluation selection dialog."""
+
     def setupUi(self, MainWindow):
         self.centralwidget = QWidget(MainWindow)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -154,3 +181,25 @@ class Ui_choose_images_reevaluated(object):
         self.delete_PB.setText(QCoreApplication.translate("MainWindow", u"Delete", None))
         self.apply_PB.setText(QCoreApplication.translate("MainWindow", u"Accept", None))
         self.apply_all_PB.setText(QCoreApplication.translate("MainWindow", u"Redo all images", None))
+
+
+class LoadingDialog(QDialog):
+    """Dialog displayed during loading operations."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Loading...")
+        self.setModal(True)
+
+        layout = QVBoxLayout()
+
+        self.label = QLabel("Loading, please wait...")
+        layout.addWidget(self.label)
+
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)
+        layout.addWidget(self.progress)
+        self.setLayout(layout)
+
+        self.setFixedSize(200, 100)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowCloseButtonHint)

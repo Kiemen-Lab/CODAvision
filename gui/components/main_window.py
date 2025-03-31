@@ -1,32 +1,47 @@
 """
+Main Window Component for CODAvision GUI
+
+This module provides the main application window for the CODAvision application, allowing
+users to create, train, and manage tissue segmentation models through a graphical interface.
+
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: October 22, 2024
+Updated: March 2025
 """
 
-from PySide6 import QtWidgets, QtCore
-from base.CODA import Ui_MainWindow
-from base.classify_im_fend import MainWindowClassify
 import os
-from datetime import datetime
-import xmltodict
-import pandas as pd
-from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush,QRegularExpressionValidator
-from PySide6.QtWidgets import QColorDialog, QHeaderView
-from PySide6.QtCore import Qt,QRegularExpression
-import pickle
+import time
 import numpy as np
-from base import save_model_metadata_GUI
+import pandas as pd
+from datetime import datetime
+import pickle
+from PySide6 import QtWidgets, QtCore
+from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush, QRegularExpressionValidator
+from PySide6.QtWidgets import QColorDialog, QHeaderView
+from PySide6.QtCore import Qt, QRegularExpression
+
+# Import from base package
 from base.data.annotation import extract_annotation_layers
-pd.set_option('display.max_columns', None)
+from base import save_model_metadata_GUI
+from base.WSI2tif import WSI2tif
+
+# Import GUI components
+from .ui_definitions import Ui_MainWindow
+from .classification_window import MainWindowClassify
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    """
+    Main window for the CODAvision application.
+    
+    This class provides the main application window with all functionality
+    for model creation, training, and management.
+    """
     def __init__(self):
-        super().__init__()  # Use super() to initialize the parent class
+        super().__init__() 
 
         self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)  # Pass the MainWindow instance itself as the parent
-        self.setCentralWidget(self.ui.centralwidget)  # Set the central widget
+        self.ui.setupUi(self) 
+        self.setCentralWidget(self.ui.centralwidget) 
         self.ui.Save_FL_PB.clicked.connect(self.fill_form_and_continue)
         self.ui.trainin_PB.clicked.connect(lambda: self.select_imagedir('training'))
         self.ui.testing_PB.clicked.connect(lambda: self.select_imagedir('testing'))
@@ -62,26 +77,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.create_downsample_CB.stateChanged.connect(self.check_for_trained_model)
         self.ui.TA_CB.stateChanged.connect(self.TA_change)
         self.combo_colors = {}
-        self.original_df = None  # Initialize original_df
+        self.original_df = None 
         self.df = None
         self.prerecorded_data = False
-        self.combined_df = None  # Initialize combined_df
+        self.combined_df = None 
         self.delete_count = 0
         self.combo_count = 0
         self.classify = False
         self.img_type = '.ndpi'
         self.test_img_type = '.ndpi'
 
-
-
-
         self.set_initial_model_name()
-        self.ui.tabWidget.setCurrentIndex(0)  # Initialize the first tab
+        self.ui.tabWidget.setCurrentIndex(0) 
         for i in range(1, self.ui.tabWidget.count()):
             self.ui.tabWidget.setTabEnabled(i, False)
 
         self.setWindowTitle("CODA Vision")
-
+    
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""
         today = datetime.now()
@@ -195,7 +207,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.pthim = os.sep.join(pthim.split(os.sep)[:-1])
                 self.ui.trianing_LE.setText(self.pthim)
                 self.ui.testing_LE.setText(data.get('pthtest', ''))
-                umpix = data.get('umpix','')
+                umpix = data.get('umpix', '')
                 self.resolution = umpix_to_resolution.get(umpix, 'Custom')
                 if self.resolution == 'Custom':
                     self.ui.use_anotated_images_CB.setChecked(data['downsamp_annotated'])
@@ -233,8 +245,8 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
 
         model_exists = False
-        if os.path.isdir(os.sep.join(pthim.split(os.sep)[:-1])+os.sep+nm):
-            for file in os.listdir(os.sep.join(pthim.split(os.sep)[:-1])+os.sep+nm):
+        if os.path.isdir(os.sep.join(pthim.split(os.sep)[:-1]) + os.sep + nm):
+            for file in os.listdir(os.sep.join(pthim.split(os.sep)[:-1]) + os.sep + nm):
                 if 'best_model' in file and file.endswith('.keras'):
                     model_exists = True
 
@@ -246,11 +258,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.classify_PB.setVisible(False)
             self.ui.classify_PB.setEnabled(False)
 
-
     def check_for_trained_model(self):
         model_exists = False
-        if os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.model_name.text())):
-            for file in os.listdir(os.path.join(self.ui.trianing_LE.text(),self.ui.model_name.text())):
+        if os.path.isdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
+            for file in os.listdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
                 if 'best_model' in file and file.endswith('.keras'):
                     model_exists = True
 
@@ -283,8 +294,9 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.ui.classify_PB.setVisible(False)
                         self.ui.classify_PB.setEnabled(False)
                 else:
-                    if model_exists and len(self.ui.custom_scale_LE.text())>0 and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
-                            float(self.ui.custom_scale_LE.text())))):
+                    if model_exists and len(self.ui.custom_scale_LE.text()) > 0 and os.path.isdir(
+                            os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
+                                    float(self.ui.custom_scale_LE.text())))):
                         self.ui.classify_PB.setVisible(True)
                         self.ui.classify_PB.setEnabled(True)
                         self.pthim = self.ui.trianing_LE.text()
@@ -307,8 +319,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.label_47.setVisible(False)
                 self.ui.create_downsample_CB.setVisible(False)
                 self.ui.create_downsample_CB.setChecked(False)
-                if model_exists and len(self.ui.custom_scale_LE.text())>0 and os.path.isdir(os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
-                        float(self.ui.custom_scale_LE.text())))):
+                if model_exists and len(self.ui.custom_scale_LE.text()) > 0 and os.path.isdir(
+                        os.path.join(self.ui.trianing_LE.text(), 'Custom_Scale_' + str(
+                                float(self.ui.custom_scale_LE.text())))):
                     self.ui.classify_PB.setVisible(True)
                     self.ui.classify_PB.setEnabled(True)
                     self.pthim = self.ui.trianing_LE.text()
@@ -335,13 +348,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.label_47.setVisible(False)
             self.ui.create_downsample_CB.setVisible(False)
 
-            if model_exists and os.path.isdir(os.path.join(self.ui.trianing_LE.text(),self.ui.resolution_CB.currentText())):
+            if model_exists and os.path.isdir(
+                    os.path.join(self.ui.trianing_LE.text(), self.ui.resolution_CB.currentText())):
                 self.ui.classify_PB.setVisible(True)
                 self.ui.classify_PB.setEnabled(True)
                 self.pthim = self.ui.trianing_LE.text()
                 self.resolution = self.ui.resolution_CB.currentText()
                 self.nm = self.ui.model_name.text()
-                with open(os.path.join(self.pthim,self.nm,'net.pkl'), 'rb') as file:
+                with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
                     data = pickle.load(file)
                     self.model_type = data['model_type']
                 self.classification_source = 2
@@ -412,43 +426,51 @@ class MainWindow(QtWidgets.QMainWindow):
                 num_lists.extend(x[1:])
         iteration = pd.RangeIndex(start=iteration.start, stop=iteration.stop + len(num_lists), step=iteration.step)
         for idx in iteration:
-            if np.sum([x-1 <=idx for x in self.combo_count]) > 0:
+            if np.sum([x - 1 <= idx for x in self.combo_count]) > 0:
                 if idx - self.delete_count - np.sum([x - 1 <= idx for x in self.combo_count]) + 1 == placehold_ws:
-                    if idx < iteration.stop-len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'], list):
-                        self.add_ws_to = self.combined_df.at[idx, 'Layer idx'][0]-1
+                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
+                                                                            list):
+                        self.add_ws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
                         self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
                     else:
                         self.add_ws_to = idx
                     placehold_ws = -2
-                elif idx - self.delete_count - np.sum([x - 1 <= idx for x in self.combo_count]) + 1 == placehold_nonws:
-                    if idx < iteration.stop-len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'], list):
-                        self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'][0]-1
+                elif idx - self.delete_count - np.sum(
+                        [x - 1 <= idx for x in self.combo_count]) + 1 == placehold_nonws:
+                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
+                                                                            list):
+                        self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
                         self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
                     else:
                         self.add_nonws_to = idx
                     placehold_nonws = -2
-                elif idx < iteration.stop-len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'], list):
+                elif idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
+                                                                          list):
                     self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
-                if idx < iteration.stop-len(num_lists) and self.combined_df.at[idx, 'Deleted'] == True:
+                if idx < iteration.stop - len(num_lists) and self.combined_df.at[idx, 'Deleted'] == True:
                     self.delete_count += 1
             else:
-                if idx < iteration.stop-len(num_lists) and self.combined_df.at[idx, 'Deleted'] == True:
+                if idx < iteration.stop - len(num_lists) and self.combined_df.at[idx, 'Deleted'] == True:
                     self.delete_count += 1
                 if idx - self.delete_count - np.sum([x - 1 <= idx for x in self.combo_count]) + 1 == placehold_ws:
-                    if idx < iteration.stop-len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'], list):
-                        self.add_ws_to = self.combined_df.at[idx, 'Layer idx'][0]-1
+                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
+                                                                            list):
+                        self.add_ws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
                         self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
                     else:
                         self.add_ws_to = idx
                     placehold_ws = -2
-                elif idx - self.delete_count - np.sum([x - 1 <= idx for x in self.combo_count]) + 1 == placehold_nonws:
-                    if idx < iteration.stop-len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'], list):
-                        self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'][0]-1
+                elif idx - self.delete_count - np.sum(
+                        [x - 1 <= idx for x in self.combo_count]) + 1 == placehold_nonws:
+                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
+                                                                            list):
+                        self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
                         self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
                     else:
                         self.add_nonws_to = idx
                     placehold_nonws = -2
-                elif idx < iteration.stop-len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'], list):
+                elif idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
+                                                                          list):
                     self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
 
         self.add_ws_to += 1
@@ -490,7 +512,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 if not df_idx.empty:
                     self.df.at[df_idx[0], 'Whitespace Settings'] = whitespace_setting
 
-
         # Combine layers in main dataframe
         if self.combined_df is not None:
             combined_layers = [None] * len(self.df)
@@ -528,7 +549,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for i in source_df.index:
                 count = 0
                 for j in self.combined_df['Layer idx']:
-                    if ((isinstance(j, list) and np.isin(i+1,j)) or ((not isinstance(j, list)) and i+1==j)):
+                    if ((isinstance(j, list) and np.isin(i + 1, j)) or ((not isinstance(j, list)) and i + 1 == j)):
                         source_df.at[i, 'Color'] = self.combined_df.at[count, 'Color']
                     count += 1
         else:
@@ -558,7 +579,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Populate the table with the combined names in the correct order
             for original_idx in nesting_order:
                 if self.ui.nesting_checkBox.isChecked():
-                    layer_name = combined_indices_to_names.get(original_idx-1)
+                    layer_name = combined_indices_to_names.get(original_idx - 1)
                 else:
                     layer_name = combined_indices_to_names.get(original_idx)
                 if layer_name:
@@ -585,7 +606,6 @@ class MainWindow(QtWidgets.QMainWindow):
             item.setForeground(QBrush(Qt.white))
 
         model.appendRow(item)
-
 
     def move_row_up(self):
         model = self.ui.nesting_TW.model()
@@ -646,7 +666,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Force update
         QtCore.QCoreApplication.processEvents()
 
-    def save_nesting_and_continue(self,train: int):
+    def save_nesting_and_continue(self, train: int):
         model = self.ui.nesting_TW.model()
         nesting_order = [model.item(row).text() for row in range(model.rowCount())]
 
@@ -819,7 +839,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 scale = float(scale)
                 if scale < 1:
                     QtWidgets.QMessageBox.warning(self, 'Warning',
-                                          'Introduce a valid scaling factor')
+                                                  'Introduce a valid scaling factor')
                     self.ui.custom_scale_LE.setText('1')
                     return False
             except:
@@ -828,7 +848,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.custom_scale_LE.setText('1')
                 return False
 
-
         # Check if resolution is selected
         if pth == pthtest:
             QtWidgets.QMessageBox.warning(self, 'Warning',
@@ -836,13 +855,11 @@ class MainWindow(QtWidgets.QMainWindow):
                                           'training annotations folder, please select a different folder.')
             return False
 
-
-
         print(
             f"Form filled with: \nTraining path: {pth}\nTesting path: {pthtest}\nModel name: {model_name}\nResolution: {resolution}")
         return True
 
-    def populate_table_widget(self, df=None, coloring = False):
+    def populate_table_widget(self, df=None, coloring=False):
         if df is None:
             df = self.df  # Populate the table with the original dataframe if no dataframe is passed
 
@@ -851,7 +868,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         table = self.ui.tissue_segmentation_TW
         # table.setRowCount(len(df))
-        table.setRowCount(0) # Clear the table before populating
+        table.setRowCount(0)  # Clear the table before populating
         table.setColumnCount(2)  # Adjust column count
         table.setHorizontalHeaderLabels(["Annotation Class", "Whitespace Settings"])
 
@@ -957,11 +974,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 updated_selected_row = idx
         ws_value = ws_map[ws_option]
 
-        if self.combined_df is  None:
+        if self.combined_df is None:
             self.df.at[updated_selected_row, 'Whitespace Settings'] = ws_value
         else:
             self.combined_df.at[updated_selected_row, 'Whitespace Settings'] = ws_value
-
 
         ws_item = table.item(selected_row, 1)
         if ws_item:
@@ -1002,7 +1018,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.combined_df['Deleted'] = False
             self.combined_df['Component analysis'] = np.nan
 
-
         table = self.ui.tissue_segmentation_TW
         selected_items = table.selectedItems()
 
@@ -1018,7 +1033,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for idx in self.combined_df.index:
             if self.combined_df.at[idx, 'Deleted'] == True:
                 self.delete_count += 1
-            elif idx-self.delete_count == selected_row:
+            elif idx - self.delete_count == selected_row:
                 updated_selected_row = idx
 
         current_color = self.combined_df.iloc[updated_selected_row]['Color']
@@ -1026,8 +1041,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         color_dialog = QColorDialog(self)
         color_dialog.setCurrentColor(initial_color)
-
-
 
         if color_dialog.exec():
             new_color = color_dialog.currentColor()
@@ -1044,7 +1057,7 @@ class MainWindow(QtWidgets.QMainWindow):
             layer_name = self.combined_df.iloc[updated_selected_row]['Layer Name']
             print(f"Color changed for {layer_name} to {new_rgb}")
 
-        self.populate_table_widget(self.combined_df, coloring = True)
+        self.populate_table_widget(self.combined_df, coloring=True)
 
     def initialize_advanced_settings(self):
         # Clear table before populating
@@ -1098,7 +1111,7 @@ class MainWindow(QtWidgets.QMainWindow):
             item.setBackground(QColor(200, 200, 200))  # Light gray
             item.setForeground(QBrush(Qt.black))  # Black text
         else:
-            item.setBackground(QColor(45, 45, 45))# Dark color
+            item.setBackground(QColor(45, 45, 45))  # Dark color
             item.setForeground(QBrush(Qt.white))
 
     def add_combo(self):
@@ -1108,7 +1121,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.combined_df = self.df.copy()
             self.combined_df['Deleted'] = False
             self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
-
 
         table = self.ui.tissue_segmentation_TW
         selected_items = table.selectedItems()
@@ -1151,8 +1163,8 @@ class MainWindow(QtWidgets.QMainWindow):
                         updated_selected_rows[upd_idx] = idx
             selected_layer_index = [self.combined_df.iloc[idx]['Layer idx'] for idx in updated_selected_rows]
             selected_layer_index = [item for sublist in selected_layer_index for item in
-                         (sublist if isinstance(sublist, list) else [sublist])]
-            selected_layer_names = [self.df.iloc[idx-1]['Layer Name'] for idx in selected_layer_index]
+                                    (sublist if isinstance(sublist, list) else [sublist])]
+            selected_layer_names = [self.df.iloc[idx - 1]['Layer Name'] for idx in selected_layer_index]
 
         # Create the combined class with original indices
         layer_indices = sorted([original_indices[name] for name in selected_layer_names])
@@ -1171,7 +1183,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Remove the selected rows
         self.combined_df = self.combined_df.drop(updated_selected_rows).reset_index(drop=True)
 
-        #Set whtiespace settings to None for the combined class
+        # Set whtiespace settings to None for the combined class
         combined_class['Whitespace Settings'] = None
 
         # Insert the new combined class at the position of the minor row number
@@ -1204,7 +1216,8 @@ class MainWindow(QtWidgets.QMainWindow):
         selected_items = table.selectedItems()
 
         if not selected_items:
-            QtWidgets.QMessageBox.warning(self, "Insufficient Selection", "Please select at least one class to delete.")
+            QtWidgets.QMessageBox.warning(self, "Insufficient Selection",
+                                          "Please select at least one class to delete.")
             return
 
         selected_rows = list(set(item.row() for item in selected_items))
@@ -1228,12 +1241,11 @@ class MainWindow(QtWidgets.QMainWindow):
         position = np.zeros(len(selected_rows)).astype(int)
         position[:] = -1
 
-
         # Mark the selected rows as deleted
         for idx in self.combined_df.index:
             if self.combined_df.at[idx, 'Deleted'] == True:
                 self.delete_count += 1
-            elif idx-self.delete_count in selected_rows:
+            elif idx - self.delete_count in selected_rows:
                 self.combined_df.at[idx, 'Deleted'] = True
                 upd_idx = np.where(position == -1)[0][0]
                 position[upd_idx] = 0
@@ -1243,12 +1255,14 @@ class MainWindow(QtWidgets.QMainWindow):
         if 'Delete layer' not in self.df.columns:
             self.df['Delete layer'] = False
             for idx in updated_selected_rows:
-                original_idx = self.original_df[self.original_df['Layer Name'] == self.combined_df.at[idx, 'Layer Name']].index[
+                original_idx = \
+                self.original_df[self.original_df['Layer Name'] == self.combined_df.at[idx, 'Layer Name']].index[
                     0]
                 self.df.at[original_idx, 'Delete layer'] = True
         else:
             for idx in updated_selected_rows:
-                original_idx = self.original_df[self.original_df['Layer Name'] == self.combined_df.at[idx, 'Layer Name']].index[
+                original_idx = \
+                self.original_df[self.original_df['Layer Name'] == self.combined_df.at[idx, 'Layer Name']].index[
                     0]
                 self.df.at[original_idx, 'Delete layer'] = True
 
@@ -1278,21 +1292,22 @@ class MainWindow(QtWidgets.QMainWindow):
         component_layers = {}
         combined_component = {}
 
-
         for row in range(self.ui.component_TW.rowCount()):
             item = self.ui.component_TW.item(row, 0)
             if item:
                 layer_name = item.text()
-                layer_indices = self.combined_df[self.combined_df['Layer Name'] == layer_name]['Layer idx'].values[0]
+                layer_indices = self.combined_df[self.combined_df['Layer Name'] == layer_name]['Layer idx'].values[
+                    0]
                 layer_indices_combined = self.combined_df[self.combined_df['Layer Name'] == layer_name].index
 
-                if isinstance(layer_indices, list):  #if the layer is a combined layer
+                if isinstance(layer_indices, list):  # if the layer is a combined layer
                     for original_idx in layer_indices:
                         is_checked = item.checkState() == Qt.Checked
-                        component_layers[self.original_df.loc[original_idx - 1, 'Layer Name']] = is_checked  # Save True for checked items
-                else: #Not a combined layer
+                        component_layers[self.original_df.loc[
+                            original_idx - 1, 'Layer Name']] = is_checked  # Save True for checked items
+                else:  # Not a combined layer
                     is_checked = item.checkState() == Qt.Checked
-                    component_layers[layer_name] = is_checked # Save True for checked items
+                    component_layers[layer_name] = is_checked  # Save True for checked items
                 if self.combined_df is not None:
                     for idx in layer_indices_combined:
                         combined_component[self.combined_df.loc[idx, 'Layer Name']] = is_checked
@@ -1315,11 +1330,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.TA = self.ui.TA_SB.value()
         self.train = train
 
-        #Save model metadata onto pickle file
+        # Save model metadata onto pickle file
         self.variable_parametrization_to_WS()
         self.close()
-
-
 
     def variable_parametrization_to_WS(self):
 
@@ -1355,7 +1368,7 @@ class MainWindow(QtWidgets.QMainWindow):
         nvalidate = self.nval
         # Number of TA images to evaluate (coming soon)
         nTA = self.TA
-        #Type of model
+        # Type of model
         model_type = self.ui.model_type_CB.currentText()
         self.model_type = model_type
         self.resolution = self.ui.resolution_CB.currentText()
@@ -1363,7 +1376,7 @@ class MainWindow(QtWidgets.QMainWindow):
         batch_size = self.ui.batch_size_SB.value()
         # Create WS
 
-        layers_to_delete = final_df.index[final_df['Delete layer']==True].tolist()
+        layers_to_delete = final_df.index[final_df['Delete layer'] == True].tolist()
         layers_to_delete = [i + 1 for i in layers_to_delete]  # get row index starting from 1
         nesting_list = final_df['Nesting'].tolist()
         nesting_list.reverse()
@@ -1398,19 +1411,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.uncomp_train_pth = self.ui.custom_img_LE.text()
             self.uncomp_test_pth = self.ui.custom_test_img_LE.text()
             self.scale = self.ui.custom_scale_LE.text()
-            pthim = pthim+'_Scale_'+str(float(self.scale))
-            save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
-                                                            tile_size, classNames, ntrain, nvalidate, nTA, final_df,
-                                                            combined_df, model_type, batch_size,
-                                                            uncomp_train_pth = self.uncomp_train_pth,
-                                                            uncomp_test_pth = self.uncomp_test_pth, scale = self.scale,
-                                                            create_down = self.create_down,
-                                                            downsamp_annotated = self.downsamp_annotated_images)
+            pthim = pthim + '_Scale_' + str(float(self.scale))
+            save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+                                    tile_size, classNames, ntrain, nvalidate, nTA, final_df,
+                                    combined_df, model_type, batch_size,
+                                    uncomp_train_pth=self.uncomp_train_pth,
+                                    uncomp_test_pth=self.uncomp_test_pth, scale=self.scale,
+                                    create_down=self.create_down,
+                                    downsamp_annotated=self.downsamp_annotated_images)
         else:
-            save_model_metadata_GUI.save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
-                                                            tile_size, classNames, ntrain, nvalidate, nTA, final_df,
-                                                            combined_df, model_type, batch_size)
-
+            save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+                                    tile_size, classNames, ntrain, nvalidate, nTA, final_df,
+                                    combined_df, model_type, batch_size)
 
     def load_saved_values(self):
         if self.prerecorded_data:
@@ -1418,7 +1430,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.ttn_SB.setValue(self.ntrain)
             self.ui.vtn_SB.setValue(self.nval)
             self.ui.TA_SB.setValue(self.TA)
-            if self.TA <0:
+            if self.TA < 0:
                 self.ui.TA_CB.setChecked(True)
 
     # Load paths
@@ -1432,7 +1444,7 @@ class MainWindow(QtWidgets.QMainWindow):
         resolution = self.ui.resolution_CB.currentText()
         print(self.ui.custom_scale_LE.text())
         if resolution == 'Custom':
-            return os.path.join(pth, 'Custom_Scale_'+str(float(self.ui.custom_scale_LE.text())))
+            return os.path.join(pth, 'Custom_Scale_' + str(float(self.ui.custom_scale_LE.text())))
         else:
             return os.path.join(pth, f'{resolution}')
 
@@ -1440,7 +1452,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pthtest = self.ui.testing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
         if resolution == 'Custom':
-            return os.path.join(pthtest, 'Custom_Scale_'+str(float(self.ui.custom_scale_LE.text())))
+            return os.path.join(pthtest, 'Custom_Scale_' + str(float(self.ui.custom_scale_LE.text())))
         else:
             return os.path.join(pthtest, f'{resolution}')
 
