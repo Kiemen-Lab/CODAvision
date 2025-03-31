@@ -12,11 +12,10 @@ Modules:
     utils: General utility functions
 """
 
-# Package version
 __version__ = '1.0.0'
 
-# Import key components for easier access
 from .save_model_metadata import save_model_metadata
+from .save_model_metadata_GUI import save_model_metadata_GUI
 from .determine_optimal_TA import determine_optimal_TA
 from .create_training_tiles import create_training_tiles
 from .quantify_images import quantify_images
@@ -29,17 +28,17 @@ from .data.annotation import (
     format_white,
     save_bounding_boxes,
     calculate_tissue_mask,
+    extract_annotation_layers,
 )
 
 from .models.training import train_segmentation_model_cnns
 from .evaluation.testing import test_segmentation_model
 from .image.classification import classify_images
 
-# Make core functionality available at package level
 __all__ = [
-    # Core workflow functions
     'load_annotation_data',
     'save_model_metadata',
+    'save_model_metadata_GUI',
     'determine_optimal_TA',
     'create_training_tiles',
     'train_segmentation_model_cnns',
@@ -49,10 +48,9 @@ __all__ = [
     'quantify_objects',
     'create_output_pdf',
     'WSI2tif',
-
-    # Annotation utilities
     'save_annotation_mask',
     'format_white',
     'save_bounding_boxes',
-    'calculate_tissue_mask'
+    'calculate_tissue_mask',
+    'extract_annotation_layers'
 ]
