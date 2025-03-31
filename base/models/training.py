@@ -10,7 +10,7 @@ Authors:
     Tyler Newton (JHU - DSAI)
     Arrun Sivasubramanian (Johns Hopkins - Kiemen Lab)
 
-Updated March 11, 2025
+Updated March 2025
 """
 
 import time
@@ -30,8 +30,8 @@ import GPUtil
 
 from base.models.backbones import model_call, unfreeze_model
 from base.utils.logger import Logger
-from base.image.utils import read_image, create_dataset
-from base.models.utils import load_model_metadata, save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths
+from base.models.utils import save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths
+from base.data.loaders import create_dataset, load_model_metadata
 
 # Suppress warnings and TensorFlow logs
 warnings.filterwarnings('ignore')
@@ -118,93 +118,6 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         """Create an instance from configuration dictionary."""
         class_weights = tf.convert_to_tensor(config.pop("class_weights"), dtype=tf.float32)
         return cls(class_weights=class_weights, **config)
-
-
-class DataGenerator:
-    """
-    Class for generating TensorFlow datasets from image and mask paths.
-
-    This class handles loading and preprocessing of images and masks for
-    training and validation of segmentation models.
-    """
-
-    def __init__(self, image_size: int, batch_size: int):
-        """
-        Initialize the data generator.
-
-        Args:
-            image_size: Size to resize images and masks to (assumes square images)
-            batch_size: Number of samples per batch
-        """
-        self.image_size = image_size
-        self.batch_size = batch_size
-
-    def read_image(self, image_path: str, mask: bool = False) -> tf.Tensor:
-        """
-        Read and preprocess an image or mask.
-
-        Args:
-            image_path: Path to the image file
-            mask: Whether the image is a mask (single channel) or not (RGB)
-
-        Returns:
-            Preprocessed image tensor
-        """
-        image = tf_io.read_file(image_path)
-        if mask:
-            image = tf_image.decode_png(image, channels=1)
-            image.set_shape([None, None, 1])
-        else:
-            image = tf_image.decode_png(image, channels=3)
-            image.set_shape([None, None, 3])
-
-        # Resize to the target size
-        image = tf_image.resize(images=image, size=[self.image_size, self.image_size])
-        return image
-
-    def load_data(self, image_path: str, mask_path: str) -> Tuple[tf.Tensor, tf.Tensor]:
-        """
-        Load an image and its corresponding mask.
-
-        Args:
-            image_path: Path to the image file
-            mask_path: Path to the mask file
-
-        Returns:
-            Tuple of (image, mask) tensors
-        """
-        image = self.read_image(image_path)
-        mask = self.read_image(mask_path, mask=True)
-        return image, mask
-
-    def create_dataset(
-        self,
-        image_paths: List[str],
-        mask_paths: List[str]
-    ) -> tf.data.Dataset:
-        """
-        Create a TensorFlow dataset from lists of image and mask paths.
-
-        Args:
-            image_paths: List of paths to image files
-            mask_paths: List of paths to mask files
-
-        Returns:
-            TensorFlow dataset containing batches of (image, mask) pairs
-        """
-        # Create a dataset from the file paths
-        dataset = tf_data.Dataset.from_tensor_slices((image_paths, mask_paths))
-
-        # Map the loading function to each element
-        dataset = dataset.map(
-            lambda img, mask: self.load_data(img, mask),
-            num_parallel_calls=tf_data.AUTOTUNE
-        )
-
-        # Batch the dataset
-        dataset = dataset.batch(self.batch_size, drop_remainder=True)
-
-        return dataset
 
 
 class BatchAccuracyCallback(keras.callbacks.Callback):
