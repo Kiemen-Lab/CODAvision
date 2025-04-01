@@ -94,7 +94,7 @@ def combine_annotations_into_tiles(
     reduction_factor = 10
     last_class_type = 0
     num_tiles_used = np.zeros(len(image_list['tile_name']))
-    class_type_counts = np.zeros(max(num_classes, len(class_counts)))
+    class_type_counts = np.zeros(num_classes)
 
     # Main loop
     iteration = 1
@@ -113,14 +113,13 @@ def combine_annotations_into_tiles(
             class_type = np.argmin(tmp)
 
         # Track class usage
-        if class_type < len(class_type_counts):
-            class_type_counts[class_type] += 1
+        if class_type < current_annotations.shape[1]:
+            candidate_tiles = np.where(current_annotations[:, class_type] > 0)[0]
         else:
+            # Handle the out-of-bounds case - create an empty array
             print(
-                f"Warning: class_type {class_type} is out of bounds for class_type_counts with size {len(class_type_counts)}")
-
-        # Find candidate tiles containing this class
-        candidate_tiles = np.where(current_annotations[:, class_type] > 0)[0]
+                f"Warning: class_type {class_type} is out of bounds for current_annotations with shape {current_annotations.shape}")
+            candidate_tiles = np.array([], dtype=int)
 
         # If we've used all tiles for this class, reset from initial annotations
         if len(candidate_tiles) == 0:
