@@ -59,31 +59,6 @@ def read_image(
         return None
 
 
-def read_image_overlay(image_input: Union[str, np.ndarray]) -> Optional[tf.Tensor]:
-    """
-    Read an image for overlay creation.
-
-    Args:
-        image_input: Path to image file or numpy array
-
-    Returns:
-        TensorFlow tensor containing the image
-    """
-    try:
-        if isinstance(image_input, np.ndarray):
-            # Convert numpy array to tensor
-            image = tf.convert_to_tensor(image_input)
-        else:
-            # Load from file
-            image = tf.io.read_file(image_input)
-            image = tf.image.decode_png(image, channels=3)
-            image.set_shape([None, None, 3])
-        return image
-    except Exception as e:
-        print(f"Error reading image {image_input}: {e}")
-        return None
-
-
 def create_dataset(
     image_paths: List[str],
     mask_paths: List[str],

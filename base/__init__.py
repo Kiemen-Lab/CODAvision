@@ -35,6 +35,7 @@ from .models.training import train_segmentation_model_cnns
 from .evaluation.testing import test_segmentation_model
 from .image.classification import classify_images
 from .image.augmentation import augment_annotation
+from .image.utils import create_overlay
 
 __all__ = [
     'load_annotation_data',
