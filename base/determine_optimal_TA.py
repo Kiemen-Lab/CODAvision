@@ -123,6 +123,7 @@ def determine_optimal_TA(pthim,numims):
             self.TA = CT0
             self.CT0 = CT0
             self.ui.setupUi(self, CT0)
+            self.stop = True
             self.setGeometry(30+np.round(1500-1.5*szz+100)/2, 50,
                              np.round(1.5 * szz+100), np.round(230+szz/2))
             self.ui.apply.setGeometry(QRect(212+szz, 160+szz/2, 150, 50))
@@ -131,14 +132,13 @@ def determine_optimal_TA(pthim,numims):
             self.ui.decrease_ta.setGeometry(QRect(50, 105 + szz / 2, 120, 30))
             self.ui.TA_selection.setGeometry(QRect(6, 25, szz+56, 30))
             self.ui.change_mode.setGeometry(QRect(58+szz*1.25, 70, 155, 50))
-            self.ui.text_mode.setGeometry(QRect(58+szz*1.25, 125, 155, 50))
+            self.ui.text_mode.setGeometry(QRect(58+szz*1.25, 125, 155, 30))
             handle_pos = self.slider_handle_position()
             self.ui.slider_label.setGeometry(handle_pos - 15, 0, 30, 20)
             self.ui.text.setGeometry(QRect(50, 10, np.round(8+szz*1.5), 20))
             self.ui.text_mid.setGeometry(QRect(50+szz/4, 40, 3 + szz / 2, 20))
             self.ui.text_TA.setGeometry(QRect(54+szz*0.75, 40, 3 + szz / 2, 20))
             self.setWindowTitle("Select an appropriate intensity threshold for the binary mask")
-            self.do_again = 1
             self.mode = mode
             self.ui.text_mode.setText(f'Current mode: {mode}')
             if mode == 'H&E':
@@ -149,6 +149,7 @@ def determine_optimal_TA(pthim,numims):
             self.ui.change_mode.clicked.connect(self.on_mode)
             self.ui.apply.clicked.connect(self.on_apply)
             self.ui.TA_selection.valueChanged.connect(self.update_slider)
+            self.ui.TA_selection.setValue(self.CT0)
             self.ui.raise_ta.clicked.connect(self.on_raise)
             self.ui.decrease_ta.clicked.connect(self.on_decrease)
 
@@ -178,8 +179,8 @@ def determine_optimal_TA(pthim,numims):
 
 
         def on_apply(self):
-            self.do_again = 0
             self.TA = self.CT0
+            self.stop = False
             self.close()
 
         def on_change_TA(self):
@@ -265,7 +266,7 @@ def determine_optimal_TA(pthim,numims):
         window.show()
         window.update_image(szz, cropped)
         app.exec()
-        return window.do_again, window.TA, window.mode
+        return window.stop, window.TA, window.mode
 
 
     class confirm_TA_ui(QtWidgets.QMainWindow):
@@ -424,7 +425,8 @@ def determine_optimal_TA(pthim,numims):
                     apply_all, redo_list = choose_images_TA()
                     if not apply_all:
                         imlist = redo_list
-
+    if mode == 'Grayscale':
+        CT0 = 50
     if numims>0:
         numims = min(numims,len(imlist))
         imlist = np.random.choice(imlist, size=numims, replace=False)
@@ -485,9 +487,10 @@ def determine_optimal_TA(pthim,numims):
             if cropped.size == 0:
                 cropped = cropped_temp
             do_again = check_region(szz, cropped)
-        do_again = 1
-        while do_again == 1:
-            do_again, CT0, mode = select_TA(szz, cropped, CT0, mode)
+        sstop, CT0, mode = select_TA(szz, cropped, CT0, mode)
+        if sstop:
+            print('Whitespace detection process stopped by the user')
+            return
         if nm in cts:
             cts[nm] = CT0
         else:
