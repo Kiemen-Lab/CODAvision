@@ -29,3 +29,7 @@ from .loaders import (
     load_model_metadata,
     DataGenerator
 )
+
+from .tiles import (
+    combine_annotations_into_tiles
+)
