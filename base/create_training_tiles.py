@@ -8,7 +8,7 @@ import glob
 import shutil
 import numpy as np
 import time
-from .combine_annotations_into_tiles import combine_annotations_into_tiles
+from .data.tiles import combine_annotations_into_tiles
 import os
 import pickle
 
