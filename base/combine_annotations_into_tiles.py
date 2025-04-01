@@ -5,7 +5,7 @@ Date: October 10th, 2024
 
 import os
 import numpy as np
-from .edit_annotation_tiles import edit_annotations_tiles
+from .image.augmentation import edit_annotation_tiles
 from PIL import Image
 import time
 import cv2
@@ -111,7 +111,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
         else:
             doaug = 0
 
-        im, TA, kp = edit_annotations_tiles(im, TA, doaug, type_, ct, imT.shape[0], kpall)
+        im, TA, kp = edit_annotation_tiles(im, TA, doaug, type_, ct, imT.shape[0], kpall)
         numann[num[0], kp - 1] = 0  # kp-1 due to layer index starting in 1 and python index starting in 0
         percann[num[0], kp - 1, 0] += 1
         percann[num[0], kp - 1, 1] = 2
