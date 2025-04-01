@@ -17,7 +17,7 @@ __version__ = '1.0.0'
 from .save_model_metadata import save_model_metadata
 from .save_model_metadata_GUI import save_model_metadata_GUI
 from .determine_optimal_TA import determine_optimal_TA
-from .create_training_tiles import create_training_tiles
+from .data.tiles import create_training_tiles
 from .quantify_images import quantify_images
 from .quantify_objects import quantify_objects
 from .create_output_pdf import create_output_pdf
