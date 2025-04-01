@@ -17,7 +17,6 @@ from .annotation import (
 
 from .loaders import (
     read_image,
-    read_image_overlay,
     create_dataset,
     convert_to_array,
     calculate_tissue_mask,
