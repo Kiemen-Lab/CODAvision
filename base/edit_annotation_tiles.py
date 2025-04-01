@@ -1,13 +1,11 @@
 """
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Date: May 14, 2024
+Date: April 2025
 """
 
 import numpy as np
 from skimage.morphology import disk, dilation
-from base.augment_annotation import augment_annotation
-import cv2
-import os
+from base.image.augmentation import augment_annotation
 
 
 def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, big_tile_size, kpall):
