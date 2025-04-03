@@ -9,6 +9,9 @@ import numpy as np
 import os
 import glob
 import pydicom as dicom
+
+Image.MAX_IMAGE_PIXELS = None
+
 # from openslide import OpenSlide
 
 # Add the OpenSlide DLL directory

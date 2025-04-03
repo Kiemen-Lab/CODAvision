@@ -1,3 +1,4 @@
+
 import numpy as np
 from glob import glob
 import os
@@ -8,14 +9,11 @@ from PySide6.QtCore import Qt, QRect
 import cv2
 
 
-import numpy as np
-from glob import glob
-import os
-import sys
-import pickle
-from PySide6 import QtGui, QtWidgets, QtCore
-from PySide6.QtCore import Qt, QRect
-import cv2
+# Set the maximum image pixels to a higher value to avoid the error
+cv2.setNumThreads(0)
+cv2.setUseOptimized(True)
+
+# The rest of your code remains unchanged
 
 def determine_optimal_TA(pthim,numims):
     from gui.components.dialogs import (
