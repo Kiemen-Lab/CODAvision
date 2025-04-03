@@ -102,29 +102,43 @@ def combine_annotations_into_tiles(
     while fill_ratio < cutoff_threshold:
         iteration_start_time = time.time()
 
-        # Select which class to focus on for this iteration
+        # Select which class to sample
         if count % 10 == 1:
             class_type = tile_count - 1
             tile_count = (tile_count % num_classes) + 1
         else:
-            # Focus on least represented class
             tmp = class_counts.copy()
-            tmp[last_class_type] = np.max(tmp)
+            # Check that last_class_type is within bounds before using as index
+            if last_class_type < tmp.shape[0]:
+                tmp[last_class_type] = np.max(tmp)
             class_type = np.argmin(tmp)
 
-        # Track class usage
+        # Validate class_type is in bounds
+        class_type_counts[class_type if class_type < len(class_type_counts) else len(class_type_counts) - 1] += 1
+
+        # Find candidate tiles
         if class_type < current_annotations.shape[1]:
             candidate_tiles = np.where(current_annotations[:, class_type] > 0)[0]
         else:
-            # Handle the out-of-bounds case - create an empty array
             print(
                 f"Warning: class_type {class_type} is out of bounds for current_annotations with shape {current_annotations.shape}")
             candidate_tiles = np.array([], dtype=int)
 
-        # If we've used all tiles for this class, reset from initial annotations
+        # Try to reset candidate tiles if empty
         if len(candidate_tiles) == 0:
-            current_annotations[:, class_type] = initial_annotations[:, class_type]
-            candidate_tiles = np.where(current_annotations[:, class_type] > 0)[0]
+            if class_type < current_annotations.shape[1]:
+                current_annotations[:, class_type] = initial_annotations[:, class_type]
+                candidate_tiles = np.where(current_annotations[:, class_type] > 0)[0]
+            else:
+                candidate_tiles = np.array([], dtype=int)
+
+        # Skip iteration if still no candidate tiles
+        if len(candidate_tiles) == 0:
+            print(f"  Skipping class_type {class_type} as no candidate tiles were found")
+            count += 1
+            last_class_type = min(class_type, current_annotations.shape[1] - 1)  # Keep last_class_type in bounds
+            iteration += 1
+            continue
 
         # Select a random tile containing our target class
         selected_tile_idx = np.random.choice(candidate_tiles, size=1, replace=False)
