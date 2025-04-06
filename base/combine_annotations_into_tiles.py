@@ -78,7 +78,7 @@ def combine_annotations_into_tiles(numann0, numann, percann, imlist, nblack, pth
     while sf < cutoff:
         iteration_start_time = time.time()
         # choose one of each class in order in a loop
-        if count % 10 == 1:
+        if count % 5 == 1:   #Other recommended values are 10 or 3
             type_ = tcount-1
             tcount = (tcount % num_classes)+1
         else:
