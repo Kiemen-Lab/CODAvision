@@ -211,6 +211,9 @@ def edit_annotation_tiles(
         - Augmented and adjusted label mask
         - Unique labels after processing
     """
+    print(f"DEBUG: edit_annotation_tiles for class_id {class_id}")
+    print(f"DEBUG: num_pixels_class shape: {num_pixels_class.shape}")
+
     # Apply appropriate augmentation based on the flag
     if do_augmentation:
         im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=True, blur=True)
@@ -247,5 +250,7 @@ def edit_annotation_tiles(
 
     # Convert TA to uint8
     TA = TA.astype(np.uint8)
+
+    print(f"DEBUG: Returning kpout: {kpout}")
 
     return im, TA, kpout
