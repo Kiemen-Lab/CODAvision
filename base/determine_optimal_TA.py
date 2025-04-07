@@ -1,25 +1,18 @@
-
 import numpy as np
 from glob import glob
 import os
 import sys
 import pickle
+# Import pyqt stuff
 from PySide6 import QtGui, QtWidgets, QtCore
-from PySide6.QtCore import Qt, QRect
+from PySide6.QtCore import Qt, QRect, QMetaObject, QCoreApplication
+from networkx.classes import is_empty
+from numpy.ma.extras import average
+
+from .determine_optimal_TA_UIs import Ui_choose_area, Ui_disp_crop, Ui_choose_TA, Ui_choose_images_reevaluated, Ui_use_current_TA
 import cv2
 
-
-# Set the maximum image pixels to a higher value to avoid the error
-cv2.setNumThreads(0)
-cv2.setUseOptimized(True)
-
-# The rest of your code remains unchanged
-
 def determine_optimal_TA(pthim,numims):
-    from gui.components.dialogs import (
-        Ui_choose_area, Ui_disp_crop, Ui_choose_TA,
-        Ui_choose_images_reevaluated, Ui_use_current_TA
-    )
     CT0 = 205
     szz = 600
     class disp_whole_im(QtWidgets.QMainWindow):
@@ -113,153 +106,129 @@ def determine_optimal_TA(pthim,numims):
         return window.do_again
 
     class chooseTA(QtWidgets.QMainWindow):
-        def __init__(self, szz, CT0, mode, parent=None):
+        def __init__(self, szz, CTA, CT0, CTC, mode, parent=None):
 
             # Inherit from the aforementioned class and set up the gui
             super(chooseTA, self).__init__()
             self.ui = Ui_choose_TA()
             self.TA = CT0
+            self.CTA = CTA
             self.CT0 = CT0
-            self.ui.setupUi(self, CT0)
+            self.CTC = CTC
+            self.ui.setupUi(self, CTA, CT0, CTC)
             self.setGeometry(30+np.round(1500-1.5*szz+100)/2, 50,
-                             np.round(1.5 * szz+100), np.round(230+szz/2))
-            self.ui.apply.setGeometry(QRect(212+szz, 160+szz/2, 150, 50))
-            self.ui.slider_container.setGeometry(QRect(176, 80+szz/2, szz+56, 60))
-            self.ui.raise_ta.setGeometry(QRect(242+szz, 105 + szz / 2, 120, 30))
-            self.ui.decrease_ta.setGeometry(QRect(50, 105 + szz / 2, 120, 30))
-            self.ui.TA_selection.setGeometry(QRect(6, 25, szz+56, 30))
-            self.ui.change_mode.setGeometry(QRect(58+szz*1.25, 70, 155, 50))
-            self.ui.text_mode.setGeometry(QRect(58+szz*1.25, 125, 155, 50))
-            handle_pos = self.slider_handle_position()
-            self.ui.slider_label.setGeometry(handle_pos - 15, 0, 30, 20)
+                             np.round(1.5 * szz+100), np.round(370+szz/2))
+            self.ui.raise_ta.setGeometry(QRect(50, 170+szz/2, 6+szz*0.75, 90))
+            self.ui.decrease_ta.setGeometry(QRect(56+szz*0.75, 170+szz/2, 6+szz*0.75, 90))
+            self.ui.high_ta.setGeometry(QRect(50, 80+szz/2, 6+szz*0.75, 90))
+            self.ui.low_ta.setGeometry(QRect(56+szz*0.75, 80 + szz / 2, 6+szz*0.75, 90))
+            self.ui.change_mode.setGeometry(QRect(50, 260 + szz / 2, 12+szz*1.5, 90))
             self.ui.text.setGeometry(QRect(50, 10, np.round(8+szz*1.5), 20))
-            self.ui.text_mid.setGeometry(QRect(50+szz/4, 40, 3 + szz / 2, 20))
-            self.ui.text_TA.setGeometry(QRect(54+szz*0.75, 40, 3 + szz / 2, 20))
-            self.setWindowTitle("Select an appropriate intensity threshold for the binary mask")
+            self.ui.text_high.setGeometry(QRect(50, 40, 3+szz/2, 20))
+            self.ui.text_mid.setGeometry(QRect(54+szz/2, 40, 3 + szz / 2, 20))
+            self.ui.text_low.setGeometry(QRect(58+szz, 40, 3 + szz / 2, 20))
+            self.setWindowTitle("Which one of the images looks good?")
             self.do_again = 1
             self.mode = mode
-            self.ui.text_mode.setText(f'Current mode: {mode}')
+            self.ui.change_mode.setText(f'Change mode \n Current mode: {mode}')
             if mode == 'H&E':
-                self.ui.text_mode.setStyleSheet("background-color: white; color: black;")
-                self.ui.text_mode.setText(f'Current mode: H&E')
+                self.ui.change_mode.setStyleSheet("background-color: white; color: black;")
+                self.ui.change_mode.setText(f'Change mode \n Current mode: H&&E')
             else:
-                self.ui.text_mode.setStyleSheet("background-color: #333333; color: white;")
+                self.ui.raise_ta.setText('Keep more whitespace')
+                self.ui.decrease_ta.setText('Keep more tissue')
+                self.ui.change_mode.setStyleSheet("""
+                    QPushButton {
+                        background-color: black;
+                        color: white;
+                        font-size: 12px;
+                    }
+                    QPushButton:hover {
+                        background-color: #333333;  /* Dark gray instead of white */
+                        color: white;  /* Keep the text readable */
+                    }
+                """)
             self.ui.change_mode.clicked.connect(self.on_mode)
-            self.ui.apply.clicked.connect(self.on_apply)
-            self.ui.TA_selection.valueChanged.connect(self.update_slider)
+            self.ui.high_ta.clicked.connect(self.on_high)
+            self.ui.low_ta.clicked.connect(self.on_low)
             self.ui.raise_ta.clicked.connect(self.on_raise)
             self.ui.decrease_ta.clicked.connect(self.on_decrease)
 
-        def on_raise(self):
-            self.CT0 = self.CT0 + 10
-            self.ui.TA_selection.setValue(self.CT0)
+        def on_high(self):
+            self.do_again = 0
+            self.TA = self.CTA
+            self.close()
 
-        def on_decrease(self):
-            self.CT0 = self.CT0 - 10
-            self.ui.TA_selection.setValue(self.CT0)
-
-        def update_slider(self):
-            self.ui.slider_label.setText(str(self.ui.TA_selection.value()))
-            handle_pos = self.slider_handle_position()
-            self.ui.slider_label.setGeometry(handle_pos-15, 0, 30, 20)
-            self.on_change_TA()
-
-        def slider_handle_position(self):
-            """ Get the X coordinate of the slider handle. """
-            option = QtWidgets.QStyleOptionSlider()
-            self.ui.TA_selection.initStyleOption(option)
-            handle_rect = self.ui.TA_selection.style().subControlRect(QtWidgets.QStyle.CC_Slider, option,
-                                                                      QtWidgets.QStyle.SC_SliderHandle, self.ui.TA_selection)
-
-            slider_x = self.ui.TA_selection.pos().x()  # Slider X position in parent widget
-            return slider_x + handle_rect.x() + (handle_rect.width() // 2)
-
-
-        def on_apply(self):
+        def on_low(self):
             self.do_again = 0
             self.TA = self.CT0
             self.close()
 
-        def on_change_TA(self):
-            self.CT0 = self.ui.TA_selection.value()
-            self.change_TA('TA')
+        def on_raise(self):
+            self.TA = self.CT0 + 10
+            self.close()
+
+        def on_decrease(self):
+            self.TA = self.CT0 - 10
+            self.close()
 
         def on_mode(self):
             if self.mode == 'H&E':
                 self.mode = 'Grayscale'
-                self.ui.TA_selection.setValue(50)
-                self.CT0 = 50
             else:
                 self.mode = 'H&E'
-                self.ui.TA_selection.setValue(205)
-                self.CT0 = 205
-            self.change_TA('mode')
-
-        def change_TA(self, change):
-            if change == 'mode':
-                if self.mode == 'H&E':
-                    self.ui.text_mode.setStyleSheet("background-color: white; color: black;")
-                    self.ui.text_mode.setText(f'Current mode: H&E')
-                    self.ui.decrease_ta.setText('More whitespace')
-                    self.ui.raise_ta.setText('More tissue')
-                else:
-                    self.ui.raise_ta.setText('More whitespace')
-                    self.ui.decrease_ta.setText('More tissue')
-                    self.ui.text_mode.setText(f'Current mode: {self.mode}')
-                    self.ui.text_mode.setStyleSheet("background-color: #333333; color: white;")
-            if self.mode == 'H&E':
-                image_array = np.ascontiguousarray(((cropped[:, :, 1] > self.CT0) * 255).astype(np.uint8))
-            else:
-                image_array = np.ascontiguousarray(((cropped[:, :, 1] < self.CT0) * 255).astype(np.uint8))
-            self.ui.apply.setText(f'Save')
-            height, width = image_array.shape[:2]
-            qimage = QtGui.QImage(image_array.data, width, height, image_array.strides[0],
-                                  QtGui.QImage.Format_Grayscale8)
-            pixmap = QtGui.QPixmap.fromImage(qimage)
-            self.ui.TA_im.setGeometry(QRect(54 + szz*0.75, 70, szz / 2, szz / 2))
-            self.ui.TA_im.setPixmap(pixmap.scaled(
-                self.ui.TA_im.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            ))
-            self.ui.TA_im.setScaledContents(True)
+            self.close()
 
         def update_image(self, szz, cropped):
             if self.mode == 'H&E':
+                image_array_high = np.ascontiguousarray(((cropped[:,:,1]>self.CTA)*255).astype(np.uint8))
                 image_array_medium = np.ascontiguousarray(cropped)
-                image_array = np.ascontiguousarray(((cropped[:,:,1]>self.CT0)*255).astype(np.uint8))
+                image_array_low = np.ascontiguousarray(((cropped[:,:,1]>self.CT0)*255).astype(np.uint8))
             else:
+                image_array_high = np.ascontiguousarray(((cropped[:, :, 1] < self.CTA) * 255).astype(np.uint8))
                 image_array_medium = np.ascontiguousarray(cropped)
-                image_array = np.ascontiguousarray(((cropped[:, :, 1] < self.CT0) * 255).astype(np.uint8))
+                image_array_low = np.ascontiguousarray(((cropped[:, :, 1] < self.CT0) * 255).astype(np.uint8))
 
             height, width = image_array_medium.shape[:2]
             bytes_per_line = 3 * width
             qimage = QtGui.QImage(image_array_medium.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
             pixmap = QtGui.QPixmap.fromImage(qimage)
-            self.ui.medium_im.setGeometry(QRect(50 + szz / 4, 70, szz / 2, szz / 2))
+            self.ui.medium_im.setGeometry(QRect(54 + szz / 2, 70, szz / 2, szz / 2))
             self.ui.medium_im.setPixmap(pixmap.scaled(
                 self.ui.medium_im.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             ))
             self.ui.medium_im.setScaledContents(True)
-            height, width = image_array.shape[:2]
-            qimage = QtGui.QImage(image_array.data, width, height, image_array.strides[0], QtGui.QImage.Format_Grayscale8)
+            height, width = image_array_high.shape[:2]
+            qimage = QtGui.QImage(image_array_high.data, width, height, image_array_high.strides[0], QtGui.QImage.Format_Grayscale8)
             pixmap = QtGui.QPixmap.fromImage(qimage)
-            self.ui.TA_im.setGeometry(QRect(54+szz*0.75, 70, szz/2, szz/2))
-            self.ui.TA_im.setPixmap(pixmap.scaled(
-                self.ui.TA_im.size(),
+            self.ui.high_im.setGeometry(QRect(50, 70, szz/2, szz/2))
+            self.ui.high_im.setPixmap(pixmap.scaled(
+                self.ui.high_im.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             ))
-            self.ui.TA_im.setScaledContents(True)
+            self.ui.high_im.setScaledContents(True)
+            qimage = QtGui.QImage(image_array_low.data, width, height, image_array_low.strides[0],
+                                  QtGui.QImage.Format_Grayscale8)
+            pixmap = QtGui.QPixmap.fromImage(qimage)
+            self.ui.low_im.setGeometry(QRect(58+szz, 70, szz / 2, szz / 2))
+            self.ui.low_im.setPixmap(pixmap.scaled(
+                self.ui.low_im.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            ))
+            self.ui.low_im.setScaledContents(True)
 
 
     def select_TA(szz, cropped, CT0, mode):
+        CTA = CT0 + 5
+        CTC = CT0 - 5
         app = QtWidgets.QApplication.instance()
         if app is None:
             app = QtWidgets.QApplication(sys.argv)
-        window = chooseTA(szz,CT0, mode)
+        window = chooseTA(szz,CTA,CT0,CTC, mode)
         window.show()
         window.update_image(szz, cropped)
         app.exec()
@@ -395,33 +364,31 @@ def determine_optimal_TA(pthim,numims):
     mode = 'H&E'
     if not os.path.exists(outpath):
         os.makedirs(outpath)
+
     if os.path.isfile(os.path.join(outpath,'TA_cutoff.pkl')):
         if numims>0:
             keep_TA = confirm_TA()
             if keep_TA:
                 print('   Optimal cutoff already chosen, skip this step')
                 return
-            with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'rb') as f:
-                data = pickle.load(f)
-                mode = data['mode']
         else:
             with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'rb') as f:
                 data = pickle.load(f)
                 cts = data['cts']
                 mode = data['mode']
-            done = []
-            for index in cts:
-                done.append(index)
-            imlist_temp = list(set(imlist) - set(done))
-            if not imlist_temp:
-                keep_TA = confirm_TA()
-                if keep_TA:
-                    print('   Optimal cutoff already chosen for all images, skip this step')
-                    return
-                else:
-                    apply_all, redo_list = choose_images_TA()
-                    if not apply_all:
-                        imlist = redo_list
+                done = []
+                for index in cts:
+                    done.append(index)
+                imlist_temp = list(set(imlist) - set(done))
+                if not imlist_temp:
+                    keep_TA = confirm_TA()
+                    if keep_TA:
+                        print('   Optimal cutoff already chosen for all images, skip this step')
+                        return
+                    else:
+                        apply_all, redo_list = choose_images_TA()
+                        if not apply_all:
+                            imlist = redo_list
 
     if numims>0:
         numims = min(numims,len(imlist))
