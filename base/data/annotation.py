@@ -125,6 +125,8 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
             numann0.extend(numann)
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
+            # print(numann0)
+            # print(ctlist0)
             continue
 
         create_new_tiles = True
@@ -182,6 +184,9 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
             numann0.extend(numann)
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
+            # print(numann0)
+            # print(ctlist0)
+            # print(" ")
 
     # Check if any annotations were found
     if not numann0:
@@ -1474,8 +1479,8 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
 
     # Create list of tile names and paths
     ctlist = {
-        'tile_name': [f for f in os.listdir(pthim) if f.endswith('.png')],
-        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in os.listdir(pthim) if f.endswith('.png')]
+        'tile_name': sorted([f for f in os.listdir(pthim) if f.endswith('.png')]),
+        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in sorted(os.listdir(pthim)) if f.endswith('.png')]
     }
 
     # Save data to pickle file
