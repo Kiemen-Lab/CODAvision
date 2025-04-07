@@ -26,7 +26,28 @@ Updated: March 21, 2025
 
 import os
 import numpy as np
+import logging
+from datetime import datetime
 from base import *
+
+
+# Create logs directory if it doesn't exist
+logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(logs_dir, exist_ok=True)
+
+# Create log filename with timestamp
+log_filename = os.path.join(logs_dir, f'debug_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+# Configure logging to write to both console and file
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_filename),
+        logging.StreamHandler()  # Console output
+    ]
+)
+logger = logging.getLogger(__name__)
+logger.info(f"Starting tissue segmentation workflow with debug logging to {log_filename}")
 
 # Set up data paths
 pth = '/Users/tnewton3/Desktop/liver_tissue_data'
