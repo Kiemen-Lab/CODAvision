@@ -172,6 +172,7 @@ def determine_optimal_TA(pthim,numims):
             self.TA = self.CT0 - 10
             self.close()
 
+
         def on_mode(self):
             if self.mode == 'H&E':
                 self.mode = 'Grayscale'
