@@ -61,6 +61,9 @@ def combine_annotations_into_tiles(
         - Updated annotation counts array
         - Updated annotation percentage tracking array
     """
+    # Set a random seed for reproducibility
+    np.random.seed(42)
+
     big_tile_size_with_margin = big_tile_size + 200
     keep_all_classes = 1
 
@@ -200,6 +203,10 @@ def combine_annotations_into_tiles(
         half_size_a = annotation_size // 2
         half_size_b = annotation_size - half_size_a
 
+        # Convert numpy arrays to tuples for slicing
+        half_size_a = tuple(map(int, half_size_a))
+        half_size_b = tuple(map(int, half_size_b))
+
         # Adjust position if needed to stay in bounds
         if x + half_size_a[0] + 1 > composite_mask.shape[0]:
             x -= half_size_a[0]
@@ -210,19 +217,39 @@ def combine_annotations_into_tiles(
         if y - half_size_b[1] < 0:
             y += half_size_b[1]
 
-        # Create slices for the region where we'll place this tile
-        region_slice_x = slice(x - half_size_b[0], x + half_size_a[0] + 1)
-        region_slice_y = slice(y - half_size_b[1], y + half_size_a[1] + 1)
+        # # Create slices for the region where we'll place this tile
+        # region_slice_x = slice(x - half_size_b[0], x + half_size_a[0] + 1)
+        # region_slice_y = slice(y - half_size_b[1], y + half_size_a[1] + 1)
+        #
+        # # Place the tile in the composite
+        # temp_mask = composite_mask[region_slice_x, region_slice_y].copy()
+        # temp_mask[valid_pixels] = annotation_mask[valid_pixels]
+        # composite_mask[region_slice_x, region_slice_y] = temp_mask
+        #
+        # temp_image = composite_image[region_slice_x, region_slice_y, :].copy()
+        # valid_pixels_3d = np.dstack((valid_pixels, valid_pixels, valid_pixels))
+        # temp_image[valid_pixels_3d] = image[valid_pixels_3d]
+        # composite_image[region_slice_x, region_slice_y, :] = temp_image
 
-        # Place the tile in the composite
-        temp_mask = composite_mask[region_slice_x, region_slice_y].copy()
+        # Use direct slicing instead of slice objects
+        # Copy the current mask values in the target region
+        temp_mask = composite_mask[x - half_size_b[0]:x + half_size_a[0] + 1,
+                                   y - half_size_b[1]:y + half_size_a[1] + 1].copy()
+        # Apply the new annotation mask to valid pixels
         temp_mask[valid_pixels] = annotation_mask[valid_pixels]
-        composite_mask[region_slice_x, region_slice_y] = temp_mask
+        # Update the composite mask
+        composite_mask[x - half_size_b[0]:x + half_size_a[0] + 1,
+                       y - half_size_b[1]:y + half_size_a[1] + 1] = temp_mask
 
-        temp_image = composite_image[region_slice_x, region_slice_y, :].copy()
+        # Do the same for the image
+        temp_image = composite_image[x - half_size_b[0]:x + half_size_a[0] + 1,
+                                     y - half_size_b[1]:y + half_size_a[1] + 1, :].copy()
+        # Apply the new image to valid pixels
         valid_pixels_3d = np.dstack((valid_pixels, valid_pixels, valid_pixels))
         temp_image[valid_pixels_3d] = image[valid_pixels_3d]
-        composite_image[region_slice_x, region_slice_y, :] = temp_image
+        # Update the composite image
+        composite_image[x - half_size_b[0]:x + half_size_a[0] + 1,
+                        y - half_size_b[1]:y + half_size_a[1] + 1, :] = temp_image
 
         # Update fill ratio periodically
         if count % 2 == 0:
@@ -306,6 +333,9 @@ def create_training_tiles(
     Raises:
         ValueError: If no valid annotations are found
     """
+    # Set a random seed for reproducibility
+    np.random.seed(42)
+
     # Load model metadata
     with open(os.path.join(model_path, 'net.pkl'), 'rb') as f:
         data = pickle.load(f)
