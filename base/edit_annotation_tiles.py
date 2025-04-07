@@ -9,7 +9,7 @@ from base.augment_annotation import augment_annotation
 import cv2
 import os
 
-
+from scipy.io import savemat
 def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, big_tile_size, kpall):
     """
         Edit annotation tiles by performing augmentation and adjusting class distribution.
@@ -41,14 +41,18 @@ def edit_annotations_tiles(im, TA, do_augmentation, class_id, num_pixels_class, 
 
     # Add zero padding to include background class
     kp = np.concatenate(([0], kp))
+    print(kp)
     tmp = kp[TA.astype(int)]
+    tmp = tmp>0
 
     # Dilate the mask
     dil = np.random.randint(15) + 15
     tmp = dilation(tmp, disk(dil))
 
+
     # Apply the mask to both image and label
     TA = TA * tmp
+
     for i in range(im.shape[2]):
         im[:, :, i] *= tmp
 

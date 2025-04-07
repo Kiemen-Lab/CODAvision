@@ -154,11 +154,11 @@ def determine_optimal_TA(pthim,numims):
             self.ui.decrease_ta.clicked.connect(self.on_decrease)
 
         def on_raise(self):
-            self.CT0 = self.CT0 + 10
+            self.CT0 = self.CT0 + 1
             self.ui.TA_selection.setValue(self.CT0)
 
         def on_decrease(self):
-            self.CT0 = self.CT0 - 10
+            self.CT0 = self.CT0 - 1
             self.ui.TA_selection.setValue(self.CT0)
 
         def update_slider(self):

@@ -66,7 +66,7 @@ class Ui_disp_crop(object):
         self.text.setText(QCoreApplication.translate("MainWindow", u"Is this a good location to evaluate tissue and whitespace detection?", None))
 
 class Ui_choose_TA(object):
-    def setupUi(self, MainWindow,CT0):
+    def setupUi(self, MainWindow):
         self.centralwidget = QWidget(MainWindow)
         self.TA_im = QLabel(self.centralwidget)
         self.TA_im.setFrameShape(QFrame.Box)
@@ -106,11 +106,11 @@ class Ui_choose_TA(object):
         self.decrease_ta = QPushButton(self.centralwidget)
         MainWindow.setCentralWidget(self.centralwidget)
 
-        self.retranslateUi(MainWindow,CT0)
+        self.retranslateUi(MainWindow)
 
         QMetaObject.connectSlotsByName(MainWindow)
 
-    def retranslateUi(self, MainWindow,CT0):
+    def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
         self.TA_im.setText("")
         self.text.setText(QCoreApplication.translate("MainWindow", u"Select an intensity threshold so that the tissue in the binary image is marked in black", None))
