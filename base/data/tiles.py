@@ -20,8 +20,12 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional, Union, Any
 from PIL import Image
 import cv2
+import logging
 
 from base.image import edit_annotation_tiles
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 def combine_annotations_into_tiles(
@@ -64,10 +68,11 @@ def combine_annotations_into_tiles(
     # Set a random seed for reproducibility
     np.random.seed(3)
 
-    print(f"DEBUG: Starting combine_annotations_into_tiles with {len(image_list['tile_name'])} tiles")
-    print(f"DEBUG: initial_annotations shape: {initial_annotations.shape}")
-    print(f"DEBUG: current_annotations shape: {current_annotations.shape}")
-    print(f"DEBUG: num_classes: {num_classes}")
+    logger.debug(f"Starting combine_annotations_into_tiles with {len(image_list['tile_name'])} tiles")
+    logger.debug(f"initial_annotations shape: {initial_annotations.shape}")
+    logger.debug(f"current_annotations shape: {current_annotations.shape}")
+    logger.debug(f"num_classes: {num_classes}")
+
 
     big_tile_size_with_margin = big_tile_size + 200
     keep_all_classes = 1
@@ -93,7 +98,7 @@ def combine_annotations_into_tiles(
 
     # Track class balancing
     class_counts = np.zeros(current_annotations.shape[1])
-    print(f"DEBUG: Initial class_counts shape: {class_counts.shape}")
+    logger.debug(f"Initial class_counts shape: {class_counts.shape}")
     fill_ratio = np.sum(class_counts) / total_pixels
 
     # Iteration control variables
@@ -141,8 +146,8 @@ def combine_annotations_into_tiles(
             else:
                 candidate_tiles = np.array([], dtype=int)
 
-        print(f"DEBUG: Processing tile {count}, selecting class_type {class_type}")
-        print(f"DEBUG: Number of candidate tiles: {len(candidate_tiles)}")
+        logger.debug(f"Processing tile {count}, selecting class_type {class_type}")
+        logger.debug(f"Number of candidate tiles: {len(candidate_tiles)}")
 
         # Skip iteration if still no candidate tiles
         if len(candidate_tiles) == 0:
@@ -190,8 +195,8 @@ def combine_annotations_into_tiles(
 
         # Check if we have enough annotation pixels to use
         valid_pixels = (annotation_mask != 0)
-        print(f"DEBUG: After edit_annotation_tiles - kept_classes: {kept_classes}")
-        print(f"DEBUG: Valid pixels in mask: {np.sum(valid_pixels)}")
+        logger.debug(f"After edit_annotation_tiles - kept_classes: {kept_classes}")
+        logger.debug(f"Valid pixels in mask: {np.sum(valid_pixels)}")
         if np.sum(valid_pixels) < 30:
             print('  Skipped tile with too few valid pixels')
             continue
@@ -271,14 +276,14 @@ def combine_annotations_into_tiles(
         # Update fill ratio periodically
         if count % 2 == 0:
             fill_ratio = cv2.countNonZero(composite_mask) / total_pixels
-            print(f"DEBUG: Current fill_ratio: {fill_ratio:.4f}, target: {cutoff_threshold:.4f}")
+            logger.debug(f"Current fill_ratio: {fill_ratio:.4f}, target: {cutoff_threshold:.4f}")
 
         # Update class counts from newly added content
         for class_idx in range(current_annotations.shape[1]):
             count_before = class_counts[class_idx]
             additional_count = np.sum(temp_mask == class_idx + 1)
             class_counts[class_idx] += additional_count
-            print(f"DEBUG: Class {class_idx + 1}: Added {additional_count} pixels, now {class_counts[class_idx]}")
+            logger.debug(f"Class {class_idx + 1}: Added {additional_count} pixels, now {class_counts[class_idx]}")
 
         # Periodically recompute the actual class distribution
         if count % 150 == 0 or fill_ratio > cutoff_threshold:
@@ -442,9 +447,8 @@ def create_training_tiles(
                 tile_size
             )
 
-            print(f"DEBUG: After combine_annotations_into_tiles:")
-            print(f"DEBUG: current_annotations shape: {current_annotations.shape}")
-            print(f"DEBUG: unique values in annotation_percentages: {np.unique(annotation_percentages)}")
+            logger.debug(f"After combine_annotations_into_tiles - current_annotations shape: {current_annotations.shape}")
+            logger.debug(f"After combine_annotations_into_tiles - unique values in annotation_percentages: {np.unique(annotation_percentages)}")
 
             elapsed_time = time.time() - train_start
             print(
