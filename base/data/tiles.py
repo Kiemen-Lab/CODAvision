@@ -62,7 +62,7 @@ def combine_annotations_into_tiles(
         - Updated annotation percentage tracking array
     """
     # Set a random seed for reproducibility
-    np.random.seed(42)
+    np.random.seed(3)
 
     print(f"DEBUG: Starting combine_annotations_into_tiles with {len(image_list['tile_name'])} tiles")
     print(f"DEBUG: initial_annotations shape: {initial_annotations.shape}")
@@ -112,7 +112,7 @@ def combine_annotations_into_tiles(
         iteration_start_time = time.time()
 
         # Select which class to sample
-        if count % 10 == 1:
+        if count % 5 == 1:
             class_type = tile_count - 1
             tile_count = (tile_count % num_classes) + 1
         else:
@@ -356,7 +356,7 @@ def create_training_tiles(
         ValueError: If no valid annotations are found
     """
     # Set a random seed for reproducibility
-    np.random.seed(42)
+    np.random.seed(3)
 
     # Load model metadata
     with open(os.path.join(model_path, 'net.pkl'), 'rb') as f:
