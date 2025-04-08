@@ -9,6 +9,9 @@ import numpy as np
 import os
 import glob
 import pydicom as dicom
+
+Image.MAX_IMAGE_PIXELS = None
+
 # from openslide import OpenSlide
 
 # Add the OpenSlide DLL directory
@@ -174,7 +177,7 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         image_path = os.path.join(pth, missing_image + image_format)
                         image = Image.open(image_path)
                         image = np.array(image)
-                        print(image.shape)
+                        # print(image.shape)
                         resize_dimension = (
                             int(np.ceil(image.shape[1] / scale)),
                             int(np.ceil(image.shape[0] / scale))
