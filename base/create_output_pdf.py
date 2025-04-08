@@ -150,10 +150,17 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     # Print header
     pdf.set_font('Arial', 'B', 8)  # Set font to bold for headers
     pdf.cell(cell_width - 10, 10, '')
-    pdf.cell(cell_width - 20, 10, df['Image name'][0], 1, align='C')
+    image_name = df['Image name'][0]
+    if pdf.get_string_width(df['Image name'][0])> cell_width-20:
+        for i in range(len(image_name), 0, -1):
+            short_name = image_name[:i]
+            if pdf.get_string_width(short_name+'...')<= cell_width-20:
+                image_name = short_name+'...'
+                break
+    pdf.cell(cell_width - 20, 10, image_name, 1, align='C')
     pdf.cell(20, 10, '')
     pdf.cell(cell_width, 10, '')
-    pdf.cell(cell_width - 20, 10, df['Image name'][0], 1, align='C')
+    pdf.cell(cell_width - 20, 10, image_name, 1, align='C')
     pdf.ln()
     vertical_limit = False
 
@@ -219,8 +226,19 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
         # Print table
         pdf.set_font('Arial', 'B', 8)  # Set font to bold for headers
         for index, key in enumerate(times):
-            pdf.cell(cell_width_names - 10, 10, key, 1, align='C')
-            pdf.cell(cell_width_times - 10, 10, times[key], 1, align='C')
+            pdf.cell(cell_width_names + 10, 10, key, 1, align='C')
+            time = times[key]
+            parts = time.split(":")
+            hour = int(parts[0])
+            minute = int(parts[1])
+            # Handle seconds with or without decimal
+            if '.' in parts[2]:
+                sec_int, sec_frac = parts[2].split(".")
+                second = f"{int(sec_int):02}.{sec_frac}"
+            else:
+                second = f"{int(parts[2]):02}"
+            time = f"{hour:02}:{minute:02}:{second}"
+            pdf.cell(cell_width_times + 10, 10, time, 1, align='C')
             pdf.ln()
 
     # Additional Explanatory Text

@@ -227,6 +227,7 @@ def edit_annotation_tiles(
     # Extend kp to match TA classes (adding a 0 index)
     kp = np.concatenate(([0], kp))
     tmp = kp[TA.astype(int)]
+    tmp = tmp>0
 
     # Dilate the mask
     dil = np.random.randint(15) + 15
