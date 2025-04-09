@@ -17,6 +17,10 @@ import numpy as np
 import cv2
 from scipy.ndimage import gaussian_filter
 from skimage.morphology import disk, dilation
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 def augment_image(
@@ -211,6 +215,9 @@ def edit_annotation_tiles(
         - Augmented and adjusted label mask
         - Unique labels after processing
     """
+    logger.debug(f"edit_annotation_tiles for class_id {class_id}")
+    logger.debug(f"num_pixels_class shape: {num_pixels_class.shape}")
+
     # Apply appropriate augmentation based on the flag
     if do_augmentation:
         im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=True, blur=True)
@@ -247,5 +254,7 @@ def edit_annotation_tiles(
 
     # Convert TA to uint8
     TA = TA.astype(np.uint8)
+
+    logger.debug(f"Returning kpout: {kpout}")
 
     return im, TA, kpout

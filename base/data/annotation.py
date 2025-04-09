@@ -281,7 +281,7 @@ def load_annotations(xml_file: str) -> Tuple[float, pd.DataFrame]:
     return load_xml_annotations(xml_file)
 
 
-def extract_annotation_layers(xml_path: str, debug: bool = True) -> pd.DataFrame:
+def extract_annotation_layers(xml_path: str, debug: bool = False) -> pd.DataFrame:
     """
     Extract annotation layers from an XML file for the GUI.
 
@@ -365,7 +365,7 @@ def extract_annotation_layers(xml_path: str, debug: bool = True) -> pd.DataFrame
     return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
 
 
-def read_xml_file(xml_path: str, debug: bool = True) -> Tuple[str, str]:
+def read_xml_file(xml_path: str, debug: bool = False) -> Tuple[str, str]:
     """
     Comprehensive XML file reader that handles different encodings and format issues.
 
@@ -444,7 +444,7 @@ def read_xml_file(xml_path: str, debug: bool = True) -> Tuple[str, str]:
     return clean_content, 'latin-1'
 
 
-def find_xml_after_mac_metadata(content: str, debug: bool = True, file_name: str = "unknown") -> Tuple[str, str]:
+def find_xml_after_mac_metadata(content: str, debug: bool = False, file_name: str = "unknown") -> Tuple[str, str]:
     """
     Find XML content after Mac OS X metadata.
 
@@ -511,7 +511,7 @@ def find_xml_after_mac_metadata(content: str, debug: bool = True, file_name: str
     return content, 'original-unmodified'
 
 
-def clean_xml_content(content: str, debug: bool = True, file_name: str = "unknown") -> str:
+def clean_xml_content(content: str, debug: bool = False, file_name: str = "unknown") -> str:
     """
     Clean the XML content by removing non-XML data and ensuring it's well-formed.
 
@@ -553,7 +553,7 @@ def clean_xml_content(content: str, debug: bool = True, file_name: str = "unknow
     return content
 
 
-def parse_xml(xml_content: str, debug: bool = True, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
+def parse_xml(xml_content: str, debug: bool = False, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
     """
     Parse XML content into a dictionary using multiple parsing strategies.
 
@@ -649,7 +649,7 @@ def parse_xml(xml_content: str, debug: bool = True, file_name: str = "unknown") 
     return None
 
 
-def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool = True, file_name: str = "unknown") -> str:
+def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool = False, file_name: str = "unknown") -> str:
     """
     Fix common XML errors in the content, focusing on the problematic line.
 
@@ -718,7 +718,7 @@ def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool 
     return xml_content
 
 
-def manual_extract_annotations(xml_content: str, debug: bool = True, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
+def manual_extract_annotations(xml_content: str, debug: bool = False, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
     """
     Manually extract annotation data using regex when XML parsing fails.
 
@@ -817,7 +817,7 @@ def rgb_from_linecolor(color_str: str) -> Tuple[int, int, int]:
         return (0, 0, 0)
 
 
-def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = True, file_name: str = "unknown") -> Tuple[float, pd.DataFrame]:
+def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = False, file_name: str = "unknown") -> Tuple[float, pd.DataFrame]:
     """
     Extract annotation coordinates from parsed XML dictionary.
 
@@ -914,7 +914,7 @@ def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = True,
     return reduced_annotations, pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
 
 
-def load_xml_annotations(xml_path: str, debug: bool = True) -> Tuple[float, pd.DataFrame]:
+def load_xml_annotations(xml_path: str, debug: bool = False) -> Tuple[float, pd.DataFrame]:
     """
     Complete function to load XML annotations from a file with robust cross-platform handling.
 
