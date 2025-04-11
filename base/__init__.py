@@ -18,8 +18,8 @@ from .save_model_metadata import save_model_metadata
 from .save_model_metadata_GUI import save_model_metadata_GUI
 from .determine_optimal_TA import determine_optimal_TA
 from .data.tiles import create_training_tiles
-from .quantify_images import quantify_images
-from .quantify_objects import quantify_objects
+from .evaluation.image_quantification import quantify_images
+from .evaluation.object_quantification import quantify_objects
 from .create_output_pdf import create_output_pdf
 from .WSI2tif import WSI2tif
 from .data.annotation import (

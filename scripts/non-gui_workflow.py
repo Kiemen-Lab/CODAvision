@@ -67,6 +67,31 @@ pthtestim = os.path.join(pthtest, '10x')  # Test images at 10x magnification
 nm = 'test_model'  # Model name
 resolution = '10x'  # Image resolution/magnification
 
+# The WS variable below reflects these settings in the GUI:
+# ------------------------------------
+# Tab 2: Segmentation Settings
+# PDAC: "Remove whitespace"
+# bile duct: "Remove whitespace"
+# vasculature: "Remove whitespace"
+# hepatocyte: "Remove whitespace"
+# immune: "Keep tissue and whitespace"
+# stroma: "Remove whitespace"
+# whitespace: "Keep tissue and whitespace"
+#
+# Additional settings:
+# Add Whitespace to: Set to "whitespace"
+# Add Non-whitespace to: Set to "stroma"
+# ------------------------------------
+# Tab 3: Nesting
+# Arrange the layers in this specific order (top to bottom):
+# whitespace
+# PDAC
+# immune
+# vasculature
+# bile duct
+# hepatocyte
+# stroma
+# ------------------------------------
 # Whitespace handling configuration
 WS = [[0, 0, 0, 0, 2, 0, 2], # 0: remove whitespace, 1: keep only whitespace, 2: keep both
       [7, 6],                # Classes to which removed whitespace should be added
