@@ -5,7 +5,7 @@ Date: October 01, 2024
 
 import os
 import matplotlib.pyplot as plt
-from .plot_cmap_legend import plot_cmap_legend
+from .utils.visualization import plot_cmap_legend
 import pickle
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
