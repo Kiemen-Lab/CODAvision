@@ -14,8 +14,8 @@ Modules:
 
 __version__ = '1.0.0'
 
-from .save_model_metadata import save_model_metadata
-from .save_model_metadata_GUI import save_model_metadata_GUI
+from .models.utils import save_model_metadata
+from .utils.metadata import save_model_metadata_gui
 from .determine_optimal_TA import determine_optimal_TA
 from .data.tiles import create_training_tiles
 from .evaluation.image_quantification import quantify_images
@@ -40,7 +40,7 @@ from .image.utils import create_overlay
 __all__ = [
     'load_annotation_data',
     'save_model_metadata',
-    'save_model_metadata_GUI',
+    'save_model_metadata_gui',
     'determine_optimal_TA',
     'create_training_tiles',
     'train_segmentation_model_cnns',
