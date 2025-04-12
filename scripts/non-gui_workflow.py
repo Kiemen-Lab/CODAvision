@@ -123,7 +123,21 @@ nvalidate = np.ceil(ntrain/5)  # Number of validation images (20% of training)
 numims = 2  # Number of images to process
 
 # Step 1: Save model configuration and metadata
-save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
+metadata = {
+    "pthim": pthim,
+    "pthDL": pthDL,
+    "WS": WS,
+    "nm": nm,
+    "umpix": umpix,
+    "cmap": cmap,
+    "sxy": sxy,
+    "classNames": classNames,
+    "ntrain": ntrain,
+    "nblack": nblack,
+    "nwhite": nwhite,
+    "nvalidate": nvalidate
+}
+save_model_metadata(pthDL, metadata)
 
 # Step 2: Load annotation data from existing annotations
 [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim, classCheck)
