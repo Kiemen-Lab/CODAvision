@@ -16,6 +16,7 @@ import sys
 import numpy as np
 import cv2
 from typing import Dict, List, Optional, Tuple, Union, Any
+import pickle
 
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtCore import Qt, QRect, QPointF, Signal
