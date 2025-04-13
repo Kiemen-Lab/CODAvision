@@ -117,6 +117,7 @@ cmap = np.array([[230, 190, 100], # PDAC
 
 # Class names for the tissue types being segmented
 classNames = ['PDAC', 'bile duct', 'vasculature', 'hepatocyte', 'immune', 'stroma', 'whitespace']
+classNames.append('black')
 classCheck = []  # Optional list for class validation
 ntrain = 15  # Number of training images
 nvalidate = np.ceil(ntrain/5)  # Number of validation images (20% of training)
