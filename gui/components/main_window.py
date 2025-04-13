@@ -22,7 +22,6 @@ from PySide6.QtCore import Qt, QRegularExpression
 # Import from base package
 from base.data.annotation import extract_annotation_layers
 from base.utils.metadata import save_model_metadata_gui
-from base.WSI2tif import WSI2tif
 
 # Import GUI components
 from .ui_definitions import Ui_MainWindow

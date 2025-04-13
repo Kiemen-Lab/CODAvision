@@ -21,7 +21,7 @@ from .data.tiles import create_training_tiles
 from .evaluation.image_quantification import quantify_images
 from .evaluation.object_quantification import quantify_objects
 from .evaluation.reporting import create_output_pdf
-from .WSI2tif import WSI2tif
+from .image.wsi import WSI2tif, WSI2png
 from .data.annotation import (
     load_annotation_data,
     save_annotation_mask,
@@ -50,6 +50,7 @@ __all__ = [
     'quantify_objects',
     'create_output_pdf',
     'WSI2tif',
+    'WSI2png',
     'save_annotation_mask',
     'format_white',
     'save_bounding_boxes',
