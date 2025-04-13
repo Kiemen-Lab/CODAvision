@@ -100,7 +100,7 @@ WS = [[0, 0, 0, 0, 2, 0, 2], # 0: remove whitespace, 1: keep only whitespace, 2:
       []]                    # Classes to delete (empty list means keep all)
 
 # Model and dataset parameters
-numclass = max(WS[2])  # Maximum class number
+numclass = len(WS[2])  # Number of classes
 sxy = 1024  # Size of image tiles (1024x1024 pixels)
 pthDL = os.path.join(pth, nm)  # Path for model data storage
 nblack = numclass + 1  # Index for black color in visualization
