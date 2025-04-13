@@ -28,29 +28,34 @@ Image.MAX_IMAGE_PIXELS = None
 
 # Import OpenSlide with appropriate error handling for different environments
 try:
-    # Try getting script directory
+    # First try importing OpenSlide normally
+    from openslide import OpenSlide
+
+except ImportError:
     try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-    except NameError:
-        script_dir = os.getcwd()
-        
-    # Path to OpenSlide binaries
-    openslide_path = os.path.join(os.path.dirname(os.path.dirname(script_dir)), 'OpenSlide bin')
-    
-    # Add OpenSlide to DLL directory on Windows, or to PATH on other platforms
-    if hasattr(os, 'add_dll_directory'):
-        # Windows-specific approach for Python 3.8+
-        with os.add_dll_directory(openslide_path):
+        # Try getting script directory
+        try:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+        except NameError:
+            script_dir = os.getcwd()
+
+        # Path to OpenSlide binaries in the "base" subdirectory
+        openslide_path = os.path.join(os.path.dirname(os.path.dirname(script_dir)), 'base', 'OpenSlide bin')
+
+        # Add OpenSlide to DLL directory on Windows, or to PATH on other platforms
+        if hasattr(os, 'add_dll_directory'):
+            # Windows-specific approach for Python 3.8+
+            with os.add_dll_directory(openslide_path):
+                from openslide import OpenSlide
+        else:
+            # Alternative approach for other platforms
+            if openslide_path not in os.environ['PATH']:
+                os.environ['PATH'] = openslide_path + os.pathsep + os.environ['PATH']
             from openslide import OpenSlide
-    else:
-        # Alternative approach for other platforms
-        if openslide_path not in os.environ['PATH']:
-            os.environ['PATH'] = openslide_path + os.pathsep + os.environ['PATH']
-        from openslide import OpenSlide
-        
-except ImportError as e:
-    logger.warning(f"Failed to import OpenSlide: {e}")
-    logger.warning("Some WSI conversion functions may not be available")
+
+    except ImportError as e:
+        logger.warning(f"Failed to import OpenSlide: {e}")
+        logger.warning("Some WSI conversion functions may not be available")
 
 
 class WholeSlideImageConverter:
