@@ -16,7 +16,7 @@ __version__ = '1.0.0'
 
 from .models.utils import save_model_metadata
 from .utils.metadata import save_model_metadata_gui
-from .determine_optimal_TA import determine_optimal_TA
+from .image.tissue_analysis import determine_optimal_TA
 from .data.tiles import create_training_tiles
 from .evaluation.image_quantification import quantify_images
 from .evaluation.object_quantification import quantify_objects
