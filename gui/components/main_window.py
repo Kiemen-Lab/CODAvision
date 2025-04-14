@@ -21,7 +21,8 @@ from PySide6.QtCore import Qt, QRegularExpression
 
 # Import from base package
 from base.data.annotation import extract_annotation_layers
-from base.utils.metadata import save_model_metadata_gui
+from base import save_model_metadata_GUI
+from base.WSI2tif import WSI2tif
 
 # Import GUI components
 from .ui_definitions import Ui_MainWindow
@@ -1411,7 +1412,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.uncomp_test_pth = self.ui.custom_test_img_LE.text()
             self.scale = self.ui.custom_scale_LE.text()
             pthim = pthim + '_Scale_' + str(float(self.scale))
-            save_model_metadata_gui(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+            save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
                                     tile_size, classNames, ntrain, nvalidate, nTA, final_df,
                                     combined_df, model_type, batch_size,
                                     uncomp_train_pth=self.uncomp_train_pth,
@@ -1419,7 +1420,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                     create_down=self.create_down,
                                     downsamp_annotated=self.downsamp_annotated_images)
         else:
-            save_model_metadata_gui(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
+            save_model_metadata_GUI(pthDL, pthim, pthtest, WS, model_name, umpix, colormap,
                                     tile_size, classNames, ntrain, nvalidate, nTA, final_df,
                                     combined_df, model_type, batch_size)
 

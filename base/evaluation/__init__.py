@@ -8,4 +8,3 @@ from .confusion_matrix import ConfusionMatrixVisualizer, plot_confusion_matrix
 from .testing import SegmentationModelTester, test_segmentation_model
 from .image_quantification import ImageQuantifier, quantify_images
 from .object_quantification import ObjectQuantifier, quantify_objects
-from .reporting import create_evaluation_report, create_output_pdf

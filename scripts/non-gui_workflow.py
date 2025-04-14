@@ -100,7 +100,7 @@ WS = [[0, 0, 0, 0, 2, 0, 2], # 0: remove whitespace, 1: keep only whitespace, 2:
       []]                    # Classes to delete (empty list means keep all)
 
 # Model and dataset parameters
-numclass = len(WS[2])  # Number of classes
+numclass = max(WS[2])  # Maximum class number
 sxy = 1024  # Size of image tiles (1024x1024 pixels)
 pthDL = os.path.join(pth, nm)  # Path for model data storage
 nblack = numclass + 1  # Index for black color in visualization
@@ -117,28 +117,13 @@ cmap = np.array([[230, 190, 100], # PDAC
 
 # Class names for the tissue types being segmented
 classNames = ['PDAC', 'bile duct', 'vasculature', 'hepatocyte', 'immune', 'stroma', 'whitespace']
-classNames.append('black')
 classCheck = []  # Optional list for class validation
 ntrain = 15  # Number of training images
 nvalidate = np.ceil(ntrain/5)  # Number of validation images (20% of training)
 numims = 2  # Number of images to process
 
 # Step 1: Save model configuration and metadata
-metadata = {
-    "pthim": pthim,
-    "pthDL": pthDL,
-    "WS": WS,
-    "nm": nm,
-    "umpix": umpix,
-    "cmap": cmap,
-    "sxy": sxy,
-    "classNames": classNames,
-    "ntrain": ntrain,
-    "nblack": nblack,
-    "nwhite": nwhite,
-    "nvalidate": nvalidate
-}
-save_model_metadata(pthDL, metadata)
+save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
 
 # Step 2: Load annotation data from existing annotations
 [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim, classCheck)

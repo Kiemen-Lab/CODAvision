@@ -129,6 +129,88 @@ def convert_to_array(image_path: str, prediction_mask: np.ndarray) -> Tuple[np.n
     return image, prediction_mask
 
 
+def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tuple[np.ndarray, np.ndarray, str]:
+    """
+    Reads an image and returns it along with a binary mask of tissue areas.
+
+    Args:
+        path: Directory path where the image is located
+        image_name: Name of the image file (without extension)
+        test: Whether this is for testing (affects behavior)
+
+    Returns:
+        Tuple of:
+        - image: The image as a numpy array
+        - tissue_mask: Binary mask where tissue areas are True
+        - output_path: Path where the tissue mask is saved
+    """
+    # Create output path for tissue mask
+    output_path = os.path.join(path.rstrip(os.path.sep), 'TA')
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
+    
+    # Try to load the image from different file formats
+    try:
+        image = cv2.imread(os.path.join(path, f'{image_name}.tif'))
+        image = image[:, :, ::-1]  # Convert BGR to RGB
+    except:
+        try:
+            image = cv2.imread(os.path.join(path, f'{image_name}.jpg'))
+            image = image[:, :, ::-1]
+        except:
+            try:
+                image = cv2.imread(os.path.join(path, f'{image_name}.jp2'))
+                image = image[:, :, ::-1]
+            except:
+                image = cv2.imread(os.path.join(path, f'{image_name}.png'))
+                image = image[:, :, ::-1]
+    
+    # Check if tissue mask already exists
+    if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
+        tissue_mask = cv2.imread(os.path.join(output_path, f'{image_name}.tif'), cv2.IMREAD_GRAYSCALE)
+        print('  Existing TA loaded')
+        return image, tissue_mask, output_path
+
+    # Calculate tissue mask
+    print('  Calculating TA image')
+    mode = 'H&E'
+    # Try to load cutoff values from pickle file
+    if os.path.isfile(os.path.join(output_path, 'TA_cutoff.pkl')):
+        with open(os.path.join(output_path, 'TA_cutoff.pkl'), 'rb') as f:
+            data = pickle.load(f)
+            cutoffs_list = data['cts']
+            mode = data['mode']
+            average_TA = data.get('average_TA', False)
+            if test:
+                average_TA = True
+        if average_TA:
+            cutoff = 0
+            for value in cutoffs_list.values():
+                cutoff += value
+            cutoff = cutoff / len(cutoffs_list)
+    else:
+        # Default cutoff value
+        cutoff = 205
+
+    if mode == 'H&E':
+        tissue_mask = image[:, :, 1] < cutoff  # Green channel threshold
+    else:
+        tissue_mask = image[:, :, 1] > cutoff
+    
+    # Apply morphological operations
+    from skimage import morphology
+    kernel_size = 3
+    tissue_mask = tissue_mask.astype(np.uint8)
+    kernel = morphology.disk(kernel_size)
+    tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, kernel.astype(np.uint8))
+    tissue_mask = remove_small_objects(tissue_mask.astype(bool), min_size=10)
+
+    # Save tissue mask
+    cv2.imwrite(os.path.join(output_path, f'{image_name}.tif'), tissue_mask.astype(np.uint8))
+
+    return image, tissue_mask, output_path
+
+
 def load_model_metadata(model_path: str) -> Dict[str, Any]:
     """
     Load model metadata from a pickle file.

@@ -22,7 +22,7 @@ from PIL import Image
 import cv2
 import logging
 
-from base.image.augmentation import edit_annotation_tiles
+from base.image import edit_annotation_tiles
 
 # Set up logging
 logger = logging.getLogger(__name__)

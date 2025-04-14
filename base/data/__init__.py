@@ -19,6 +19,7 @@ from .loaders import (
     read_image,
     create_dataset,
     convert_to_array,
+    calculate_tissue_mask,
     load_model_metadata,
     DataGenerator
 )
