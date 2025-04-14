@@ -122,7 +122,7 @@ def determine_optimal_TA(pthim,numims):
             self.ui = Ui_choose_TA()
             self.TA = CT0
             self.CT0 = CT0
-            self.ui.setupUi(self, CT0)
+            self.ui.setupUi(self)
             self.stop = True
             self.setGeometry(30+np.round(1500-1.5*szz+100)/2, 50,
                              np.round(1.5 * szz+100), np.round(230+szz/2))
@@ -154,11 +154,11 @@ def determine_optimal_TA(pthim,numims):
             self.ui.decrease_ta.clicked.connect(self.on_decrease)
 
         def on_raise(self):
-            self.CT0 = self.CT0 + 10
+            self.CT0 = self.CT0 + 1
             self.ui.TA_selection.setValue(self.CT0)
 
         def on_decrease(self):
-            self.CT0 = self.CT0 - 10
+            self.CT0 = self.CT0 - 1
             self.ui.TA_selection.setValue(self.CT0)
 
         def update_slider(self):

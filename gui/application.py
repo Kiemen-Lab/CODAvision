@@ -35,6 +35,7 @@ def CODAVision():
     It also handles the execution flow based on user interactions.
     """
     start_time = time.time()
+    times = {}
 
     # Initialize Qt application
     app = QtWidgets.QApplication.instance()
@@ -103,6 +104,7 @@ def CODAVision():
         not_downsamp_annotated = window.downsamp_annotated_images
         
         print(' ')
+        downsamp_time = time.time()
         if resolution == 'Custom':
             # Handle custom resolution image preparation
             train_img_type = window.img_type
@@ -120,15 +122,34 @@ def CODAVision():
                     WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale, pth)
         else:
             WSI2tif(pth, resolution, umpix)
+        downsamp_time = time.time()-downsamp_time
 
         # Execute the model training pipeline
         determine_optimal_TA(pthim, nTA)
+        load_time = time.time()
         [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
+        load_time = time.time()-load_time
+        load_time = str(int(load_time // 3600)) + ':' + str(int((load_time % 3600) // 60)) + ':' + str(
+            round(load_time % 60, 2))
+        times['Loading annotations'] = load_time
+        print(load_time)
+        tiles_time = time.time()
         create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles)
+        tiles_time = time.time() - tiles_time
+        tiles_time = str(int(tiles_time // 3600)) + ':' + str(int((tiles_time % 3600) // 60)) + ':' + str(
+            round(tiles_time % 60, 2))
+        print(tiles_time)
+        times['Creating tiles'] = tiles_time
+        train_time = time.time()
         train_segmentation_model_cnns(pthDL, create_new_tiles)
+        train_time = time.time() - train_time
+        train_time = str(int(train_time // 3600)) + ':' + str(int((train_time % 3600) // 60)) + ':' + str(
+            round(train_time % 60, 2))
+        times['Training model'] = train_time
 
         # Prepare and process test data
         print(' ')
+        downsamp_time_2 = time.time()
         if resolution == 'Custom':
             # Handle custom resolution test image preparation
             if not(not_downsamp_annotated):
@@ -160,13 +181,33 @@ def CODAVision():
                             print('No TA cutoff file found, using default value')
         else:
             WSI2tif(pthtest, resolution, umpix)
-
+        downsamp_time_2 = time.time() - downsamp_time_2
+        downsamp_time += downsamp_time_2
+        downsamp_time = str(int(downsamp_time // 3600)) + ':' + str(int((downsamp_time % 3600) // 60)) + ':' + str(
+            round(downsamp_time % 60, 2))
+        times['Downsampling images'] = downsamp_time
         # Test, classify, and quantify results
+        test_time = time.time()
         test_segmentation_model(pthDL, pthtest, pthtestim)
+        test_time = time.time() - test_time
+        test_time = str(int(test_time // 3600)) + ':' + str(int((test_time % 3600) // 60)) + ':' + str(
+            round(test_time % 60, 2))
+        times['Testing model'] = test_time
+        class_time = time.time()
         classify_images(pthim, pthDL, model_type)
+        class_time = time.time() - class_time
+        class_time = str(int(class_time // 3600)) + ':' + str(int((class_time % 3600) // 60)) + ':' + str(
+            round(class_time % 60, 2))
+        times['Classifying images'] = class_time
+        quant_time = time.time()
         quantify_images(pthDL, pthim)
+        quant_time = time.time() - quant_time
+        quant_time = str(int(quant_time // 3600)) + ':' + str(int((quant_time % 3600) // 60)) + ':' + str(
+            round(quant_time % 60, 2))
+        times['Quantifying images'] = quant_time
 
         # Perform tissue component analysis on specified tissues
+        comp_time = time.time()
         pickle_path = os.path.join(pthDL, 'net.pkl')
         with open(pickle_path, 'rb') as f:
             data = pickle.load(f)
@@ -192,6 +233,13 @@ def CODAVision():
                 quantify_objects(pthDL, quantpath, tissue)
             else:
                 print(f'Object quantification already done for {classNames[tissue - 1]}')
+        comp_time = time.time()-comp_time
+        comp_time = str(int(comp_time // 3600)) + ':' + str(int((comp_time % 3600) // 60)) + ':' + str(
+            round(comp_time % 60, 2))
+        times['Object quantification'] = comp_time
+        total_time = time.time()-start_time
+        total_time = str(int(total_time//3600))+':'+str(int((total_time%3600)//60))+':'+str(round(total_time%60,2))
+        times['Total time'] = total_time
 
         # Create output PDF report
         output_path = os.path.join(pthDL, model_type + '_evaluation_report.pdf')
@@ -202,7 +250,7 @@ def CODAVision():
         check_classification_path = os.path.join(pthim, 'classification_' + model_name + '_' + model_type,
                                                 'check_classification')
         create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path,
-                          check_classification_path, check_quant)
+                          check_classification_path, check_quant, times)
 
     end_time = time.time()
     execution_time = end_time - start_time
