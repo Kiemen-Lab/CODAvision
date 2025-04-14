@@ -1557,7 +1557,7 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
         return 1
 
 
-def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray, np.ndarray, str]:
+def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tuple[np.ndarray, np.ndarray, str]:
     """
     Reads an image and returns it along with a binary mask of tissue areas.
 
@@ -1626,6 +1626,8 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
         tissue_mask = image[:, :, 1] < cutoff  # Threshold the image green values
     else:
         tissue_mask = image[:, :, 1] > cutoff
+
+    # Apply morphological operations
     kernel_size = 3
     tissue_mask = tissue_mask.astype(np.uint8)
     kernel = morphology.disk(kernel_size)
