@@ -60,8 +60,8 @@ dependencies = [
 requires-python = ">=3.9,<3.10"
 
 [project.urls]
-Homepage = "https://github.com/Valentinamatos/CODA_python"
-Documentation = "https://github.com/Valentinamatos/CODA_python#readme"
+Homepage = "https://github.com/Kiemen-Lab/CODAvision"
+Documentation = "https://github.com/Kiemen-Lab/CODAvision#readme"
 
 [tool.hatch.metadata]
 allow-direct-references = true
