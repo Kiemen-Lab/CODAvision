@@ -454,8 +454,6 @@ def determine_optimal_TA(pthim,numims):
             y = click.y()
             x_norm = int(np.round(x/rsf))
             y_norm = int(np.round(y/rsf))
-            print(x_norm)
-            print(y_norm)
             cropped_temp = im0[:,:,:]
             cropped = np.array([])
             if 2*szz>im0.shape[0] and 2*szz>im0.shape[1]:
@@ -466,37 +464,28 @@ def determine_optimal_TA(pthim,numims):
                 pad_x1, pad_x2 = pad_x, pad_x + (max_dim - im0.shape[0]) % 2
                 pad_y1, pad_y2 = pad_y, pad_y + (max_dim - im0.shape[1]) % 2
                 cropped = np.pad(im0, ((pad_x1, pad_x2), (pad_y1, pad_y2), (0, 0)), mode='constant')
-                print('a')
             elif 2*szz>im0.shape[0]:
                 pad_x = (2*szz - im0.shape[0]) // 2
                 pad_x1, pad_x2 = pad_x, pad_x + (2*szz - im0.shape[0]) % 2
                 padded = np.pad(im0, ((pad_x1, pad_x2), (0, 0), (0, 0)), mode='constant')
                 cropped_temp = padded[y_norm-szz:y_norm+szz,x_norm-szz:x_norm+szz, :]
-                print('b')
             elif 2*szz>im0.shape[1]:
                 pad_y = (2*szz - im0.shape[1]) // 2
                 pad_y1, pad_y2 = pad_y, pad_y + (2*szz - im0.shape[1]) % 2
                 padded = np.pad(im0, ((0,0), (pad_y1, pad_y2), (0, 0)), mode='constant')
                 cropped_temp = padded[y_norm-szz:y_norm+szz,x_norm-szz:x_norm+szz, :]
-                print('c')
             if y_norm<szz:
                 cropped_temp = cropped_temp[0: 2*szz, :, :]
-                print('d')
             elif y_norm+szz>im0.shape[0]:
                 cropped_temp = cropped_temp[-2*szz:, :, :]
-                print('e')
             else:
                 cropped_temp = cropped_temp[y_norm-szz:y_norm+szz,:,:]
-                print('f')
             if x_norm<szz:
                 cropped_temp = cropped_temp[:,0: 2*szz, :]
-                print('g')
             elif x_norm+szz>im0.shape[1]:
                 cropped_temp = cropped_temp[:,-2*szz:, :]
-                print('h')
             else:
                 cropped_temp = cropped_temp[:,x_norm-szz:x_norm+szz,:]
-                print('i')
             if cropped.size == 0:
                 cropped = cropped_temp
             do_again = check_region(szz, cropped)
