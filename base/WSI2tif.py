@@ -185,8 +185,8 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                         image = Image.fromarray(image)
                         # Resize and save the image
                         image = image.resize(resize_dimension, resample=Image.NEAREST)
-                        imtemp = np.array(image)
-                        print(imtemp.shape)
+                        # imtemp = np.array(image)
+                        # print(imtemp.shape)
                         output_path = os.path.join(pthim, missing_image + '.tif')
                         image.save(output_path, resolution=1, resolution_unit=1, quality=100, compression=None)
                     except Exception as e:
@@ -194,10 +194,3 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
             else:
                 print("  All down-sampled images already exist in the directory.")
 
-
-
-if __name__ == '__main__':
-    path = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\slides scanned from bispecific study'
-    resolution = '5x'
-    umpix = 2
-    WSI2tif(path, resolution, umpix)

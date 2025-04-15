@@ -39,8 +39,7 @@ from scipy.ndimage import binary_fill_holes
 
 from base.models.utils import get_model_paths
 from base.image.segmentation import semantic_seg
-from base.make_overlay import make_overlay
-from base.image.utils import decode_segmentation_masks
+from base.image.utils import decode_segmentation_masks, create_overlay
 from base.data.loaders import load_model_metadata
 
 
@@ -265,7 +264,7 @@ class ImageClassifier:
             Overlay image as numpy array
         """
         save_path = os.path.join(self.output_path, 'check_classification')
-        return make_overlay(image_path, classified_image - 1, colormap=self.color_map, save_path=save_path)
+        return create_overlay(image_path, classified_image - 1, colormap=self.color_map, save_path=save_path)
 
     def _create_color_mask(self, classified_image: np.ndarray, image_name: str) -> np.ndarray:
         """

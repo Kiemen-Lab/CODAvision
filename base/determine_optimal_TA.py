@@ -357,7 +357,7 @@ def determine_optimal_TA(pthim,numims):
                     self.ui.image_LE.setText('')
             else:
                 QtWidgets.QMessageBox.warning(self, 'Warning',
-                                             'Seleced image does not exist')
+                                             'Selected image does not exist')
 
         def on_apply(self):
             i = 0

@@ -21,9 +21,7 @@ from PySide6.QtWidgets import QColorDialog, QHeaderView, QDialog, QPushButton, Q
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 
 # Import from base package
-from base.image.classification import classify_images
-from base.quantify_objects import quantify_objects
-from base.quantify_images import quantify_images
+from base import classify_images, quantify_objects, quantify_images
 
 # Import GUI components
 from .ui_definitions import Ui_classify_im

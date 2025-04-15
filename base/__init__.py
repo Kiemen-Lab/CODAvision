@@ -17,9 +17,9 @@ __version__ = '1.0.0'
 from .save_model_metadata import save_model_metadata
 from .save_model_metadata_GUI import save_model_metadata_GUI
 from .determine_optimal_TA import determine_optimal_TA
-from .create_training_tiles import create_training_tiles
-from .quantify_images import quantify_images
-from .quantify_objects import quantify_objects
+from .data.tiles import create_training_tiles
+from .evaluation.image_quantification import quantify_images
+from .evaluation.object_quantification import quantify_objects
 from .create_output_pdf import create_output_pdf
 from .WSI2tif import WSI2tif
 from .data.annotation import (
@@ -35,6 +35,7 @@ from .models.training import train_segmentation_model_cnns
 from .evaluation.testing import test_segmentation_model
 from .image.classification import classify_images
 from .image.augmentation import augment_annotation
+from .image.utils import create_overlay
 
 __all__ = [
     'load_annotation_data',

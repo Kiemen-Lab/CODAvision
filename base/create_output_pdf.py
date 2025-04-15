@@ -119,10 +119,6 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.ln()
     pdf.add_image(check_classification_image, pdf.l_margin, pdf.get_y(), page_width, 0)
 
-
-
-
-
     # Quantifications
     pdf.add_page()
     pdf.chapter_title('5. Pixel and Tissue Composition Quantifications')
