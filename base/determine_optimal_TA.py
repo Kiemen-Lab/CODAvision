@@ -146,6 +146,8 @@ def determine_optimal_TA(pthim,numims):
                 self.ui.text_mode.setText(f'Current mode: H&E')
             else:
                 self.ui.text_mode.setStyleSheet("background-color: #333333; color: white;")
+                self.ui.raise_ta.setText('More whitespace')
+                self.ui.decrease_ta.setText('More tissue')
             self.ui.change_mode.clicked.connect(self.on_mode)
             self.ui.apply.clicked.connect(self.on_apply)
             self.ui.TA_selection.valueChanged.connect(self.update_slider)

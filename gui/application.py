@@ -131,21 +131,16 @@ def CODAVision():
         load_time = time.time()-load_time
         load_time = str(int(load_time // 3600)) + ':' + str(int((load_time % 3600) // 60)) + ':' + str(
             round(load_time % 60, 2))
-        times['Loading annotations'] = load_time
-        print(load_time)
         tiles_time = time.time()
         create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles)
         tiles_time = time.time() - tiles_time
         tiles_time = str(int(tiles_time // 3600)) + ':' + str(int((tiles_time % 3600) // 60)) + ':' + str(
             round(tiles_time % 60, 2))
-        print(tiles_time)
-        times['Creating tiles'] = tiles_time
         train_time = time.time()
         train_segmentation_model_cnns(pthDL, create_new_tiles)
         train_time = time.time() - train_time
         train_time = str(int(train_time // 3600)) + ':' + str(int((train_time % 3600) // 60)) + ':' + str(
             round(train_time % 60, 2))
-        times['Training model'] = train_time
 
         # Prepare and process test data
         print(' ')
@@ -186,6 +181,9 @@ def CODAVision():
         downsamp_time = str(int(downsamp_time // 3600)) + ':' + str(int((downsamp_time % 3600) // 60)) + ':' + str(
             round(downsamp_time % 60, 2))
         times['Downsampling images'] = downsamp_time
+        times['Loading annotations'] = load_time
+        times['Creating tiles'] = tiles_time
+        times['Training model'] = train_time
         # Test, classify, and quantify results
         test_time = time.time()
         test_segmentation_model(pthDL, pthtest, pthtestim)
