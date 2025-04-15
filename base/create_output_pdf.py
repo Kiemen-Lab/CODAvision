@@ -128,6 +128,8 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.chapter_title('5. Pixel and Tissue Composition Quantifications')
     pdf.chapter_body(
         f'Pixel and tissue composition quantifications of the first image. The quantification of this and the other images has been saved in the CSV file.\nPath:')
+    pdf.ln()
+    pdf.chapter_body('PX: Pixel Count     TC: Tissue Composition')
     pdf.path_bold(f'{fit_path_in_line(quantifications_csv_path)}\n')
     df = pd.read_csv(quantifications_csv_path)
     quantifications = df.head(5)
@@ -179,10 +181,11 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
             break
         else:
             try:  # Whitespace info will be last since it has no tissue composition %
-                comp_row = row[:row.index('pixel count')] + 'tissue composition (%)'
+                comp_row = row[:row.index('pixel count')] + 'TC(%)'
+                pix_row = row[:row.index('pixel count')] + 'PC'
                 composition_value = f"{float(df[comp_row][0]):.2f}"
                 pdf.set_font('Arial', 'B', 8)
-                pdf.cell(cell_width - 10, 10, row, 1)
+                pdf.cell(cell_width - 10, 10, pix_row, 1)
                 pdf.set_font('Arial', '', 8)
                 pixel_value = f"{int(df[row][0])}"
                 pdf.cell(cell_width - 20, 10, pixel_value, 1, align='R')
