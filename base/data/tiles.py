@@ -404,10 +404,10 @@ def create_training_tiles(
     annotation_composition = count_annotations / max(count_annotations) * 100
     for b, count in enumerate(annotation_composition):
         if annotation_composition[b] == 100:
-            print(f' There are {np.round(count*max(count_annotations))} pixels of {class_names[b]}. This is the most common class.')
+            print(f' There are {count_annotations[b]} pixels of {class_names[b]}. This is the most common class.')
         else:
             print(
-                f' There are {np.round(count*max(count_annotations))} pixels of {class_names[b]}, {int(annotation_composition[b])}% of the most common class.')
+                f' There are {count_annotations[b]} pixels of {class_names[b]}, {int(annotation_composition[b])}% of the most common class.')
 
     # Ensure all classes have annotations
     if 0 in count_annotations:
