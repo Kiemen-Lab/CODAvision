@@ -482,7 +482,7 @@ def determine_optimal_TA(pthim,numims):
                 cropped_temp = cropped_temp[y_norm-szz:y_norm+szz,:,:]
             if x_norm<szz:
                 cropped_temp = cropped_temp[:,0: 2*szz, :]
-            elif x_norm+szz>im0.shape[0]:
+            elif x_norm+szz>im0.shape[1]:
                 cropped_temp = cropped_temp[:,-2*szz:, :]
             else:
                 cropped_temp = cropped_temp[:,x_norm-szz:x_norm+szz,:]
