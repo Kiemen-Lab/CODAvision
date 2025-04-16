@@ -1255,7 +1255,7 @@ def save_annotation_mask(image: np.ndarray, output_path: str, whitespace_setting
                 # Calculate distances between vertices
                 dists = np.sqrt(np.sum((vertices[1:, :] - vertices[:-1, :]) ** 2, axis=1))
                 non_zero_dists = dists != 0
-                vertices = vertices[np.concatenate(([True], non_zero_dists)), :]
+                vertices = vertices[np.concatenate(([True], non_zero_dists)), :]-1
                 dists = dists[non_zero_dists]
                 dists = np.concatenate(([0], dists))
                 
