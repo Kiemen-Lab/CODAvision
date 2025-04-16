@@ -1255,7 +1255,7 @@ def save_annotation_mask(image: np.ndarray, output_path: str, whitespace_setting
                 # Calculate distances between vertices
                 dists = np.sqrt(np.sum((vertices[1:, :] - vertices[:-1, :]) ** 2, axis=1))
                 non_zero_dists = dists != 0
-                vertices = vertices[np.concatenate(([True], non_zero_dists)), :]
+                vertices = vertices[np.concatenate(([True], non_zero_dists)), :]-1
                 dists = dists[non_zero_dists]
                 dists = np.concatenate(([0], dists))
                 
@@ -1452,10 +1452,10 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
         b = np.sum(tmp, axis=0)
         rect = [np.nonzero(b)[0][0], np.nonzero(b)[0][-1], np.nonzero(a)[0][0], np.nonzero(a)[0][-1]]
 
-        # Crop image and label
-        tmp = tmp[rect[2]:rect[3], rect[0]:rect[1]]
-        tmplabel = imlabel[rect[2]:rect[3], rect[0]:rect[1]] * tmp
-        tmpim = image[rect[2]:rect[3], rect[0]:rect[1], :]
+        # Crop image and  label
+        tmp = tmp[rect[2]-1:rect[3], rect[0]-1:rect[1]]
+        tmplabel = imlabel[rect[2]-1:rect[3], rect[0]-1:rect[1]] * tmp
+        tmpim = image[rect[2]-1:rect[3], rect[0]-1:rect[1], :]
 
         nm = str(pk).zfill(5)
         return nm, tmpim, tmplabel
@@ -1626,11 +1626,14 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
         tissue_mask = image[:, :, 1] < cutoff  # Threshold the image green values
     else:
         tissue_mask = image[:, :, 1] > cutoff
-    kernel_size = 3
+    kernel_size = 1
     tissue_mask = tissue_mask.astype(np.uint8)
     kernel = morphology.disk(kernel_size)
     tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, kernel.astype(np.uint8))
     tissue_mask = remove_small_objects(tissue_mask.astype(bool), min_size=10)
+    inverted_mask = ~tissue_mask
+    inverted_mask = remove_small_objects(inverted_mask, min_size=10)
+    tissue_mask = ~inverted_mask
 
     # Save mask
     cv2.imwrite(os.path.join(output_path, f'{image_name}.tif'), tissue_mask.astype(np.uint8))
