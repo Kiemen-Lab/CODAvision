@@ -1452,7 +1452,7 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
         b = np.sum(tmp, axis=0)
         rect = [np.nonzero(b)[0][0], np.nonzero(b)[0][-1], np.nonzero(a)[0][0], np.nonzero(a)[0][-1]]
 
-        # Crop image and label
+        # Crop image and  label
         tmp = tmp[rect[2]-1:rect[3], rect[0]-1:rect[1]]
         tmplabel = imlabel[rect[2]-1:rect[3], rect[0]-1:rect[1]] * tmp
         tmpim = image[rect[2]-1:rect[3], rect[0]-1:rect[1], :]
