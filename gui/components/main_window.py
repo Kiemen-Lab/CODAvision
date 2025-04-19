@@ -141,8 +141,8 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
                 self.original_df = self.df.copy()
-                print(f"Loaded XML file: {xml_file}")
-                print(self.df)
+                # print(f"Loaded XML file: {xml_file}")
+                # print(self.df)
                 self.populate_table_widget()
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
@@ -528,8 +528,8 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.df['Combined layers'] = (self.df.index + 1).astype(int)
 
-        print("Updated Raw DataFrame from tab 2:")
-        print(self.df)
+        # print("Updated Raw DataFrame from tab 2:")
+        # print(self.df)
 
         self.initialize_nesting_table()
 
@@ -699,8 +699,8 @@ class MainWindow(QtWidgets.QMainWindow):
             # Update the Nesting column for combined classes
             self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order_combined_names]
 
-        print("Updated DataFrame:")
-        print(self.df)
+        # print("Updated DataFrame:")
+        # print(self.df)
 
         # Check if advanced settings need to be modified
         if train == 2:
@@ -880,7 +880,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for index, data in df.iterrows():
             if data.get('Deleted', False):
-                print(f"Skipping row {data['Layer Name']} marked as deleted")
+                # print(f"Skipping row {data['Layer Name']} marked as deleted")
                 continue  # Skip rows marked as deleted
 
             row = table.rowCount()
@@ -1116,7 +1116,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def add_combo(self):
         self.delete_count = 0
-        # Create the combined DataFrame
+        # Create the combined DataFrame if it doesn't exist
         if self.combined_df is None:
             self.combined_df = self.df.copy()
             self.combined_df['Deleted'] = False
@@ -1134,7 +1134,7 @@ class MainWindow(QtWidgets.QMainWindow):
         combo_name, ok = QtWidgets.QInputDialog.getText(self, "Combo Name", "Enter a name for the combined class:")
         if not ok or not combo_name or not all(char.isalnum() or char in ' _' for char in combo_name):
             QtWidgets.QMessageBox.warning(self, "Invalid Combo Name",
-                                          "Please introduce a combo name that does not contain any especial characters.")
+                                          "Please introduce a combo name that does not contain any special characters.")
             return
 
         color_dialog = QColorDialog(self)
@@ -1177,26 +1177,18 @@ class MainWindow(QtWidgets.QMainWindow):
             "Deleted": False
         }
 
-        # Find the position to insert the combined class (minor row number)
-        insert_position = min(selected_rows)
+        # Find the position to insert the combined class (smallest index of the layers being combined)
+        insert_position = min(idx for idx in updated_selected_rows if not self.combined_df.at[idx, 'Deleted'])
 
         # Remove the selected rows
         self.combined_df = self.combined_df.drop(updated_selected_rows).reset_index(drop=True)
 
-        # Set whtiespace settings to None for the combined class
-        combined_class['Whitespace Settings'] = None
-
-        # Insert the new combined class at the position of the minor row number
+        # Insert the new combined class at the correct position
         self.combined_df = pd.concat([self.combined_df.iloc[:insert_position], pd.DataFrame([combined_class]),
                                       self.combined_df.iloc[insert_position:]]).reset_index(drop=True)
 
-        # Restore the whitespace settings for the remaining rows
-        # for i, row in enumerate(self.combined_df.index):
-        #     if row not in selected_rows and 'Whitespace Settings' in self.combined_df.columns:
-        #         self.combined_df.at[row, 'Whitespace Settings'] = self.df.at[row, 'Whitespace Settings']
-
-        print("Combined DataFrame:")
-        print(self.combined_df)
+        # print("Combined DataFrame:")
+        # print(self.combined_df)
         self.populate_table_widget(self.combined_df)  # Populate the table with the updated DataFrame
 
         # Populate whitespace/non-whitespace combo boxes
@@ -1267,8 +1259,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.df.at[original_idx, 'Delete layer'] = True
 
         # print("Marked rows as deleted:", selected_rows)
-        print("Updated DataFrame with 'Delete layer' column:")
-        print(self.df)
+        # print("Updated DataFrame with 'Delete layer' column:")
+        # print(self.df)
 
         # Populate the table with the updated DataFrame
         self.populate_table_widget(self.combined_df)
@@ -1393,15 +1385,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         colormap = np.array(colormap)
 
-        print("\nFinal Raw DataFrame with combined indexes:")
-        print(final_df)
-        print("\nFinal Combined DataFrame:")
-        print(combined_df)
+        # print("\nFinal Raw DataFrame with combined indexes:")
+        # print(final_df)
+        # print("\nFinal Combined DataFrame:")
+        # print(combined_df)
 
         # Final Parameters
         print('Classnames: ', classNames)
         print('Colormap: ', colormap)
-        print('WS', WS)
+        print('WS: ', WS)
 
         self.create_down = self.ui.create_downsample_CB.isChecked()
         self.downsamp_annotated_images = self.ui.use_anotated_images_CB.isChecked()
@@ -1442,7 +1434,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def get_pthim(self):
         pth = self.ui.trianing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
-        print(self.ui.custom_scale_LE.text())
+        # print(self.ui.custom_scale_LE.text())
         if resolution == 'Custom':
             return os.path.join(pth, 'Custom_Scale_' + str(float(self.ui.custom_scale_LE.text())))
         else:
