@@ -26,7 +26,37 @@ Updated: March 21, 2025
 
 import os
 import numpy as np
+import logging
+from datetime import datetime
 from base import *
+
+
+DEBUG_MODE = False
+
+# Create logs directory if it doesn't exist
+logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+os.makedirs(logs_dir, exist_ok=True)
+
+# Create log filename with timestamp
+log_filename = os.path.join(logs_dir, f'{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+# Configure logging to write to both console and file
+if DEBUG_MODE:
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename),
+            logging.StreamHandler()  # Console output
+        ]
+    )
+else:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[logging.FileHandler(log_filename)]
+    )
+logger = logging.getLogger(__name__)
+logger.info(f"Starting tissue segmentation workflow with debug logging to {log_filename}")
 
 # Set up data paths
 pth = '/Users/tnewton3/Desktop/liver_tissue_data'
@@ -37,6 +67,31 @@ pthtestim = os.path.join(pthtest, '10x')  # Test images at 10x magnification
 nm = 'test_model'  # Model name
 resolution = '10x'  # Image resolution/magnification
 
+# The WS variable below reflects these settings in the GUI:
+# ------------------------------------
+# Tab 2: Segmentation Settings
+# PDAC: "Remove whitespace"
+# bile duct: "Remove whitespace"
+# vasculature: "Remove whitespace"
+# hepatocyte: "Remove whitespace"
+# immune: "Keep tissue and whitespace"
+# stroma: "Remove whitespace"
+# whitespace: "Keep tissue and whitespace"
+#
+# Additional settings:
+# Add Whitespace to: Set to "whitespace"
+# Add Non-whitespace to: Set to "stroma"
+# ------------------------------------
+# Tab 3: Nesting
+# Arrange the layers in this specific order (top to bottom):
+# whitespace
+# PDAC
+# immune
+# vasculature
+# bile duct
+# hepatocyte
+# stroma
+# ------------------------------------
 # Whitespace handling configuration
 WS = [[0, 0, 0, 0, 2, 0, 2], # 0: remove whitespace, 1: keep only whitespace, 2: keep both
       [7, 6],                # Classes to which removed whitespace should be added

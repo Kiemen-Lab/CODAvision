@@ -125,6 +125,8 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
             numann0.extend(numann)
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
+            # print(numann0)
+            # print(ctlist0)
             continue
 
         create_new_tiles = True
@@ -173,15 +175,18 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
             J3 = J3.reshape(J.shape)
             mask = np.dstack((J1, J2, J3))
             I = (I * 0.5) + (mask * 0.5)
-            if os.path.isfile(os.path.join(outim, f'{base_name}.png')):
-                os.remove(os.path.join(outim, f'{base_name}.png'))
-            io.imsave(os.path.join(outim, f'{base_name}.png'), (I * 255).astype(np.uint8))
+            if os.path.isfile(os.path.join(outim, f'{base_name}.jpg')):
+                os.remove(os.path.join(outim, f'{base_name}.jpg'))
+            io.imsave(os.path.join(outim, f'{base_name}.jpg'), (I * 255).astype(np.uint8))
 
             # Save bounding boxes
             numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
             numann0.extend(numann)
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
+            # print(numann0)
+            # print(ctlist0)
+            # print(" ")
 
     # Check if any annotations were found
     if not numann0:
@@ -276,7 +281,7 @@ def load_annotations(xml_file: str) -> Tuple[float, pd.DataFrame]:
     return load_xml_annotations(xml_file)
 
 
-def extract_annotation_layers(xml_path: str, debug: bool = True) -> pd.DataFrame:
+def extract_annotation_layers(xml_path: str, debug: bool = False) -> pd.DataFrame:
     """
     Extract annotation layers from an XML file for the GUI.
 
@@ -360,7 +365,7 @@ def extract_annotation_layers(xml_path: str, debug: bool = True) -> pd.DataFrame
     return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
 
 
-def read_xml_file(xml_path: str, debug: bool = True) -> Tuple[str, str]:
+def read_xml_file(xml_path: str, debug: bool = False) -> Tuple[str, str]:
     """
     Comprehensive XML file reader that handles different encodings and format issues.
 
@@ -439,7 +444,7 @@ def read_xml_file(xml_path: str, debug: bool = True) -> Tuple[str, str]:
     return clean_content, 'latin-1'
 
 
-def find_xml_after_mac_metadata(content: str, debug: bool = True, file_name: str = "unknown") -> Tuple[str, str]:
+def find_xml_after_mac_metadata(content: str, debug: bool = False, file_name: str = "unknown") -> Tuple[str, str]:
     """
     Find XML content after Mac OS X metadata.
 
@@ -506,7 +511,7 @@ def find_xml_after_mac_metadata(content: str, debug: bool = True, file_name: str
     return content, 'original-unmodified'
 
 
-def clean_xml_content(content: str, debug: bool = True, file_name: str = "unknown") -> str:
+def clean_xml_content(content: str, debug: bool = False, file_name: str = "unknown") -> str:
     """
     Clean the XML content by removing non-XML data and ensuring it's well-formed.
 
@@ -548,7 +553,7 @@ def clean_xml_content(content: str, debug: bool = True, file_name: str = "unknow
     return content
 
 
-def parse_xml(xml_content: str, debug: bool = True, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
+def parse_xml(xml_content: str, debug: bool = False, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
     """
     Parse XML content into a dictionary using multiple parsing strategies.
 
@@ -644,7 +649,7 @@ def parse_xml(xml_content: str, debug: bool = True, file_name: str = "unknown") 
     return None
 
 
-def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool = True, file_name: str = "unknown") -> str:
+def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool = False, file_name: str = "unknown") -> str:
     """
     Fix common XML errors in the content, focusing on the problematic line.
 
@@ -713,7 +718,7 @@ def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool 
     return xml_content
 
 
-def manual_extract_annotations(xml_content: str, debug: bool = True, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
+def manual_extract_annotations(xml_content: str, debug: bool = False, file_name: str = "unknown") -> Optional[Dict[str, Any]]:
     """
     Manually extract annotation data using regex when XML parsing fails.
 
@@ -812,7 +817,7 @@ def rgb_from_linecolor(color_str: str) -> Tuple[int, int, int]:
         return (0, 0, 0)
 
 
-def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = True, file_name: str = "unknown") -> Tuple[float, pd.DataFrame]:
+def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = False, file_name: str = "unknown") -> Tuple[float, pd.DataFrame]:
     """
     Extract annotation coordinates from parsed XML dictionary.
 
@@ -909,7 +914,7 @@ def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = True,
     return reduced_annotations, pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
 
 
-def load_xml_annotations(xml_path: str, debug: bool = True) -> Tuple[float, pd.DataFrame]:
+def load_xml_annotations(xml_path: str, debug: bool = False) -> Tuple[float, pd.DataFrame]:
     """
     Complete function to load XML annotations from a file with robust cross-platform handling.
 
@@ -1250,7 +1255,7 @@ def save_annotation_mask(image: np.ndarray, output_path: str, whitespace_setting
                 # Calculate distances between vertices
                 dists = np.sqrt(np.sum((vertices[1:, :] - vertices[:-1, :]) ** 2, axis=1))
                 non_zero_dists = dists != 0
-                vertices = vertices[np.concatenate(([True], non_zero_dists)), :]
+                vertices = vertices[np.concatenate(([True], non_zero_dists)), :]-1
                 dists = dists[non_zero_dists]
                 dists = np.concatenate(([0], dists))
                 
@@ -1447,10 +1452,10 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
         b = np.sum(tmp, axis=0)
         rect = [np.nonzero(b)[0][0], np.nonzero(b)[0][-1], np.nonzero(a)[0][0], np.nonzero(a)[0][-1]]
 
-        # Crop image and label
-        tmp = tmp[rect[2]:rect[3], rect[0]:rect[1]]
-        tmplabel = imlabel[rect[2]:rect[3], rect[0]:rect[1]] * tmp
-        tmpim = image[rect[2]:rect[3], rect[0]:rect[1], :]
+        # Crop image and  label
+        tmp = tmp[rect[2]:rect[3]+1, rect[0]:rect[1]+1]
+        tmplabel = imlabel[rect[2]:rect[3]+1, rect[0]:rect[1]+1] * tmp
+        tmpim = image[rect[2]:rect[3]+1, rect[0]:rect[1]+1, :]
 
         nm = str(pk).zfill(5)
         return nm, tmpim, tmplabel
@@ -1474,8 +1479,8 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
 
     # Create list of tile names and paths
     ctlist = {
-        'tile_name': [f for f in os.listdir(pthim) if f.endswith('.png')],
-        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in os.listdir(pthim) if f.endswith('.png')]
+        'tile_name': sorted([f for f in os.listdir(pthim) if f.endswith('.png')]),
+        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in sorted(os.listdir(pthim)) if f.endswith('.png')]
     }
 
     # Save data to pickle file
@@ -1607,10 +1612,12 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
                 average_TA = True
         if average_TA:
             cutoff = 0
-
             for value in cutoffs_list.values():
                 cutoff += value
             cutoff = cutoff / len(cutoffs_list)
+        else:
+             imnm = os.path.basename(image_name)
+             cutoff = cutoffs_list[imnm+'.tif']
     else:
         # Use default threshold
         cutoff = 205
@@ -1619,11 +1626,14 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
         tissue_mask = image[:, :, 1] < cutoff  # Threshold the image green values
     else:
         tissue_mask = image[:, :, 1] > cutoff
-    kernel_size = 3
+    kernel_size = 1
     tissue_mask = tissue_mask.astype(np.uint8)
     kernel = morphology.disk(kernel_size)
     tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, kernel.astype(np.uint8))
     tissue_mask = remove_small_objects(tissue_mask.astype(bool), min_size=10)
+    inverted_mask = ~tissue_mask
+    inverted_mask = remove_small_objects(inverted_mask, min_size=10)
+    tissue_mask = ~inverted_mask
 
     # Save mask
     cv2.imwrite(os.path.join(output_path, f'{image_name}.tif'), tissue_mask.astype(np.uint8))

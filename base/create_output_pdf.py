@@ -55,7 +55,7 @@ def get_first_image(directory, supported_extensions=['jpg', 'jpeg', 'png']):
             return os.path.join(directory, file)
     raise RuntimeError(f"No supported image files found in {directory}")
 
-def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path, check_classification_path, quantifications_csv_path):
+def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_path, check_annotations_path, check_classification_path, quantifications_csv_path, times):
     print('Generating model evaluation report...')
 
     # Load model name from pickle file
@@ -123,7 +123,7 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.add_page()
     pdf.chapter_title('5. Pixel and Tissue Composition Quantifications')
     pdf.chapter_body(
-       f'Pixel and tissue composition quantifications of the first image. The quantification of this and the other images has been saved in the CSV file.\nPath:')
+        f'Pixel and tissue composition quantifications of the first image. The quantification of this and the other images has been saved in the CSV file.\nPath:')
     pdf.path_bold(f'{fit_path_in_line(quantifications_csv_path)}\n')
     df = pd.read_csv(quantifications_csv_path)
     quantifications = df.head(5)
@@ -144,17 +144,24 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     num_rows = len(df.columns)
 
     # Print header
-    pdf.set_font('Arial', 'B', 8) # Set font to bold for headers
-    pdf.cell(cell_width-10, 10, '')
-    pdf.cell(cell_width-20, 10, df['Image name'][0],1, align = 'C')
+    pdf.set_font('Arial', 'B', 8)  # Set font to bold for headers
+    pdf.cell(cell_width - 10, 10, '')
+    image_name = df['Image name'][0]
+    if pdf.get_string_width(df['Image name'][0])> cell_width-20:
+        for i in range(len(image_name), 0, -1):
+            short_name = image_name[:i]
+            if pdf.get_string_width(short_name+'...')<= cell_width-20:
+                image_name = short_name+'...'
+                break
+    pdf.cell(cell_width - 20, 10, image_name, 1, align='C')
     pdf.cell(20, 10, '')
     pdf.cell(cell_width, 10, '')
-    pdf.cell(cell_width-20, 10, df['Image name'][0], 1, align = 'C')
+    pdf.cell(cell_width - 20, 10, image_name, 1, align='C')
     pdf.ln()
     vertical_limit = False
 
     # Print rows
-    for row in df.head().columns[1:int(len(df.head().columns)/2)+1]:
+    for row in df.head().columns[1:int(len(df.head().columns) / 2) + 1]:
         if pdf.get_y() + 70 >= page_heigh:
             pdf.set_y(260)
             vertical_limit = True
@@ -162,10 +169,12 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
             pdf.multi_cell(0, 6, '...', align='C')
             pdf.set_y(270)
             pdf.set_font('Arial', 'B', 12)
-            pdf.multi_cell(0, 6, 'Unable to fit entire quantification on the page. For more details, consult CSV file', align='C')
+            pdf.multi_cell(0, 6,
+                           'Unable to fit entire quantification on the page. For more details, consult CSV file',
+                           align='C')
             break
         else:
-            try: # Whitespace info will be last since it has no tissue composition %
+            try:  # Whitespace info will be last since it has no tissue composition %
                 comp_row = row[:row.index('pixel count')] + 'tissue composition (%)'
                 composition_value = f"{float(df[comp_row][0]):.2f}"
                 pdf.set_font('Arial', 'B', 8)
@@ -186,14 +195,52 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     # Print whitespace row
     if not vertical_limit:
         pdf.set_font('Arial', 'B', 8)
-        pdf.cell(cell_width-10, 10, whitespace_row, 1)
+        pdf.cell(cell_width - 10, 10, whitespace_row, 1)
         pdf.set_font('Arial', '', 8)
-        pdf.cell(cell_width-20, 10, whitespace_value, 1, align = 'R')
+        pdf.cell(cell_width - 20, 10, whitespace_value, 1, align='R')
+
+        # Runtimes
+        pdf.add_page()
+        pdf.chapter_title('6. Runtimes')
+        pdf.chapter_body(
+            f'Summary of each module runtime')
+
+        # Set font for table
+        pdf.set_font('Arial', '', 8)
+
+        # Calculate the width of each header
+        cell_width_names = 0
+        cell_width_times = 0
+        for index, key in enumerate(times):
+            if pdf.get_string_width(key) > cell_width_names:
+                cell_width_names = pdf.get_string_width(key)
+            if pdf.get_string_width(times[key]) > cell_width_times:
+                cell_width_times = pdf.get_string_width(times[key])
+        cell_width_names += 10
+        cell_width_times += 10
+
+        # Print table
+        pdf.set_font('Arial', 'B', 8)  # Set font to bold for headers
+        for index, key in enumerate(times):
+            pdf.cell(cell_width_names + 10, 10, key, 1, align='C')
+            time = times[key]
+            parts = time.split(":")
+            hour = int(parts[0])
+            minute = int(parts[1])
+            # Handle seconds with or without decimal
+            if '.' in parts[2]:
+                sec_int, sec_frac = parts[2].split(".")
+                second = f"{int(sec_int):02}.{sec_frac}"
+            else:
+                second = f"{int(parts[2]):02}"
+            time = f"{hour:02}:{minute:02}:{second}"
+            pdf.cell(cell_width_times + 10, 10, time, 1, align='C')
+            pdf.ln()
 
     # Additional Explanatory Text
     pdf.add_page()
     pdf.set_font('Arial', '', 10)  # Set the font to Arial, regular, size 10
-    pdf.chapter_title('6. Annex')
+    pdf.chapter_title('7. Annex')
     explanatory_text = """
     Within the code workflow, a quantitative evaluation of the model is conducted using the specified annotation testing dataset on the 'File location' page of the GUI. This evaluation yields a confusion matrix, providing a detailed analysis of the model's classification performance for each annotated class. As shown on the first page, the confusion matrix is structured with precision scores for predicted annotation classes in the bottom row and sensitivity (recall) values for each annotated class in the final right column. The overall accuracy score of the model is situated at the bottom right corner of the confusion matrix table.
 
@@ -207,14 +254,3 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.output(output_path)
     print(f'PDF report saved at: {output_path}')
 
-# Example usage
-if __name__ == '__main__':
-    create_output_pdf(
-        output_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report.pdf',
-        confusion_matrix_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\confusion_matrix.jpg',
-        color_legend_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_color_legend.png',
-        check_annotations_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\check_annotations',
-        check_classification_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\check_classification',
-        quantifications_csv_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\image_quantifications.csv',
-        pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024'
-    )

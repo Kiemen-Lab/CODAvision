@@ -60,12 +60,12 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
                 nload = [n for n in nload if n != b]
 
                 if len(classNames) == max(WS[2]):
-                    print(classNames)
-                    zz = [i for i in range(len(classNames)) if i + 1 not in [oldnum]] # Used to be not in [b, oldnum], but it was deleteing an extra class
+                    # print(classNames)
+                    zz = [i for i in range(len(classNames)) if i + 1 not in [oldnum]]
                     classNames = [classNames[i] for i in zz]
-                    print(classNames)
+                    # print(classNames)
                     cmap = cmap[zz]
-                    print(cmap)
+                    # print(cmap)
 
                 WS[2] = ncombine
 
@@ -75,7 +75,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
 
     nwhite = WS[2]
     nwhite = nwhite[WS[1][0] - 1]
-    print(f'Max WS[2]: {max(WS[2])}')
+    # print(f'Max WS[2]: {max(WS[2])}')
     print(f'Classnames: {classNames}')
     if max(WS[2]) != len(classNames):
         raise ValueError('The length of classNames does not match the number of classes specified in WS[2].')
@@ -136,63 +136,3 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
     plot_cmap_legend(cmap, classNames)
     plt.savefig(os.path.join(pthDL, 'model_color_legend.jpg'))
 
-#Example usage
-
-# if __name__ == '__main__':
-#     import numpy as np
-#     # Inputs
-#     pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\october_test_delete'
-#     pthim = r'\\10.99.68.52\Kiemendata\Valentina Matos\coda to python\test model\5x'
-#     WS = [[ 2, 0, 0, 1, 0, 0, 2, 0, 2, 2, 2, 0, 0, 0 ],  # remove whitespace if 0, keep only whitespace if 1, keep both if 2
-#           [7, 6],  # first = add removed whitespace to this class, second = add removed tissue to this class
-#           [ 1, 2, 3, 4, 5, 6, 7, 8, 7, 9, 10, 8, 11, 12],  # rename classes according to this order
-#           [ 14, 13, 11, 10, 12, 8, 6, 5, 4, 3, 2, 1, 9, 7 ],  # reverse priority of classes (left = bottom, right = top)
-#           [14]]  # List of annotations to delete
-#     nm = '04_456_2024_test_delete'
-#     umpix = 2
-#     cmap = np.array([
-#         [0, 255, 255],
-#         [0, 0, 255],
-#         [170, 255, 127],
-#         [255, 255, 127],
-#         [170, 0, 127],
-#         [255, 170, 255],
-#         [255, 255, 255],
-#         [85, 0, 0],
-#         [85, 85, 127],
-#         [0, 0, 0],
-#         [170, 170, 127],
-#         [255, 0, 0]
-#     ])
-#
-#     sxy = 1000
-#     classNames = ['islets', 'normal duct', 'blood vessel', 'fat', 'acini', 'ecm', 'noiscombo', 'panincombo', 'nerve', 'immune', 'PDAC', 'weird']
-#     ntrain = 15
-#     nvalidate = 3
-#
-#     #Final df
-#
-#     data_fd = {
-#     'Layer Name': ['islets', 'normal duct', 'blood vessel', 'fat', 'acini', 'ecm', 'whitespace', 'panin', 'noise', 'nerve'],
-#     'Color': ['(0, 255, 0)', '(255, 255, 0)', '(255, 0, 0)', '(0, 255, 255)', '(255, 0, 255)', '(255, 128, 64)', '(0, 0, 255)', '(255, 0, 128)', '(64, 128, 128)', '(128, 0, 255)'],
-#     'Whitespace Settings': [2, 0, 0, 1, 0, 0, 2, 0, 2, 0],
-#     'Delete layer': [False, False, False, False, False, False, False, False, False, False],
-#     'Combined layers': [1, 2, 3, 4, 5, 6, 7, 8, 7, 9],
-#     'Nesting': [7, 9, 10, 1, 2, 3, 13, 8, 12, 11],
-#     'Component analysis': [False, False, False, False, False, False, False, False, False, False]
-# }
-#
-#     data_combined_df = {
-#     'Layer Name': ['islets', 'normal duct', 'blood vessel', 'fat', 'acini', 'ecm', 'noisecombo', 'panincombo', 'nerve', 'immune', 'PDAC', 'weird'],
-#     'Color': ['(0, 255, 255)', '(0, 0, 255)', '(170, 255, 127)', '(255, 255, 127)', '(170, 0, 127)', '(255, 170, 255)', '(255, 255, 255)', '(85, 0, 0)', '(85, 85, 127)', '(0, 0, 0)', '(170, 170, 127)', '(255, 0, 0)'],
-#     'Whitespace Settings': [2, 0, 0, 1, 0, 0, 2, 0, 0, 2, 0, 0],
-#     'Layer idx': [1, 2, 3, 4, 5, 6, '[7, 9]', '[8, 12]', 10, 11, 12, 13],
-#     'Delete layer': [False, False, False, False, False, False, False, False, False, False, False, False],
-#     'Deleted': [False, False, False, False, False, False, False, False, False, False, False, True]
-# }
-#
-#     # Create DataFrames
-#     final_df = pd.DataFrame(data_fd)
-#     combined_df = pd.DataFrame(data_combined_df)
-#
-#     save_model_metadata_GUI(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, final_df, combined_df)

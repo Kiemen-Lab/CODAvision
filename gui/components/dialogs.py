@@ -1,3 +1,21 @@
+"""
+Dialog Components for CODAvision GUI
+
+This module provides dialog windows and UI components used in the CODAvision application
+for tasks such as tissue analysis optimization, image selection, and progress display.
+
+Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Updated: March 2025
+"""
+
+from PySide6.QtCore import QCoreApplication, QPoint, QRect, QSize, Qt, QMetaObject
+from PySide6.QtGui import QFont, QPixmap, QCursor, QTransform
+from PySide6.QtWidgets import (
+    QApplication, QFrame, QLabel, QMainWindow, QPushButton, QSizePolicy,
+    QWidget, QLineEdit, QListWidget, QDialog, QVBoxLayout, QProgressBar
+)
+
+
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
@@ -6,7 +24,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QLabel, QMainWindow,
-    QPushButton, QSizePolicy, QWidget, QLineEdit,QListWidget)
+    QPushButton, QSlider, QSizePolicy, QWidget, QLineEdit,QListWidget)
 
 class Ui_choose_area(object):
     def setupUi(self, MainWindow):
@@ -48,24 +66,28 @@ class Ui_disp_crop(object):
         self.text.setText(QCoreApplication.translate("MainWindow", u"Is this a good location to evaluate tissue and whitespace detection?", None))
 
 class Ui_choose_TA(object):
-    def setupUi(self, MainWindow, CTA,CT0, CTC):
+    def setupUi(self, MainWindow):
         self.centralwidget = QWidget(MainWindow)
-        self.high_im = QLabel(self.centralwidget)
-        self.high_im.setFrameShape(QFrame.Box)
-        self.high_ta = QPushButton(self.centralwidget)
-        self.low_ta = QPushButton(self.centralwidget)
+        self.TA_im = QLabel(self.centralwidget)
+        self.TA_im.setFrameShape(QFrame.Box)
+        self.apply = QPushButton(self.centralwidget)
         self.text = QLabel(self.centralwidget)
+        self.slider_container = QWidget(self.centralwidget)
+        self.TA_selection = QSlider(Qt.Horizontal,self.slider_container)
+        self.TA_selection.setMinimum(0)  # Min value
+        self.TA_selection.setMaximum(255)  # Max value
+        self.TA_selection.setValue(205)  # Default value
         font = QFont()
         font.setPointSize(12)
         font.setBold(True)
-        self.text_high = QLabel(self.centralwidget)
-        self.text_high.setFont(font)
-        self.text_high.setLayoutDirection(Qt.LeftToRight)
-        self.text_high.setAlignment(Qt.AlignCenter)
-        self.text_low = QLabel(self.centralwidget)
-        self.text_low.setFont(font)
-        self.text_low.setLayoutDirection(Qt.LeftToRight)
-        self.text_low.setAlignment(Qt.AlignCenter)
+        self.slider_label = QLabel(self.slider_container)
+        self.slider_label.setFont(QFont("Arial", 8, QFont.Bold))
+        self.slider_label.setStyleSheet("background-color: #333333; border: 1px solid white; padding: 2px;")
+        self.slider_label.setAlignment(Qt.AlignCenter)
+        self.text_TA = QLabel(self.centralwidget)
+        self.text_TA.setFont(font)
+        self.text_TA.setLayoutDirection(Qt.LeftToRight)
+        self.text_TA.setAlignment(Qt.AlignCenter)
         self.text_mid = QLabel(self.centralwidget)
         self.text_mid.setFont(font)
         self.text_mid.setLayoutDirection(Qt.LeftToRight)
@@ -73,35 +95,34 @@ class Ui_choose_TA(object):
         self.text.setFont(font)
         self.text.setLayoutDirection(Qt.LeftToRight)
         self.text.setAlignment(Qt.AlignCenter)
+        self.text_mode = QLabel(self.centralwidget)
+        self.text_mode.setFont(QFont("Arial", 8, QFont.Bold))
+        self.text_mode.setLayoutDirection(Qt.LeftToRight)
+        self.text_mode.setAlignment(Qt.AlignCenter)
         self.medium_im = QLabel(self.centralwidget)
         self.medium_im.setFrameShape(QFrame.Box)
-        self.low_im = QLabel(self.centralwidget)
-        self.low_im.setFrameShape(QFrame.Box)
-        self.medium_ta = QPushButton(self.centralwidget)
+        self.change_mode = QPushButton(self.centralwidget)
         self.raise_ta = QPushButton(self.centralwidget)
         self.decrease_ta = QPushButton(self.centralwidget)
-        self.change_mode = QPushButton(self.centralwidget)
         MainWindow.setCentralWidget(self.centralwidget)
 
-        self.retranslateUi(MainWindow, CTA,CT0,CTC)
+        self.retranslateUi(MainWindow)
 
         QMetaObject.connectSlotsByName(MainWindow)
 
-    def retranslateUi(self, MainWindow, CTA,CT0, CTC):
+    def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
-        self.high_im.setText("")
-        self.high_ta.setText(QCoreApplication.translate("MainWindow", u"Image A\nTA = "+ str(CTA), None))
-        self.low_ta.setText(QCoreApplication.translate("MainWindow", u"Image B\nTA = "+ str(CT0), None))
-        self.text.setText(QCoreApplication.translate("MainWindow", u"Select the image where only the tissue is marked in black", None))
-        self.text_high.setText(QCoreApplication.translate("MainWindow", u"Image A", None))
+        self.TA_im.setText("")
+        self.text.setText(QCoreApplication.translate("MainWindow", u"Select an intensity threshold so that the tissue in the binary image is marked in black", None))
+        self.text_TA.setText(QCoreApplication.translate("MainWindow", u"Binary mask", None))
         self.text_mid.setText(QCoreApplication.translate("MainWindow", u"Original image", None))
-        self.text_low.setText(QCoreApplication.translate("MainWindow", u"Image B", None))
+        self.text_mode.setText(QCoreApplication.translate("MainWindow", u"Current mode: H&E", None))
         self.medium_im.setText("")
-        self.low_im.setText("")
-        self.raise_ta.setText(QCoreApplication.translate("MainWindow", u"Keep more tissue", None))
-        self.decrease_ta.setText(QCoreApplication.translate("MainWindow", u"Keep more whitespace", None))
-        self.change_mode.setText(QCoreApplication.translate("MainWindow", u"Change mode \n Current mode: White background", None))
-
+        self.apply.setText(QCoreApplication.translate("MainWindow", u"Save", None))
+        self.change_mode.setText(QCoreApplication.translate("MainWindow", u"Change mode", None))
+        self.slider_label.setText(QCoreApplication.translate("MainWindow", u""+str(self.TA_selection.value()),None))
+        self.raise_ta.setText(QCoreApplication.translate("MainWindow", u"More tissue", None))
+        self.decrease_ta.setText(QCoreApplication.translate("MainWindow", u"More whitespace", None))
 
 class Ui_use_current_TA(object):
     def setupUi(self, MainWindow):
@@ -154,3 +175,25 @@ class Ui_choose_images_reevaluated(object):
         self.delete_PB.setText(QCoreApplication.translate("MainWindow", u"Delete", None))
         self.apply_PB.setText(QCoreApplication.translate("MainWindow", u"Accept", None))
         self.apply_all_PB.setText(QCoreApplication.translate("MainWindow", u"Redo all images", None))
+
+
+class LoadingDialog(QDialog):
+    """Dialog displayed during loading operations."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Loading...")
+        self.setModal(True)
+
+        layout = QVBoxLayout()
+
+        self.label = QLabel("Loading, please wait...")
+        layout.addWidget(self.label)
+
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)
+        layout.addWidget(self.progress)
+        self.setLayout(layout)
+
+        self.setFixedSize(200, 100)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowCloseButtonHint)

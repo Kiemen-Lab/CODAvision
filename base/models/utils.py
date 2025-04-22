@@ -8,55 +8,14 @@ Authors:
     Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated: March 13, 2025
+Updated: March 2025
 """
 
 import os
 import pickle
-from typing import Dict, Any, Optional, List, Tuple
-
+from typing import Dict, Any, List
 import numpy as np
 import tensorflow as tf
-
-
-def load_model_metadata(model_path: str) -> Dict[str, Any]:
-    """
-    Load model metadata from a pickle file.
-    
-    Args:
-        model_path: Path to the directory containing the model metadata
-        
-    Returns:
-        Dictionary containing model metadata
-        
-    Raises:
-        FileNotFoundError: If the model data file doesn't exist
-        ValueError: If essential parameters are missing
-    """
-    data_file = os.path.join(model_path, 'net.pkl')
-    
-    if not os.path.exists(data_file):
-        raise FileNotFoundError(f"Model data file not found: {data_file}")
-    
-    try:
-        with open(data_file, 'rb') as f:
-            data = pickle.load(f)
-        
-        # Standardize model type format (replace '+' with '_plus')
-        if 'model_type' in data and '+' in data['model_type']:
-            data['model_type'] = data['model_type'].replace('+', '_plus')
-        
-        # Verify essential parameters
-        essential_params = ['classNames', 'sxy', 'nblack', 'nwhite']
-        missing_params = [param for param in essential_params if param not in data]
-        
-        if missing_params:
-            raise ValueError(f"Missing required parameters in model data: {missing_params}")
-        
-        return data
-    
-    except Exception as e:
-        raise ValueError(f"Failed to load model data: {e}")
 
 
 def save_model_metadata(model_path: str, metadata: Dict[str, Any]) -> None:

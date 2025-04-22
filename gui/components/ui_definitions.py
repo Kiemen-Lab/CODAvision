@@ -1,28 +1,31 @@
-# -*- coding: utf-8 -*-
+"""
+UI Definitions for CODAvision GUI
 
-################################################################################
-## Form generated from reading UI file 'CODA.ui'
-##
-## Created by: Qt User Interface Compiler version 6.7.2
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
+This module contains the UI definitions generated from Qt Designer UI files.
+These classes define the layout and properties of the GUI components.
 
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
-    QGroupBox, QHBoxLayout, QHeaderView, QLabel, QMessageBox,
-    QLineEdit, QMainWindow, QPushButton, QSizePolicy,
-    QSpacerItem, QSpinBox, QStatusBar, QTabWidget,
-    QTableView, QTableWidget, QTableWidgetItem, QVBoxLayout,
-    QWidget)
+Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+Updated: March 2025
+"""
 
-class Ui_MainWindow(object):
+import numpy as np
+from PySide6.QtCore import (
+    QCoreApplication, QMetaObject, QRect, QSize, Qt, QRectF
+)
+from PySide6.QtGui import QFont, QPixmap, QPainter
+from PySide6.QtWidgets import (
+    QWidget, QGroupBox, QLabel, QPushButton, QLineEdit,
+    QComboBox, QSpinBox, QTabWidget, QCheckBox,
+    QTableWidget, QHeaderView, QStatusBar, QGraphicsScene,
+    QGraphicsView, QDialog, QProgressBar, QVBoxLayout,
+    QMessageBox, QGraphicsPixmapItem, QListWidget, QGridLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QTableView
+)
+
+
+class Ui_MainWindow:
+    """
+    UI definition for the main window of CODAvision.
+    """
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
@@ -47,7 +50,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_3.addWidget(self.label_4)
 
-
         self.resolution_CB = QComboBox(self.tab)
         self.resolution_CB.addItem("")
         self.resolution_CB.addItem("")
@@ -57,7 +59,6 @@ class Ui_MainWindow(object):
         self.resolution_CB.setObjectName(u"resolution_CB")
 
         self.horizontalLayout_3.addWidget(self.resolution_CB)
-
 
         self.horizontalSpacer_3 = QSpacerItem(416, 17, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -74,7 +75,6 @@ class Ui_MainWindow(object):
         self.model_name.setObjectName(u"model_name")
 
         self.horizontalLayout_6.addWidget(self.model_name)
-
 
         self.gridLayout_3.addLayout(self.horizontalLayout_6, 3, 0, 1, 1)
         self.gridLayout_3.addLayout(self.horizontalLayout_3, 4, 0, 1, 1)
@@ -93,7 +93,6 @@ class Ui_MainWindow(object):
         self.Save_FL_PB.setObjectName(u"Save_FL_PB")
 
         self.horizontalLayout_9.addWidget(self.Save_FL_PB)
-
 
         self.gridLayout_3.addLayout(self.horizontalLayout_9, 6, 0, 1, 3)
 
@@ -115,7 +114,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout.addWidget(self.trainin_PB)
 
-
         self.gridLayout_3.addLayout(self.horizontalLayout, 1, 0, 1, 3)
 
         self.horizontalLayout_2 = QHBoxLayout()
@@ -128,14 +126,12 @@ class Ui_MainWindow(object):
         self.testing_LE = QLineEdit(self.tab)
         self.testing_LE.setObjectName(u"testing_LE")
 
-
         self.horizontalLayout_2.addWidget(self.testing_LE)
 
         self.testing_PB = QPushButton(self.tab)
         self.testing_PB.setObjectName(u"testing_PB")
 
         self.horizontalLayout_2.addWidget(self.testing_PB)
-
 
         self.gridLayout_3.addLayout(self.horizontalLayout_2, 2, 0, 1, 3)
 
@@ -189,7 +185,6 @@ class Ui_MainWindow(object):
         self.create_downsample_CB.setGeometry(QRect(625, 167, 15, 15))
         self.create_downsample_CB.setVisible(False)
 
-
         self.prerecorded_PB = QPushButton(self.tab)
         self.prerecorded_PB.setObjectName(u"prerecorded_PB")
         self.prerecorded_PB.setEnabled(True)
@@ -242,9 +237,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_2.addWidget(self.applyall_PB, 0, 2, 1, 1)
 
-
         self.gridLayout_4.addLayout(self.gridLayout_2, 0, 0, 1, 1)
-
 
         self.verticalLayout_2.addWidget(self.groupBox)
 
@@ -263,7 +256,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_4.addWidget(self.addws_CB)
 
-
         self.verticalLayout.addLayout(self.horizontalLayout_4)
 
         self.horizontalLayout_5 = QHBoxLayout()
@@ -279,9 +271,7 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_5.addWidget(self.addnonws_CB)
 
-
         self.verticalLayout.addLayout(self.horizontalLayout_5)
-
 
         self.verticalLayout_2.addLayout(self.verticalLayout)
 
@@ -308,13 +298,11 @@ class Ui_MainWindow(object):
 
         self.gridLayout.addWidget(self.delete_PB, 1, 1, 1, 1)
 
-
         self.verticalLayout_2.addLayout(self.gridLayout)
 
         self.verticalSpacer_3 = QSpacerItem(17, 142, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_2.addItem(self.verticalSpacer_3)
-
 
         self.gridLayout_7.addLayout(self.verticalLayout_2, 0, 1, 1, 1)
 
@@ -333,7 +321,6 @@ class Ui_MainWindow(object):
         self.save_ts_PB.setObjectName(u"save_ts_PB")
 
         self.horizontalLayout_7.addWidget(self.save_ts_PB)
-
 
         self.gridLayout_7.addLayout(self.horizontalLayout_7, 1, 1, 1, 1)
 
@@ -361,13 +348,11 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_3.addWidget(self.Movedown_PB)
 
-
         self.verticalLayout_4.addLayout(self.verticalLayout_3)
 
         self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_4.addItem(self.verticalSpacer_2)
-
 
         self.gridLayout_5.addLayout(self.verticalLayout_4, 0, 1, 1, 1)
 
@@ -381,7 +366,6 @@ class Ui_MainWindow(object):
         self.verticalSpacer_4 = QSpacerItem(20, 161, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_5.addItem(self.verticalSpacer_4)
-
 
         self.gridLayout_5.addLayout(self.verticalLayout_5, 0, 2, 1, 2)
 
@@ -398,7 +382,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
         self.return_nesting_PB = QPushButton(self.tab_3)
         self.return_nesting_PB.setObjectName(u"return_nesting_PB")
-        self.return_nesting_PB.setGeometry(QRect(200,400,140,30))
+        self.return_nesting_PB.setGeometry(QRect(200, 400, 140, 30))
 
         self.horizontalLayout_8.addWidget(self.return_nesting_PB)
 
@@ -412,10 +396,9 @@ class Ui_MainWindow(object):
         self.verticalLayout_6.addLayout(self.horizontalLayout_8)
         container = QWidget(self.tab_3)
         container.setLayout(self.verticalLayout_6)
-        container.setGeometry(QRect(275,340,410,45))
+        container.setGeometry(QRect(275, 340, 410, 45))
 
-
-        #self.gridLayout_5.addLayout(self.verticalLayout_6, 1, 3, 1, 1)
+        # self.gridLayout_5.addLayout(self.verticalLayout_6, 1, 3, 1, 1)
 
         self.tabWidget.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
@@ -441,7 +424,6 @@ class Ui_MainWindow(object):
         self.horizontalLayout_15.addWidget(self.close_ad_PB)
         self.horizontalLayout_15.addWidget(self.save_ad_PB)
 
-
         self.gridLayout_9.addLayout(self.horizontalLayout_15, 3, 0, 1, 2)
 
         self.verticalLayout_10 = QVBoxLayout()
@@ -464,7 +446,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_11.addWidget(self.tts_CB)
 
-
         self.verticalLayout_10.addLayout(self.horizontalLayout_11)
 
         self.horizontalLayout_12 = QHBoxLayout()
@@ -483,7 +464,6 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_12.addWidget(self.ttn_SB)
 
-
         self.verticalLayout_10.addLayout(self.horizontalLayout_12)
 
         self.horizontalLayout_13 = QHBoxLayout()
@@ -501,7 +481,6 @@ class Ui_MainWindow(object):
         self.vtn_SB.lineEdit().setReadOnly(True)
 
         self.horizontalLayout_13.addWidget(self.vtn_SB)
-
 
         self.verticalLayout_10.addLayout(self.horizontalLayout_13)
 
@@ -524,7 +503,6 @@ class Ui_MainWindow(object):
         self.TA_CB.setObjectName(u"TA_CB")
         self.label_69 = QLabel(self.tab_4)
         self.label_69.setObjectName(u"label_69")
-
 
         self.horizontalLayout_14.addWidget(self.TA_SB)
         self.horizontalLayout_14.addSpacing(40)
@@ -578,9 +556,7 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_9.addWidget(self.component_TW)
 
-
         self.gridLayout_8.addLayout(self.verticalLayout_9, 0, 0, 1, 1)
-
 
         self.gridLayout_9.addWidget(self.groupBox_3, 2, 0, 1, 1)
 
@@ -598,14 +574,14 @@ class Ui_MainWindow(object):
         self.tabWidget.setCurrentIndex(0)
         self.tts_CB.setCurrentIndex(4)
 
-
         QMetaObject.connectSlotsByName(MainWindow)
+
     # setupUi
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
-#if QT_CONFIG(whatsthis)
+        # if QT_CONFIG(whatsthis)
         self.tabWidget.setWhatsThis("")
-#endif // QT_CONFIG(whatsthis)
+        # endif // QT_CONFIG(whatsthis)
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"Resolution", None))
         self.resolution_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
         self.resolution_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"1x", None))
@@ -613,41 +589,45 @@ class Ui_MainWindow(object):
         self.resolution_CB.setItemText(3, QCoreApplication.translate("MainWindow", u"10x", None))
         self.resolution_CB.setItemText(4, QCoreApplication.translate("MainWindow", u"Custom", None))
 
-#if QT_CONFIG(tooltip)
-        self.resolution_CB.setToolTip(QCoreApplication.translate("MainWindow", u"Resolution of the images used for training ", None))
-#endif // QT_CONFIG(tooltip)
+        # if QT_CONFIG(tooltip)
+        self.resolution_CB.setToolTip(
+            QCoreApplication.translate("MainWindow", u"Resolution of the images used for training ", None))
+        # endif // QT_CONFIG(tooltip)
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"Model name", None))
-#if QT_CONFIG(tooltip)
+        # if QT_CONFIG(tooltip)
         self.model_name.setToolTip(QCoreApplication.translate("MainWindow", u"Model name", None))
-#endif // QT_CONFIG(tooltip)
+        # endif // QT_CONFIG(tooltip)
         self.Save_FL_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"Training annotations", None))
-#if QT_CONFIG(tooltip)
+        # if QT_CONFIG(tooltip)
         self.trianing_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Path to training annotations", None))
-#endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(statustip)
+        # endif // QT_CONFIG(tooltip)
+        # if QT_CONFIG(statustip)
         self.trianing_LE.setStatusTip("")
-#endif // QT_CONFIG(statustip)
-#if QT_CONFIG(whatsthis)
+        # endif // QT_CONFIG(statustip)
+        # if QT_CONFIG(whatsthis)
         self.trianing_LE.setWhatsThis("")
-#endif // QT_CONFIG(whatsthis)
+        # endif // QT_CONFIG(whatsthis)
         self.trianing_LE.setInputMask("")
         self.trainin_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
         self.custom_img_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
         self.custom_test_img_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"Testing annotations", None))
-#if QT_CONFIG(tooltip)
+        # if QT_CONFIG(tooltip)
         self.testing_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Path to testing annotations", None))
-#endif // QT_CONFIG(tooltip)
+        # endif // QT_CONFIG(tooltip)
         self.testing_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
         self.prerecorded_PB.setText(QCoreApplication.translate("MainWindow", u"Load prerecorded data", None))
         self.classify_PB.setText(QCoreApplication.translate("MainWindow", u"Classify images", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"File Location", None))
-        self.groupBox.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class whitespace sesttings", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab),
+                                  QCoreApplication.translate("MainWindow", u"File Location", None))
+        self.groupBox.setTitle(
+            QCoreApplication.translate("MainWindow", u"Annotation class whitespace sesttings", None))
         self.wsoptions_CB.setItemText(0, QCoreApplication.translate("MainWindow", u"Select", None))
         self.wsoptions_CB.setItemText(1, QCoreApplication.translate("MainWindow", u"Remove whitespace", None))
         self.wsoptions_CB.setItemText(2, QCoreApplication.translate("MainWindow", u"Keep only whitespace", None))
-        self.wsoptions_CB.setItemText(3, QCoreApplication.translate("MainWindow", u"Keep tissue and whitespace", None))
+        self.wsoptions_CB.setItemText(3,
+                                      QCoreApplication.translate("MainWindow", u"Keep tissue and whitespace", None))
 
         self.apply_PB.setText(QCoreApplication.translate("MainWindow", u"Apply", None))
         self.applyall_PB.setText(QCoreApplication.translate("MainWindow", u"Apply to all", None))
@@ -663,7 +643,8 @@ class Ui_MainWindow(object):
         self.delete_PB.setText(QCoreApplication.translate("MainWindow", u"Delete class", None))
         self.return_ts_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
         self.save_ts_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Continue", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Segmentation Settings", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2),
+                                  QCoreApplication.translate("MainWindow", u"Segmentation Settings", None))
         self.moveup_PB.setText(QCoreApplication.translate("MainWindow", u"Move up", None))
         self.Movedown_PB.setText(QCoreApplication.translate("MainWindow", u"Move Down", None))
         self.nesting_checkBox.setText(QCoreApplication.translate("MainWindow", u"Nest uncombined data", None))
@@ -671,7 +652,8 @@ class Ui_MainWindow(object):
         self.save_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Train", None))
         self.close_nesting_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
         self.AS_PB.setText(QCoreApplication.translate("MainWindow", u"Go to Advanced Settings", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), QCoreApplication.translate("MainWindow", u"Nesting", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3),
+                                  QCoreApplication.translate("MainWindow", u"Nesting", None))
         self.return_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Return", None))
         self.save_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Train", None))
         self.close_ad_PB.setText(QCoreApplication.translate("MainWindow", u"Save and Close", None))
@@ -695,6 +677,150 @@ class Ui_MainWindow(object):
         self.label_47.setText(QCoreApplication.translate("MainWindow", u"Use pre-scaled images", None))
         self.model_name_label.setText(QCoreApplication.translate("MainWindow", u"Model architecture", None))
         self.batch_label.setText(QCoreApplication.translate("MainWindow", u"Batch size", None))
-        self.groupBox_3.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), QCoreApplication.translate("MainWindow", u"Advanced Settings", None))
+        self.groupBox_3.setTitle(
+            QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4),
+                                  QCoreApplication.translate("MainWindow", u"Advanced Settings", None))
     # retranslateUi
+
+
+class Ui_classify_im:
+    """
+    UI definition for the classification window.
+    """
+    def setupUi(self, MainWindow):
+        if not MainWindow.objectName():
+            MainWindow.setObjectName(u"MainWindow")
+        MainWindow.resize(865, 616)
+        self.centralwidget = QWidget(MainWindow)
+        self.centralwidget.setObjectName(u"centralwidget")
+        self.groupBox_4 = QGroupBox(self.centralwidget)
+        self.groupBox_4.setObjectName(u"groupBox_4")
+        self.groupBox_4.setGeometry(QRect(10, 190, 230, 340))
+        self.colormap_TW = QTableWidget(self.groupBox_4)
+        self.colormap_TW.setObjectName(u"colormap_TW")
+        self.colormap_TW.horizontalHeader().setSectionsClickable(False)
+        self.colormap_TW.verticalHeader().setSectionsClickable(False)
+        self.colormap_TW.setGeometry(QRect(10, 30, 200, 300))
+        self.change_color_PB = QPushButton(self.centralwidget)
+        self.change_color_PB.setObjectName(u"change_color_PB")
+        self.change_color_PB.setGeometry(QRect(125, 532, 113, 30))
+        self.reset_PB = QPushButton(self.centralwidget)
+        self.reset_PB.setObjectName(u"reset_PB")
+        self.reset_PB.setGeometry(QRect(10, 532, 113, 30))
+        self.classify_PB = QPushButton(self.centralwidget)
+        self.classify_PB.setObjectName(u"classify_PB")
+        self.classify_PB.setGeometry(QRect(630, 532, 200, 30))
+        self.groupBox_5 = QGroupBox(self.centralwidget)
+        self.groupBox_5.setObjectName(u"groupBox_5")
+        self.groupBox_5.setGeometry(QRect(602, 191, 228, 339))
+        self.component_TW = QTableWidget(self.groupBox_5)
+        self.component_TW.setObjectName(u"component_TW")
+        self.component_TW.setGeometry(QRect(11, 27, 206, 301))
+        self.component_TW.horizontalHeader().setSectionsClickable(False)
+        self.component_TW.verticalHeader().setSectionsClickable(False)
+        self.overlay = ImageViewer()
+        self.scene = QGraphicsScene()
+        self.overlay = QGraphicsView(self.scene, self.centralwidget)
+        self.overlay.setRenderHint(QPainter.Antialiasing)
+        # self.overlay = QLabel(self.centralwidget)
+        # self.overlay.setObjectName(u"overlay")
+        self.overlay.setGeometry(QRect(245, 200, 350, 350))
+        # self.overlay.setAutoFillBackground(True)
+        self.zoom_in_PB = QPushButton(self.centralwidget)
+        self.zoom_in_PB.setObjectName(u"zoom_in_PB")
+        self.zoom_in_PB.setGeometry(QRect(570, 173, 25, 25))
+        self.zoom_out_PB = QPushButton(self.centralwidget)
+        self.zoom_out_PB.setObjectName(u"zoom_out_PB")
+        self.zoom_out_PB.setGeometry(QRect(543, 173, 25, 25))
+        self.classify_LW = QListWidget(self.centralwidget)
+        self.classify_LW.setObjectName(u"classify_LW")
+        self.classify_LW.setEnabled(True)
+        self.classify_LW.setStyleSheet("QListWidget { border: 1px solid white; }")
+        self.classify_LW.setGeometry(QRect(10, 60, 821, 90))
+        self.label = QLabel(self.centralwidget)
+        self.label.setObjectName(u"label")
+        self.label.setGeometry(QRect(10, 22, 108, 24))
+        self.classify_LE = QLineEdit(self.centralwidget)
+        self.classify_LE.setObjectName(u"classify_LE")
+        self.classify_LE.setGeometry(QRect(95, 22, 620, 24))
+        self.classify_LE.setMaximumSize(QSize(16777215, 16777215))
+        self.browseCl_PB = QPushButton(self.centralwidget)
+        self.browseCl_PB.setObjectName(u"browseCl_PB")
+        self.browseCl_PB.setGeometry(QRect(717, 22, 113, 24))
+        self.deleteCl_PB = QPushButton(self.centralwidget)
+        self.deleteCl_PB.setObjectName(u"deleteCl_PB")
+        self.deleteCl_PB.setGeometry(QRect(717, 155, 113, 24))
+        self.loading_dialog = LoadingDialog(self.centralwidget)
+        self.retranslateUi(MainWindow)
+
+
+    # setupUi
+
+    def retranslateUi(self, MainWindow):
+        MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"MainWindow", None))
+        self.groupBox_4.setTitle(QCoreApplication.translate("MainWindow", u"Colormap", None))
+        self.change_color_PB.setText(QCoreApplication.translate("MainWindow", u"Change color", None))
+        self.reset_PB.setText(QCoreApplication.translate("MainWindow", u"Reset colormap", None))
+        self.classify_PB.setText(QCoreApplication.translate("MainWindow", u"Apply", None))
+        self.zoom_in_PB.setText(QCoreApplication.translate("MainWindow", u"+", None))
+        self.zoom_out_PB.setText(QCoreApplication.translate("MainWindow", u"-", None))
+        self.groupBox_5.setTitle(QCoreApplication.translate("MainWindow", u"Annotation class component analysis:", None))
+        # self.overlay.setText("")
+        self.classify_LE.setToolTip(QCoreApplication.translate("MainWindow", u"Path to training annotations", None))
+        self.classify_LE.setStatusTip("")
+        self.classify_LE.setWhatsThis("")
+        self.classify_LE.setInputMask("")
+        self.label.setText(QCoreApplication.translate("MainWindow", u"Path to images", None))
+        self.browseCl_PB.setText(QCoreApplication.translate("MainWindow", u"Browse", None))
+        self.deleteCl_PB.setText(QCoreApplication.translate("MainWindow", u"Remove path", None))
+
+
+class LoadingDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Loading...")
+        self.setModal(True)  # Makes dialog modal
+        # Create layout
+        layout = QVBoxLayout()
+        # Add loading label
+        self.label = QLabel("Loading, please wait...")
+        layout.addWidget(self.label)
+        # Add progress bar
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)  # Makes it an infinite progress bar
+        layout.addWidget(self.progress)
+        self.setLayout(layout)
+        # Set fixed size
+        self.setFixedSize(200, 100)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowCloseButtonHint)
+
+
+class ImageViewer(QGraphicsView):
+    """
+    Custom graphics view for displaying and manipulating images.
+    """
+    def __init__(self):
+        super().__init__()
+
+        # Create a QGraphicsScene
+        self.scene = QGraphicsScene(self)
+        self.setScene(self.scene)
+        self.image_item = None  # Start with no image
+        self.scale_factor = 1.0
+        #self.setRenderHint(Qt.Antialiasing)
+        self.scene.setSceneRect(QRectF(0, 0, 350, 350))
+          # Adjust scene rect to fit the new image
+
+    def disp_im(self, pixmap):
+        if self.image_item:
+            self.scene.removeItem(self.image_item)
+        self.image_item = QGraphicsPixmapItem(pixmap)
+        self.scene.addItem(self.image_item)
+        self.image_item.setPos(int(np.round((350 - pixmap.width()) / 2)), int(np.round((350 - pixmap.height()) / 2)))
+
+    def zoom_in(self):
+        self.scale(1.2, 1.2)  # Zoom in by 20%
+
+    def zoom_out(self):
+        self.scale(1 / 1.2, 1 / 1.2)  # Zoom out by 20%

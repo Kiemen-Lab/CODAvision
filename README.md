@@ -27,13 +27,14 @@ CODAvision is an open-source Python package designed for microanatomical tissue 
     ```
 
 4. **Install CODAvision**
-  
+
     Install the CODAvision package using pip:
-    
+
     ```sh
-    pip install -e git+https://github.com/Valentinamatos/CODAvision.git#egg=CODAvision
+    pip install -e git+https://github.com/Kiemen-Lab/CODAvision.git#egg=CODAvision
+    ```
  > **Warning:** 
-> You might need to install Git from the following [link](https://git-scm.com/downloads/win) to be able to run the `pip install` command.
+> You might need to install Git from the following [link](https://git-scm.com/downloads/win) to be able to run the `pip install` git link command.
 
 > **Warning:**
 > After installing the package, restart your IDE and activate the environment again using `conda activate CODAvision` to ensure all the dependencies are properly loaded.
