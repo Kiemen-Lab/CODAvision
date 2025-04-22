@@ -60,12 +60,12 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
                 nload = [n for n in nload if n != b]
 
                 if len(classNames) == max(WS[2]):
-                    print(classNames)
-                    zz = [i for i in range(len(classNames)) if i + 1 not in [oldnum]] # Used to be not in [b, oldnum], but it was deleteing an extra class
+                    # print(classNames)
+                    zz = [i for i in range(len(classNames)) if i + 1 not in [oldnum]]
                     classNames = [classNames[i] for i in zz]
-                    print(classNames)
+                    # print(classNames)
                     cmap = cmap[zz]
-                    print(cmap)
+                    # print(cmap)
 
                 WS[2] = ncombine
 
@@ -75,7 +75,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
 
     nwhite = WS[2]
     nwhite = nwhite[WS[1][0] - 1]
-    print(f'Max WS[2]: {max(WS[2])}')
+    # print(f'Max WS[2]: {max(WS[2])}')
     print(f'Classnames: {classNames}')
     if max(WS[2]) != len(classNames):
         raise ValueError('The length of classNames does not match the number of classes specified in WS[2].')

@@ -175,9 +175,9 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
             J3 = J3.reshape(J.shape)
             mask = np.dstack((J1, J2, J3))
             I = (I * 0.5) + (mask * 0.5)
-            if os.path.isfile(os.path.join(outim, f'{base_name}.png')):
-                os.remove(os.path.join(outim, f'{base_name}.png'))
-            io.imsave(os.path.join(outim, f'{base_name}.png'), (I * 255).astype(np.uint8))
+            if os.path.isfile(os.path.join(outim, f'{base_name}.jpg')):
+                os.remove(os.path.join(outim, f'{base_name}.jpg'))
+            io.imsave(os.path.join(outim, f'{base_name}.jpg'), (I * 255).astype(np.uint8))
 
             # Save bounding boxes
             numann, ctlist = save_bounding_boxes(I0, outpth, nm, numclass)
