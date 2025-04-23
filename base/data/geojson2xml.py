@@ -1,65 +1,147 @@
 import os
 import json
-import xmltodict
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
-def rgb2hex(rgb_list):  # rgb_list example: [255,0,3]
-    r, g, b = rgb_list
-    return "#{:02x}{:02x}{:02x}".format(r, g, b)
+def rgb_to_bgr_hex(rgb):
+    """
+    Convert RGB to ImageScope's BGR format as a decimal integer.
+    """
+    r, g, b = rgb
+    return str((b << 16) + (g << 8) + r)
 
-def geojson2xml(geojson_path):
-    # Derive output filename in the same folder as input
-    input_dir = os.path.dirname(geojson_path)
-    input_base = os.path.basename(geojson_path)
-    output_filename = os.path.join(input_dir, input_base.replace('.geojson', '.xml'))
+def prettify(elem):
+    """
+    Return a pretty-printed XML string from an ElementTree Element.
+    """
+    rough_string = ET.tostring(elem, 'utf-8')
+    return minidom.parseString(rough_string).toprettyxml(indent="  ")
 
-    # Read in geojson file
-    with open(geojson_path, 'r') as f:
-        geojson_dict = json.load(f)
+def convert_geojson_to_imagescope_xml(geojson_path, microns_per_pixel="0.504"):
+    """
+    Converts a GeoJSON file into an ImageScope-compatible XML string.
+    """
+    with open(geojson_path, 'r', encoding='utf-8') as f:
+        geojson_data = json.load(f)
 
-    # Process geojson data
-    geojson_polygons = geojson_dict['features']
-    xml_polygons, group_dict, group_list = [], {}, []
+    # Get features list
+    if isinstance(geojson_data, dict):
+        features = geojson_data.get("features", [geojson_data])
+    elif isinstance(geojson_data, list):
+        features = geojson_data
+    else:
+        raise ValueError("Unsupported GeoJSON format.")
 
-    for ind, geojson_polygon in enumerate(geojson_polygons):
-        coords = geojson_polygon['geometry']['coordinates'][0]
-        if coords[0] == coords[-1]:  # Remove duplicate last coordinate
-            coords = coords[:-1]
-        try:
-            color = geojson_polygon['properties']['color']
-        except KeyError:
-            try:
-                color = geojson_polygon['properties']['classification']['color']
-            except KeyError:
-                color = [255, 0, 3]
-        try:
-            label = geojson_polygon['properties']['classification']['name']
-        except:
-            label = 'tissue'
-        group_dict[label] = color
+    annotations_by_name = {}
 
-        coords_dict = [{'@Order': str(ind_), '@X': str(coord[0]), '@Y': str(coord[1])} for ind_, coord in enumerate(coords)]
+    for feature in features:
+        props = feature.get("properties", {})
+        classification = props.get("classification", {})
+        name = classification.get("name")
+        color = classification.get("color", [0, 255, 0])  # Default: green
 
-        xml_polygon = {'@Name': 'Annotation ' + str(ind),
-                       '@Type': 'Polygon',
-                       '@PartOfGroup': label,
-                       '@Color': str(rgb2hex(color)).upper(),
-                       'Coordinates': {'Coordinate': coords_dict}}
-        xml_polygons.append(xml_polygon)
+        if not name:
+            continue  # Skip unnamed annotations
 
-    for group, col in group_dict.items():
-        group_list.append({'@Name': group, '@PartOfGroup': None, '@Color': col, 'Attributes': None})
+        # Initialize if new label
+        if name not in annotations_by_name:
+            annotations_by_name[name] = {
+                "color": rgb_to_bgr_hex(color),
+                "regions": []
+            }
 
-    xml = {'ASAP_Annotations': {'Annotations': {'Annotation': xml_polygons},
-                                'AnnotationGroups': {'Group': group_list}}}
+        # Process geometry
+        geometry = feature.get("geometry", {})
+        coords_type = geometry.get("type")
+        coords = geometry.get("coordinates")
 
-    # Convert to XML and save
-    xml_string = xmltodict.unparse(xml, pretty=True)
-    with open(output_filename, 'w') as f:
-        f.write(xml_string)
+        if coords_type == "Polygon":
+            polygon = coords[0]
+            if polygon[0] != polygon[-1]:  # Close polygon if needed
+                polygon.append(polygon[0])
+            annotations_by_name[name]["regions"].append(polygon)
 
-    print(f'XML file {output_filename} generated from GeoJSON file {geojson_path}')
+        elif coords_type == "MultiPolygon":
+            for poly in coords:
+                if poly and poly[0]:
+                    if poly[0][0] != poly[0][-1]:
+                        poly[0].append(poly[0][0])
+                    annotations_by_name[name]["regions"].append(poly[0])
+
+    # Set up XML structure
+    annotations_element = ET.Element("Annotations", {"MicronsPerPixel": microns_per_pixel})
+
+    annotation_id = 1
+    region_id = 1
+    for name, data in annotations_by_name.items():
+        annotation = ET.SubElement(annotations_element, "Annotation", {
+            "Id": str(annotation_id),
+            "Name": name,
+            "ReadOnly": "0",
+            "NameReadOnly": "0",
+            "LineColorReadOnly": "0",
+            "Incremental": "0",
+            "Type": "4",
+            "LineColor": data["color"],
+            "Visible": "1",
+            "Selected": "1",
+            "MarkupImagePath": "",
+            "MacroName": ""
+        })
+
+        # Add annotation-level attribute
+        attributes = ET.SubElement(annotation, "Attributes")
+        ET.SubElement(attributes, "Attribute", {"Name": "Description", "Id": "0", "Value": ""})
+
+        # Add region headers
+        regions = ET.SubElement(annotation, "Regions")
+        headers = ET.SubElement(regions, "RegionAttributeHeaders")
+        for attr in [
+            {"Id": "9999", "Name": "Region"},
+            {"Id": "9997", "Name": "Length"},
+            {"Id": "9996", "Name": "Area"},
+            {"Id": "9998", "Name": "Text"},
+            {"Id": "1", "Name": "Description"}
+        ]:
+            ET.SubElement(headers, "AttributeHeader", {**attr, "ColumnWidth": "-1"})
+
+        # Add regions
+        for coords in data["regions"]:
+            region = ET.SubElement(regions, "Region", {
+                "Id": str(region_id),
+                "Type": "0",
+                "Zoom": "1.0",
+                "Selected": "0",
+                "ImageLocation": "",
+                "ImageFocus": "-1",
+                "Length": "0.0",
+                "Area": "0.0",
+                "LengthMicrons": "0.0",
+                "AreaMicrons": "0.0",
+                "Text": "",
+                "NegativeROA": "0",
+                "InputRegionId": "0",
+                "Analyze": "1",
+                "DisplayId": str(region_id)
+            })
+
+            ET.SubElement(region, "Attributes")
+            vertices = ET.SubElement(region, "Vertices")
+            for x, y in coords:
+                ET.SubElement(vertices, "Vertex", {"X": str(x), "Y": str(y), "Z": "0"})
+
+            region_id += 1
+
+        ET.SubElement(annotation, "Plots")
+        annotation_id += 1
+
+    # Output as pretty XML string
+    return prettify(annotations_element)
 
 # Example usage
 if __name__ == "__main__":
-    geojson_path = r"\\path\kiemen-lab-data\Valentina Matos\qupath project 3\2024-02-26 10.36.39.geojson"
-    geojson2xml(geojson_path)
+    geojson_file = r"\\10.99.134.183\kiemen-lab-data\Valentina Matos\qupath project 3\2024-02-26 10.36.39.geojson"
+    xml_output = convert_geojson_to_imagescope_xml(geojson_file)
+    with open(geojson_file.replace('.geojson', '.xml'), "w", encoding="utf-8") as f:
+        f.write(xml_output)
+    print("✅ XML saved.")
