@@ -139,9 +139,17 @@ def convert_geojson_to_imagescope_xml(geojson_path, microns_per_pixel="0.504"):
     return prettify(annotations_element)
 
 # Example usage
+
 if __name__ == "__main__":
-    geojson_file = r"\\10.99.134.183\kiemen-lab-data\Valentina Matos\qupath project 3\2024-02-26 10.36.39.geojson"
-    xml_output = convert_geojson_to_imagescope_xml(geojson_file)
-    with open(geojson_file.replace('.geojson', '.xml'), "w", encoding="utf-8") as f:
-        f.write(xml_output)
-    print("✅ XML saved.")
+    folder_path = r"\\pathkiemen-lab-data\Valentina Matos\qupath project 3"
+
+    for file_name in os.listdir(folder_path):
+        if file_name.endswith('.geojson'):
+            geojson_file = os.path.join(folder_path, file_name)
+            xml_output = convert_geojson_to_imagescope_xml(geojson_file)
+            xml_file = geojson_file.replace('.geojson', '.xml')
+
+            with open(xml_file, "w", encoding="utf-8") as f:
+                f.write(xml_output)
+
+            print(f"✅ XML saved for: {file_name}")
