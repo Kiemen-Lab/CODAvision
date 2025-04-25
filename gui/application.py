@@ -112,6 +112,7 @@ def CODAVision():
             scale = float(window.scale)
             if not(not_downsamp_annotated):
                 WSI2tif(pth, resolution, umpix, train_img_type, scale, pth)
+                WSI2tif(pthtest, resolution, umpix, test_img_type, scale, pthtest)
             else:
                 uncomp_pth = window.uncomp_train_pth
                 uncomp_test_pth = window.uncomp_test_pth
@@ -120,12 +121,21 @@ def CODAVision():
                     pthtestim = uncomp_test_pth
                 if scale_images:
                     WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale, pth)
+                    WSI2tif(uncomp_test_pth, resolution, umpix, train_img_type, scale, pthtest)
         else:
             WSI2tif(pth, resolution, umpix)
+            WSI2tif(pthtest, resolution, umpix)
         downsamp_time = time.time()-downsamp_time
 
         # Execute the model training pipeline
-        determine_optimal_TA(pthim, nTA)
+        determine_optimal_TA(pthim, pthtestim, nTA)
+        if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
+            try:
+                os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
+                shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
+                            os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
+            except:
+                print('No TA cutoff file found, using default value')
         load_time = time.time()
         [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
         load_time = time.time()-load_time
@@ -144,40 +154,6 @@ def CODAVision():
 
         # Prepare and process test data
         print(' ')
-        downsamp_time_2 = time.time()
-        if resolution == 'Custom':
-            # Handle custom resolution test image preparation
-            if not(not_downsamp_annotated):
-                WSI2tif(pthtest, resolution, umpix, test_img_type, scale, pthtest)
-                if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
-                    try:
-                        os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
-                        shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
-                                    os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
-                    except:
-                        print('No TA cutoff file found, using default value')
-            else:
-                if not(scale_images):
-                    if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
-                        try:
-                            os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
-                            shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
-                                        os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
-                        except:
-                            print('No TA cutoff file found, using default value')
-                if scale_images:
-                    WSI2tif(uncomp_test_pth, resolution, umpix, train_img_type, scale, pthtest)
-                    if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
-                        try:
-                            os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
-                            shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
-                                        os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
-                        except:
-                            print('No TA cutoff file found, using default value')
-        else:
-            WSI2tif(pthtest, resolution, umpix)
-        downsamp_time_2 = time.time() - downsamp_time_2
-        downsamp_time += downsamp_time_2
         downsamp_time = str(int(downsamp_time // 3600)) + ':' + str(int((downsamp_time % 3600) // 60)) + ':' + str(
             round(downsamp_time % 60, 2))
         times['Downsampling images'] = downsamp_time
