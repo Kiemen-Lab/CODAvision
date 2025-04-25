@@ -114,12 +114,12 @@ class ImageQuantifier:
         
         # Add pixel count columns for each class
         for class_name in self.class_names[:-1]:  # Excluding 'black' class
-            headers.append(f'{class_name} pixel count')
+            headers.append(f'{class_name} PC')
         
         # Add tissue composition columns (excluding whitespace class)
         for i, class_name in enumerate(self.class_names[:-1]):
             if i + 1 != self.nwhite:  # Skip whitespace class
-                headers.append(f"{class_name} tissue composition (%)")
+                headers.append(f"{class_name} TC(%)")
         
         return headers
     

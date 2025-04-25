@@ -149,16 +149,16 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.set_font('Arial', 'B', 8)  # Set font to bold for headers
     pdf.cell(cell_width - 10, 10, '')
     image_name = df['Image name'][0]
-    if pdf.get_string_width(df['Image name'][0])> cell_width-20:
+    if pdf.get_string_width(df['Image name'][0])> cell_width-14:
         for i in range(len(image_name), 0, -1):
             short_name = image_name[:i]
-            if pdf.get_string_width(short_name+'...')<= cell_width-20:
+            if pdf.get_string_width(short_name+'...')<= cell_width-14:
                 image_name = short_name+'...'
                 break
-    pdf.cell(cell_width - 20, 10, image_name, 1, align='C')
+    pdf.cell(cell_width-10, 10, image_name, 1, align='C')
     pdf.cell(20, 10, '')
     pdf.cell(cell_width, 10, '')
-    pdf.cell(cell_width - 20, 10, image_name, 1, align='C')
+    pdf.cell(cell_width-10, 10, image_name, 1, align='C')
     pdf.ln()
     vertical_limit = False
 
@@ -177,19 +177,19 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
             break
         else:
             try:  # Whitespace info will be last since it has no tissue composition %
-                comp_row = row[:row.index('pixel count')] + 'TC(%)'
-                pix_row = row[:row.index('pixel count')] + 'PC'
+                comp_row = row[:row.index('PC')] + 'TC(%)'
+                pix_row = row[:row.index('PC')] + 'PC'
                 composition_value = f"{float(df[comp_row][0]):.2f}"
                 pdf.set_font('Arial', 'B', 8)
                 pdf.cell(cell_width - 10, 10, pix_row, 1)
                 pdf.set_font('Arial', '', 8)
                 pixel_value = f"{int(df[row][0])}"
-                pdf.cell(cell_width - 20, 10, pixel_value, 1, align='R')
+                pdf.cell(cell_width-10, 10, pixel_value, 1, align='R')
                 pdf.cell(20, 10, '')
                 pdf.set_font('Arial', 'B', 8)
                 pdf.cell(cell_width, 10, comp_row, 1)
                 pdf.set_font('Arial', '', 8)
-                pdf.cell(cell_width - 20, 10, composition_value, 1, align='R')
+                pdf.cell(cell_width-10, 10, composition_value, 1, align='R')
                 pdf.ln()
             except:
                 whitespace_value = f"{int(df[row][0])}"
@@ -200,7 +200,7 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
         pdf.set_font('Arial', 'B', 8)
         pdf.cell(cell_width - 10, 10, whitespace_row, 1)
         pdf.set_font('Arial', '', 8)
-        pdf.cell(cell_width - 20, 10, whitespace_value, 1, align='R')
+        pdf.cell(cell_width - 10, 10, whitespace_value, 1, align='R')
 
         # Runtimes
         pdf.add_page()
