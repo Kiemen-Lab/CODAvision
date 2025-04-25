@@ -129,13 +129,12 @@ def CODAVision():
 
         # Execute the model training pipeline
         determine_optimal_TA(pthim, pthtestim, nTA)
-        if not os.path.isfile(os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')):
-            try:
-                os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
-                shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
-                            os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
-            except:
-                print('No TA cutoff file found, using default value')
+        try:
+            os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
+            shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
+                        os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
+        except:
+            print('No TA cutoff file found, using default value')
         load_time = time.time()
         [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
         load_time = time.time()-load_time
