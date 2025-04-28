@@ -114,12 +114,12 @@ class ImageQuantifier:
         
         # Add pixel count columns for each class
         for class_name in self.class_names[:-1]:  # Excluding 'black' class
-            headers.append(f'{class_name} pixel count')
-        
+            headers.append(f'{class_name} PC')
+
         # Add tissue composition columns (excluding whitespace class)
         for i, class_name in enumerate(self.class_names[:-1]):
             if i + 1 != self.nwhite:  # Skip whitespace class
-                headers.append(f"{class_name} tissue composition (%)")
+                headers.append(f"{class_name} TC(%)")
         
         return headers
     
@@ -242,6 +242,6 @@ def quantify_images(model_path: str, image_path: str) -> str:
 
 
 if __name__ == '__main__':
-    model_path = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024'
-    image_path = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x'
+    model_path = r'\\path\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024'
+    image_path = r'\\path\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x'
     quantify_images(model_path, image_path)

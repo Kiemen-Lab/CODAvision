@@ -17,7 +17,7 @@ from PySide6 import QtGui, QtWidgets, QtCore
 from PySide6.QtCore import Qt, QRect
 import cv2
 
-def determine_optimal_TA(pthim,numims):
+def determine_optimal_TA(pthim,pthtestim, numims):
     from gui.components.dialogs import (
         Ui_choose_area, Ui_disp_crop, Ui_choose_TA,
         Ui_choose_images_reevaluated, Ui_use_current_TA
@@ -380,20 +380,28 @@ def determine_optimal_TA(pthim,numims):
         return window.apply_all, window.images
 
     imlist = sorted(glob(os.path.join(pthim, '*.tif')))
+    imtestlist = sorted(glob(os.path.join(pthtestim, '*.tif')))
     if not imlist:
         jpg_files = glob(os.path.join(pthim, "*.jpg"))
         if jpg_files:
             imlist.extend(jpg_files)  # Add full paths of JPGs to list
+        jpg_files = glob(os.path.join(pthtestim, "*.jpg"))
+        if jpg_files:
+            imtestlist.extend(jpg_files)  # Add full paths of JPGs to list
         png_files = glob(os.path.join(pthim, '*.png'))
         if png_files:
             imlist.extend(png_files)
+        png_files = glob(os.path.join(pthtestim, '*.png'))
+        if png_files:
+            imtestlist.extend(png_files)
     if not imlist:
-        print("No TIFF, PNG or JPG image files found in", pthim)
+        print(f"No TIFF, PNG or JPG image files found in either {pthim} or {pthtestim}")
     print('   ')
     i = 0
     for image in imlist:
         imlist[i] = image[len(pthim)+1:]
         i += 1
+    imlist.extend(imtestlist)
 
     outpath = os.path.join(pthim, 'TA')
     cts = {}
@@ -442,8 +450,12 @@ def determine_optimal_TA(pthim,numims):
     count = 0
     for nm in imlist:
         count += 1
-        print(f'    Loading image {count} of {numims}: {nm}')
-        im0 = cv2.imread(os.path.join(pthim,nm))
+        if len(nm)>len(pthtestim) and nm[:len(pthtestim)]==pthtestim:
+            print(f'    Loading image {count} of {numims}: {nm[len(pthtestim)+1:]}')
+            im0 = cv2.imread(nm)
+        else:
+            print(f'    Loading image {count} of {numims}: {nm}')
+            im0 = cv2.imread(os.path.join(pthim,nm))
         im0 = im0[:,:,::-1]
         print('     Image loaded')
         rsf = min(1500/im0.shape[1], 780/im0.shape[0])
