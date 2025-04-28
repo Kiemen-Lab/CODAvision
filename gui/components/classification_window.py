@@ -545,6 +545,6 @@ if __name__ == '__main__':
     with open('dark_theme.qss', 'r') as file:
         app.setStyleSheet(file.read())
 
-    window = MainWindowClassify(r'\\10.99.68.52\Kiemendata\Valentina Matos\Jaime\mouse lung', '5x', '10_27_2024')
+    window = MainWindowClassify(r'\\path\Kiemendata\Valentina Matos\Jaime\mouse lung', '5x', '10_27_2024')
     window.show()
     app.exec()
