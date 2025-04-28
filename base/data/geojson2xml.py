@@ -1,3 +1,8 @@
+"""
+Author: Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
+Updated: March 2025
+"""
+
 import os
 import json
 import xml.etree.ElementTree as ET
