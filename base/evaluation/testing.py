@@ -300,7 +300,7 @@ class SegmentationModelTester:
         # Create confusion matrix
         max_true = int(np.max(balanced_true))
         max_pred = int(np.max(processed_predictions))
-        confusion_data = np.zeros((max_true, max_pred))
+        confusion_data = np.zeros((max_true, max_true))
 
         for true_label in range(1, max_true + 1):
             for pred_label in range(1, max_pred + 1):
