@@ -29,6 +29,22 @@ from .ui_definitions import Ui_MainWindow
 from .classification_window import MainWindowClassify
 
 
+def choose_xml(parent):
+    msg_box = QtWidgets.QMessageBox(parent)
+    msg_box.setWindowTitle("Choose XML File")
+    msg_box.setText("Do you want to choose an specific XML File for the Segmentation Settings?")
+
+    option_a = msg_box.addButton("Yes", QtWidgets.QMessageBox.AcceptRole)
+    option_b = msg_box.addButton("No", QtWidgets.QMessageBox.RejectRole)
+
+    msg_box.exec()
+
+    if msg_box.clickedButton() == option_a:
+        return True
+    elif msg_box.clickedButton() == option_b:
+        return False
+    return None
+
 class MainWindow(QtWidgets.QMainWindow):
     """
     Main window for the CODAvision application.
@@ -80,6 +96,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.original_df = None 
         self.df = None
         self.prerecorded_data = False
+        self.loaded_xml = False
         self.combined_df = None 
         self.delete_count = 0
         self.combo_count = 0
@@ -139,10 +156,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_xml(self):
         xml_file = None
         training_folder = self.ui.trianing_LE.text()
-        for file in os.listdir(training_folder):
-            if file.endswith('.xml'):
-                xml_file = os.path.join(training_folder, file)
-                break
+        custom_xml = choose_xml(self)
+        if custom_xml:
+            xml_file, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select XML File for Segmentation Settings:",
+                                                                 training_folder, "XML Files (*.xml)")
+        else:
+            for file in os.listdir(training_folder):
+                if file.endswith('.xml'):
+                    xml_file = os.path.join(training_folder, file)
+                    break
         if xml_file:
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
@@ -155,7 +177,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 import traceback
                 print(traceback.format_exc())
         else:
-            QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+            if custom_xml:
+                QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file was selected.')
+            else:
+                QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+        self.loaded_xml = True
 
     def parse_xml_to_dataframe(self, xml_file):
         """
@@ -266,6 +292,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def check_for_trained_model(self):
         model_exists = False
+        self.loaded_xml = False
         if os.path.isdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
             for file in os.listdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
                 if 'best_model' in file and file.endswith('.keras'):
@@ -372,7 +399,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def fill_form_and_continue(self):
         """Fill the form, process data, and switch to the next tab if successful."""
         if self.fill_form():
-            if not self.prerecorded_data:
+            if not (self.prerecorded_data or self.loaded_xml):
                 self.load_xml()  # Load and parse the XML file only if not using prerecorded data
             next_tab_index = self.ui.tabWidget.currentIndex() + 1
             if next_tab_index < self.ui.tabWidget.count():
