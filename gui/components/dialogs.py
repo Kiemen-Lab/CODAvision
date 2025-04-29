@@ -12,7 +12,7 @@ from PySide6.QtCore import QCoreApplication, QPoint, QRect, QSize, Qt, QMetaObje
 from PySide6.QtGui import QFont, QPixmap, QCursor, QTransform
 from PySide6.QtWidgets import (
     QApplication, QFrame, QLabel, QMainWindow, QPushButton, QSizePolicy,
-    QWidget, QLineEdit, QListWidget, QDialog, QVBoxLayout, QProgressBar
+    QWidget, QLineEdit, QListWidget, QDialog, QVBoxLayout,QHBoxLayout, QProgressBar
 )
 
 
@@ -73,10 +73,13 @@ class Ui_choose_TA(object):
         self.apply = QPushButton(self.centralwidget)
         self.text = QLabel(self.centralwidget)
         self.slider_container = QWidget(self.centralwidget)
+        slider_inner_layout = QHBoxLayout()
+        self.slider_container.setLayout(slider_inner_layout)
         self.TA_selection = QSlider(Qt.Horizontal,self.slider_container)
         self.TA_selection.setMinimum(0)  # Min value
         self.TA_selection.setMaximum(255)  # Max value
         self.TA_selection.setValue(205)  # Default value
+        slider_inner_layout.addWidget(self.TA_selection)
         font = QFont()
         font.setPointSize(12)
         font.setBold(True)
@@ -120,7 +123,7 @@ class Ui_choose_TA(object):
         self.medium_im.setText("")
         self.apply.setText(QCoreApplication.translate("MainWindow", u"Save", None))
         self.change_mode.setText(QCoreApplication.translate("MainWindow", u"Change mode", None))
-        self.slider_label.setText(QCoreApplication.translate("MainWindow", u""+str(self.TA_selection.value()),None))
+        self.slider_label.setText(QCoreApplication.translate("MainWindow", u"Current threshold value: "+str(self.TA_selection.value()),None))
         self.raise_ta.setText(QCoreApplication.translate("MainWindow", u"More tissue", None))
         self.decrease_ta.setText(QCoreApplication.translate("MainWindow", u"More whitespace", None))
 
