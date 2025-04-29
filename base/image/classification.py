@@ -389,8 +389,8 @@ class ImageClassifier:
             # Define output path
             output_path = os.path.join(self.output_path, f"{os.path.splitext(img_name)[0]}.tif")
 
-            # Skip if already classified, unless overlay or mask is requested
-            if os.path.exists(output_path) and not (self.should_create_color_overlay or self.should_create_color_mask):
+            # Skip if already classified
+            if os.path.exists(output_path):
                 print(f'Image already classified, skipping: {img_name}')
                 continue
 
