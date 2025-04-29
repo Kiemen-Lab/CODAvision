@@ -102,7 +102,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def select_imagedir(self, purpose):
         dialog_title = f'Select {purpose.capitalize()} Image Directory'
-        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, os.getcwd())
+        target_folder = self.ui.trianing_LE.text()
+        if not os.path.exists(target_folder):
+            target_folder = os.getcwd()
+        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, target_folder)
         if folder_path:
             if os.path.isdir(folder_path):
                 if purpose == 'training':
@@ -120,7 +123,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def browse_image_folder(self, purpose):
         dialog_title = f'Select Uncompressed {purpose.capitalize()} Image Directory'
-        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, os.getcwd())
+        target_folder = self.ui.trianing_LE.text()
+        if not os.path.exists(target_folder):
+            target_folder = os.getcwd()
+        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, target_folder)
         if folder_path:
             if os.path.isdir(folder_path):
                 if purpose == 'training':

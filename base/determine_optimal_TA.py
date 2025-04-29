@@ -341,7 +341,7 @@ def determine_optimal_TA(pthim,pthtestim, numims):
 
         def on_browse(self):
             file_path,_ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Image to Reevaluate",
-                                                                "","TIFF Images (*.tif *.tiff)")
+                                                                pthim,"TIFF Images (*.tif *.tiff)")
             if file_path:
                 if os.path.isfile(file_path):
                     self.ui.image_LE.setText(file_path)
