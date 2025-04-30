@@ -90,7 +90,7 @@ class MainWindowClassify(QtWidgets.QMainWindow):
 
     def select_imagedir(self):
         dialog_title = f'Select Classify Image Directory'
-        folder_path = os.path.normpath(QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, os.getcwd()))
+        folder_path = os.path.normpath(QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, self.train_im_fold))
         if folder_path:
             if os.path.isdir(folder_path):
                 self.ui.classify_LE.setText(folder_path)
