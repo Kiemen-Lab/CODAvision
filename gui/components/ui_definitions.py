@@ -7,10 +7,11 @@ These classes define the layout and properties of the GUI components.
 Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
 Updated: March 2025
 """
+import os.path
 
 import numpy as np
 from PySide6.QtCore import (
-    QCoreApplication, QMetaObject, QRect, QSize, Qt, QRectF
+    QCoreApplication, QMetaObject, QRect, QSize, Qt, QRectF, QPoint
 )
 from PySide6.QtGui import QFont, QPixmap, QPainter
 from PySide6.QtWidgets import (
@@ -347,6 +348,11 @@ class Ui_MainWindow:
         self.Movedown_PB.setObjectName(u"Movedown_PB")
 
         self.verticalLayout_3.addWidget(self.Movedown_PB)
+        self.hover_label = HoverPreviewLabel(
+            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Question_mark_icon.png"),
+            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Nesting_example.jpg"),
+            self.tab_3)
+        self.verticalLayout_3.addWidget(self.hover_label)
 
         self.verticalLayout_4.addLayout(self.verticalLayout_3)
 
@@ -362,7 +368,6 @@ class Ui_MainWindow:
         self.nesting_checkBox.setObjectName(u"nesting_checkBox")
 
         self.verticalLayout_5.addWidget(self.nesting_checkBox)
-
         self.verticalSpacer_4 = QSpacerItem(20, 161, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_5.addItem(self.verticalSpacer_4)
@@ -723,10 +728,7 @@ class Ui_classify_im:
         self.scene = QGraphicsScene()
         self.overlay = QGraphicsView(self.scene, self.centralwidget)
         self.overlay.setRenderHint(QPainter.Antialiasing)
-        # self.overlay = QLabel(self.centralwidget)
-        # self.overlay.setObjectName(u"overlay")
         self.overlay.setGeometry(QRect(245, 200, 350, 350))
-        # self.overlay.setAutoFillBackground(True)
         self.zoom_in_PB = QPushButton(self.centralwidget)
         self.zoom_in_PB.setObjectName(u"zoom_in_PB")
         self.zoom_in_PB.setGeometry(QRect(570, 173, 25, 25))
@@ -824,3 +826,29 @@ class ImageViewer(QGraphicsView):
 
     def zoom_out(self):
         self.scale(1 / 1.2, 1 / 1.2)  # Zoom out by 20%
+
+class HoverPreviewLabel(QLabel):
+    def __init__(self, icon_path, preview_image_path, parent=None):
+        super().__init__(parent)
+
+        # Set the icon (e.g., question mark)
+        self.setPixmap(QPixmap(icon_path))
+        self.setFixedSize(24, 24)  # optional: fix size for consistent appearance
+        self.setScaledContents(True)
+
+        # Preview image popup
+        self.preview_popup = QLabel(parent)
+        self.preview_popup.setPixmap(QPixmap(preview_image_path))
+        self.preview_popup.adjustSize()
+        self.preview_popup.setWindowFlags(Qt.ToolTip)  # behaves like a tooltip
+        self.preview_popup.hide()
+
+    def enterEvent(self, event):
+        global_pos = self.mapToGlobal(self.rect().bottomRight())
+        self.preview_popup.move(global_pos + QPoint(10, 10))
+        self.preview_popup.show()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self.preview_popup.hide()
+        super().leaveEvent(event)
