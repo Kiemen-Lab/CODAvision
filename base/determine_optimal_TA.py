@@ -1,12 +1,3 @@
-import numpy as np
-from glob import glob
-import os
-import sys
-import pickle
-from PySide6 import QtGui, QtWidgets, QtCore
-from PySide6.QtCore import Qt, QRect
-import cv2
-
 
 import numpy as np
 from glob import glob
@@ -97,6 +88,7 @@ def determine_optimal_TA(pthim,pthtestim, numims):
             self.do_again = 1
             self.ui.looks_good.clicked.connect(self.on_good)
             self.ui.new_loc.clicked.connect(self.on_new)
+
         def on_good(self):
             self.do_again = 0
             self.close()
@@ -156,36 +148,46 @@ def determine_optimal_TA(pthim,pthtestim, numims):
             self.ui.TA_im.setMinimumSize(300,300)
             self.ui.TA_im.setMaximumSize(300,300)
             mode_widget = QtWidgets.QWidget()
-            mode_widget.setMaximumHeight(330)
             mode_layout = QtWidgets.QVBoxLayout(mode_widget)
             self.ui.change_mode.setMinimumSize(155, 50)
+            self.ui.change_mode.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
             mode_layout.addWidget(self.ui.change_mode)
             self.ui.text_mode.setMinimumSize(155, 30)
+            self.ui.text_mode.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
             mode_layout.addWidget(self.ui.text_mode)
             self.ui.slider_label.setMinimumSize(155, 30)
+            self.ui.slider_label.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
             mode_layout.addWidget(self.ui.slider_label)
             mode_layout.addStretch()
-            mode_layout.setContentsMargins(0, 30, 0, 0)
+            mode_layout.setContentsMargins(0, 25, 0, 0)
             HE_layout.addWidget(self.ui.medium_im)
             images_layout.addLayout(HE_layout)
             TA_layout.addWidget(self.ui.TA_im)
             images_layout.addLayout(TA_layout)
             images_layout.addWidget(mode_widget)
-            main_layout.addLayout(images_layout)
+            images_outer_layout = QtWidgets.QHBoxLayout()
+            images_outer_layout.addStretch()
+            images_outer_layout.addLayout(images_layout)
+            images_outer_layout.addStretch()
+            main_layout.addLayout(images_outer_layout)
             slider_section = QtWidgets.QWidget()
             slider_layout = QtWidgets.QHBoxLayout(slider_section)
             self.ui.decrease_ta.setMinimumSize(120, 30)
             slider_layout.addWidget(self.ui.decrease_ta)
             slider_layout.addWidget(self.ui.slider_container, stretch=1)
             self.ui.raise_ta.setMinimumSize(120, 30)
+            self.ui.raise_ta.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self.ui.decrease_ta.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
             slider_layout.addWidget(self.ui.raise_ta)
             main_layout.addWidget(slider_section)
             save_container = QtWidgets.QWidget()
             save_layout = QtWidgets.QHBoxLayout(save_container)
             save_layout.addStretch()
             self.ui.apply.setMinimumSize(150, 50)
+            self.ui.apply.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
             save_layout.addWidget(self.ui.apply)
             main_layout.addWidget(save_container)
+            main_layout.addStretch()
             self.stop = True
             self.setWindowTitle("Select an appropriate intensity threshold for the binary mask")
             self.mode = mode
@@ -214,20 +216,7 @@ def determine_optimal_TA(pthim,pthtestim, numims):
 
         def update_slider(self):
             self.ui.slider_label.setText("Current threshold value: "+str(self.ui.TA_selection.value()))
-            # handle_pos = self.slider_handle_position()
-            # self.ui.slider_label.setGeometry(handle_pos-15, 0, 30, 20)
             self.on_change_TA()
-
-        def slider_handle_position(self):
-            """ Get the X coordinate of the slider handle. """
-            option = QtWidgets.QStyleOptionSlider()
-            self.ui.TA_selection.initStyleOption(option)
-            handle_rect = self.ui.TA_selection.style().subControlRect(QtWidgets.QStyle.CC_Slider, option,
-                                                                      QtWidgets.QStyle.SC_SliderHandle, self.ui.TA_selection)
-
-            slider_x = self.ui.TA_selection.pos().x()  # Slider X position in parent widget
-            return slider_x + handle_rect.x() + (handle_rect.width() // 2)
-
 
         def on_apply(self):
             self.TA = self.CT0
@@ -270,13 +259,11 @@ def determine_optimal_TA(pthim,pthtestim, numims):
             qimage = QtGui.QImage(image_array.data, width, height, image_array.strides[0],
                                   QtGui.QImage.Format_Grayscale8)
             pixmap = QtGui.QPixmap.fromImage(qimage)
-            # self.ui.TA_im.setGeometry(QRect(54 + szz*0.75, 70, szz / 2, szz / 2))
             self.ui.TA_im.setPixmap(pixmap.scaled(
                 self.ui.TA_im.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             ))
-            # self.ui.TA_im.setScaledContents(True)
 
         def update_image(self, szz, cropped):
             if self.mode == 'H&E':
@@ -290,23 +277,19 @@ def determine_optimal_TA(pthim,pthtestim, numims):
             bytes_per_line = 3 * width
             qimage = QtGui.QImage(image_array_medium.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
             pixmap = QtGui.QPixmap.fromImage(qimage)
-            # self.ui.medium_im.setGeometry(QRect(50 + szz / 4, 70, szz / 2, szz / 2))
             self.ui.medium_im.setPixmap(pixmap.scaled(
                 self.ui.medium_im.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             ))
-            # self.ui.medium_im.setScaledContents(True)
             height, width = image_array.shape[:2]
             qimage = QtGui.QImage(image_array.data, width, height, image_array.strides[0], QtGui.QImage.Format_Grayscale8)
             pixmap = QtGui.QPixmap.fromImage(qimage)
-            # self.ui.TA_im.setGeometry(QRect(54+szz*0.75, 70, szz/2, szz/2))
             self.ui.TA_im.setPixmap(pixmap.scaled(
                 self.ui.TA_im.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
             ))
-            # self.ui.TA_im.setScaledContents(True)
 
 
     def select_TA(szz, cropped, CT0, mode):
@@ -325,15 +308,28 @@ def determine_optimal_TA(pthim,pthtestim, numims):
             super(confirm_TA_ui, self).__init__()
             self.ui = Ui_use_current_TA()
             self.ui.setupUi(self)
-            self.setGeometry(550, 300,
-                             550, 130)
-            self.ui.text.setGeometry(QRect(25, 10, 500, 60))
-            self.ui.keep_ta.setGeometry(QRect(25, 80, 248, 40))
-            self.ui.new_ta.setGeometry(QRect(275 , 80, 248, 40))
+            central_widget = self.ui.centralwidget
+            main_layout = QtWidgets.QVBoxLayout()
+            main_layout.setContentsMargins(10, 10, 10, 10)
+            main_layout.setSpacing(10)
+            central_widget.setLayout(main_layout)
+            self.setCentralWidget(central_widget)
+            self.ui.text.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.ui.text.setMinimumSize(500,60)
+            main_layout.addStretch()
+            main_layout.addWidget(self.ui.text)
+            buttons_layout =  QtWidgets.QHBoxLayout()
+            self.ui.keep_ta.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.ui.keep_ta.setMinimumSize(248,40)
+            buttons_layout.addWidget(self.ui.keep_ta)
+            self.ui.new_ta.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.ui.new_ta.setMinimumSize(248, 40)
+            buttons_layout.addWidget(self.ui.new_ta)
+            main_layout.addLayout(buttons_layout)
+            main_layout.addStretch()
             self.setWindowTitle("Confirm tissue mask evaluation")
             self.ui.keep_ta.clicked.connect(self.on_keep_TA)
             self.ui.new_ta.clicked.connect(self.on_new_TA)
-
 
         def on_keep_TA(self):
             self.keep_TA = True
@@ -357,14 +353,40 @@ def determine_optimal_TA(pthim,pthtestim, numims):
             super(choose_images_TA_ui, self).__init__()
             self.ui = Ui_choose_images_reevaluated()
             self.ui.setupUi(self)
-            self.setGeometry(450, 300,
-                            600, 250)
-            self.ui.image_LE.setGeometry(QRect(25, 10, 448, 30))
-            self.ui.image_LW.setGeometry(QRect(25, 45, 550, 100))
-            self.ui.browse_PB.setGeometry(QRect(475, 10, 100, 30))
-            self.ui.delete_PB.setGeometry(QRect(375, 150, 200, 30))
-            self.ui.apply_PB.setGeometry(QRect(477, 185, 100, 30))
-            self.ui.apply_all_PB.setGeometry(QRect(375, 185, 100, 30))
+            central_widget = self.ui.centralwidget
+            main_layout = QtWidgets.QVBoxLayout()
+            main_layout.setContentsMargins(10, 10, 10, 10)
+            main_layout.setSpacing(10)
+            central_widget.setLayout(main_layout)
+            self.setCentralWidget(central_widget)
+            self.ui.image_LE.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self.ui.image_LE.setMinimumSize(448, 30)
+            browse_layout = QtWidgets.QHBoxLayout()
+            browse_layout.addWidget(self.ui.image_LE)
+            self.ui.browse_PB.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+            self.ui.browse_PB.setMinimumSize(100, 30)
+            browse_layout.addWidget(self.ui.browse_PB)
+            main_layout.addLayout(browse_layout)
+            self.ui.image_LW.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.ui.image_LW.setMinimumSize(550,100)
+            main_layout.addWidget(self.ui.image_LW)
+            buttons_layout = QtWidgets.QVBoxLayout()
+            self.ui.delete_PB.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self.ui.delete_PB.setMinimumSize(200, 30)
+            buttons_layout.addWidget(self.ui.delete_PB)
+            bottom_buttons = QtWidgets.QHBoxLayout()
+            self.ui.apply_all_PB.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self.ui.apply_all_PB.setMinimumSize(100, 30)
+            bottom_buttons.addWidget(self.ui.apply_all_PB)
+            self.ui.apply_PB.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self.ui.apply_PB.setMinimumSize(100, 30)
+            bottom_buttons.addWidget(self.ui.apply_PB)
+            buttons_layout.addLayout(bottom_buttons)
+            buttons_container = QtWidgets.QHBoxLayout()
+            buttons_container.addStretch()
+            buttons_container.addLayout(buttons_layout)
+            main_layout.addLayout(buttons_container)
+            main_layout.addStretch()
             self.setWindowTitle("Confirm tissue mask evaluation")
             self.ui.delete_PB.clicked.connect(self.on_delete_image)
             self.ui.browse_PB.clicked.connect(self.on_browse)
