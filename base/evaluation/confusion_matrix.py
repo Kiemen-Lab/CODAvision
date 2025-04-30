@@ -193,6 +193,7 @@ class ConfusionMatrixVisualizer:
                 ha="right",
                 rotation_mode="anchor"
             )
+            plt.draw()
 
             # Position x-axis label at top
             plt.gca().xaxis.set_label_position('top')
