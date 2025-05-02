@@ -13,7 +13,7 @@ import numpy as np
 from PySide6.QtCore import (
     QCoreApplication, QMetaObject, QRect, QSize, Qt, QRectF, QPoint
 )
-from PySide6.QtGui import QFont, QPixmap, QPainter
+from PySide6.QtGui import QFont, QPixmap, QPainter, QIcon
 from PySide6.QtWidgets import (
     QWidget, QGroupBox, QLabel, QPushButton, QLineEdit,
     QComboBox, QSpinBox, QTabWidget, QCheckBox,
@@ -31,6 +31,10 @@ class Ui_MainWindow:
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
         MainWindow.resize(706, 453)
+
+        # Set the application icon
+        MainWindow.setWindowIcon(QIcon("gui/resources/logoCODAvision.png"))
+
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayout_6 = QGridLayout(self.centralwidget)
@@ -368,6 +372,7 @@ class Ui_MainWindow:
         self.nesting_checkBox.setObjectName(u"nesting_checkBox")
 
         self.verticalLayout_5.addWidget(self.nesting_checkBox)
+
         self.verticalSpacer_4 = QSpacerItem(20, 161, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_5.addItem(self.verticalSpacer_4)
@@ -728,7 +733,10 @@ class Ui_classify_im:
         self.scene = QGraphicsScene()
         self.overlay = QGraphicsView(self.scene, self.centralwidget)
         self.overlay.setRenderHint(QPainter.Antialiasing)
+        # self.overlay = QLabel(self.centralwidget)
+        # self.overlay.setObjectName(u"overlay")
         self.overlay.setGeometry(QRect(245, 200, 350, 350))
+        # self.overlay.setAutoFillBackground(True)
         self.zoom_in_PB = QPushButton(self.centralwidget)
         self.zoom_in_PB.setObjectName(u"zoom_in_PB")
         self.zoom_in_PB.setGeometry(QRect(570, 173, 25, 25))

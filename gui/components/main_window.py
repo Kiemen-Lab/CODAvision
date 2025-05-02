@@ -48,16 +48,16 @@ def choose_xml(parent):
 class MainWindow(QtWidgets.QMainWindow):
     """
     Main window for the CODAvision application.
-    
+
     This class provides the main application window with all functionality
     for model creation, training, and management.
     """
     def __init__(self):
-        super().__init__() 
+        super().__init__()
 
         self.ui = Ui_MainWindow()
-        self.ui.setupUi(self) 
-        self.setCentralWidget(self.ui.centralwidget) 
+        self.ui.setupUi(self)
+        self.setCentralWidget(self.ui.centralwidget)
         self.ui.Save_FL_PB.clicked.connect(self.fill_form_and_continue)
         self.ui.trainin_PB.clicked.connect(lambda: self.select_imagedir('training'))
         self.ui.testing_PB.clicked.connect(lambda: self.select_imagedir('testing'))
@@ -94,11 +94,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.create_downsample_CB.stateChanged.connect(self.check_for_trained_model)
         self.ui.TA_CB.stateChanged.connect(self.TA_change)
         self.combo_colors = {}
-        self.original_df = None 
+        self.original_df = None
         self.df = None
         self.prerecorded_data = False
         self.loaded_xml = False
-        self.combined_df = None 
+        self.combined_df = None
         self.delete_count = 0
         self.combo_count = 0
         self.classify = False
@@ -106,12 +106,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.test_img_type = '.ndpi'
 
         self.set_initial_model_name()
-        self.ui.tabWidget.setCurrentIndex(0) 
+        self.ui.tabWidget.setCurrentIndex(0)
         for i in range(1, self.ui.tabWidget.count()):
             self.ui.tabWidget.setTabEnabled(i, False)
 
         self.setWindowTitle("CODA Vision")
-    
+
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""
         today = datetime.now()
