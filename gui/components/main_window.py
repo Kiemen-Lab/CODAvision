@@ -159,7 +159,7 @@ class MainWindow(QtWidgets.QMainWindow):
         training_folder = self.ui.trianing_LE.text()
         custom_xml = choose_xml(self)
         if custom_xml:
-            xml_file, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select XML File for Segmentation Settings:",
+            xml_file, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select XML File for Segmentation Settings Tab:",
                                                                  training_folder, "XML Files (*.xml)")
         else:
             for file in os.listdir(training_folder):

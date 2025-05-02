@@ -351,18 +351,13 @@ class Ui_MainWindow:
         self.Movedown_PB = QPushButton(self.tab_3)
         self.Movedown_PB.setObjectName(u"Movedown_PB")
 
-        self.verticalLayout_3.addWidget(self.Movedown_PB)
-        self.hover_label = HoverPreviewLabel(
-            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Question_mark_icon.png"),
-            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Nesting_example.jpg"),
-            self.tab_3)
-        self.verticalLayout_3.addWidget(self.hover_label)
-
         self.verticalLayout_4.addLayout(self.verticalLayout_3)
 
         self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_4.addItem(self.verticalSpacer_2)
+
+        self.verticalLayout_3.addWidget(self.Movedown_PB)
 
         self.gridLayout_5.addLayout(self.verticalLayout_4, 0, 1, 1, 1)
 
@@ -372,6 +367,7 @@ class Ui_MainWindow:
         self.nesting_checkBox.setObjectName(u"nesting_checkBox")
 
         self.verticalLayout_5.addWidget(self.nesting_checkBox)
+
         self.verticalSpacer_4 = QSpacerItem(20, 161, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.verticalLayout_5.addItem(self.verticalSpacer_4)
@@ -381,6 +377,17 @@ class Ui_MainWindow:
         self.horizontalSpacer_4 = QSpacerItem(438, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.gridLayout_5.addItem(self.horizontalSpacer_4, 1, 1, 1, 2)
+
+        self.hover_label = HoverPreviewLabel(
+            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Question_mark_icon.png"),
+            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Nesting_example.jpg"),
+            self.tab_3)
+        self.verticalLayout_42 = QVBoxLayout()
+        self.verticalLayout_42.setObjectName(u"verticalLayout_42")
+        self.verticalLayout_42.addWidget(self.hover_label)
+        self.verticalSpacer_42 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        self.verticalLayout_42.addItem(self.verticalSpacer_42)
+        self.gridLayout_5.addItem(self.verticalLayout_42, 0, 4, 1, 1)
 
         self.verticalLayout_6 = QVBoxLayout()
         self.verticalLayout_6.setObjectName(u"verticalLayout_6")
@@ -732,7 +739,10 @@ class Ui_classify_im:
         self.scene = QGraphicsScene()
         self.overlay = QGraphicsView(self.scene, self.centralwidget)
         self.overlay.setRenderHint(QPainter.Antialiasing)
+        # self.overlay = QLabel(self.centralwidget)
+        # self.overlay.setObjectName(u"overlay")
         self.overlay.setGeometry(QRect(245, 200, 350, 350))
+        # self.overlay.setAutoFillBackground(True)
         self.zoom_in_PB = QPushButton(self.centralwidget)
         self.zoom_in_PB.setObjectName(u"zoom_in_PB")
         self.zoom_in_PB.setGeometry(QRect(570, 173, 25, 25))
@@ -849,7 +859,7 @@ class HoverPreviewLabel(QLabel):
 
     def enterEvent(self, event):
         global_pos = self.mapToGlobal(self.rect().bottomRight())
-        self.preview_popup.move(global_pos - QPoint(300, 0))
+        self.preview_popup.move(global_pos - QPoint(800, 0))
         self.preview_popup.show()
         super().enterEvent(event)
 
