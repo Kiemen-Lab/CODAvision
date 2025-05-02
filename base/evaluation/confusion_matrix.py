@@ -187,13 +187,12 @@ class ConfusionMatrixVisualizer:
             plt.title('Confusion Matrix', fontweight='bold')
 
             # Rotate x-axis labels
-            plt.setp(
-                plt.gca().get_xticklabels(),
+            ax = plt.gca()
+            ax.set_xticklabels(
+                ax.get_xticklabels(),
                 rotation=45,
-                ha="right",
-                rotation_mode="anchor"
+                ha='center',
             )
-            plt.draw()
 
             # Position x-axis label at top
             plt.gca().xaxis.set_label_position('top')

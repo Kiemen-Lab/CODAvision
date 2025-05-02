@@ -849,7 +849,7 @@ class HoverPreviewLabel(QLabel):
 
     def enterEvent(self, event):
         global_pos = self.mapToGlobal(self.rect().bottomRight())
-        self.preview_popup.move(global_pos + QPoint(10, 10))
+        self.preview_popup.move(global_pos - QPoint(300, 0))
         self.preview_popup.show()
         super().enterEvent(event)
 

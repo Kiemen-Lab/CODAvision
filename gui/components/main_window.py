@@ -29,6 +29,22 @@ from .ui_definitions import Ui_MainWindow
 from .classification_window import MainWindowClassify
 
 
+def choose_xml(parent):
+    msg_box = QtWidgets.QMessageBox(parent)
+    msg_box.setWindowTitle("Choose XML File")
+    msg_box.setText("Do you want to choose an specific XML File for the Segmentation Settings?")
+
+    option_a = msg_box.addButton("Yes", QtWidgets.QMessageBox.AcceptRole)
+    option_b = msg_box.addButton("No", QtWidgets.QMessageBox.RejectRole)
+
+    msg_box.exec()
+
+    if msg_box.clickedButton() == option_a:
+        return True
+    elif msg_box.clickedButton() == option_b:
+        return False
+    return None
+
 class MainWindow(QtWidgets.QMainWindow):
     """
     Main window for the CODAvision application.
@@ -46,6 +62,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.trainin_PB.clicked.connect(lambda: self.select_imagedir('training'))
         self.ui.testing_PB.clicked.connect(lambda: self.select_imagedir('testing'))
         self.ui.changecolor_PB.clicked.connect(self.change_color)
+        self.ui.tissue_segmentation_TW.itemDoubleClicked.connect(self.change_class_name)
         self.ui.apply_PB.clicked.connect(self.apply_whitespace_setting)
         self.ui.applyall_PB.clicked.connect(self.apply_all_whitespace_setting)
         self.ui.save_ts_PB.clicked.connect(self.save_and_continue_from_tab_2)
@@ -80,6 +97,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.original_df = None
         self.df = None
         self.prerecorded_data = False
+        self.loaded_xml = False
         self.combined_df = None
         self.delete_count = 0
         self.combo_count = 0
@@ -102,7 +120,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def select_imagedir(self, purpose):
         dialog_title = f'Select {purpose.capitalize()} Image Directory'
-        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, os.getcwd())
+        target_folder = self.ui.trianing_LE.text()
+        if not os.path.exists(target_folder):
+            target_folder = os.getcwd()
+        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, target_folder)
         if folder_path:
             if os.path.isdir(folder_path):
                 if purpose == 'training':
@@ -120,7 +141,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def browse_image_folder(self, purpose):
         dialog_title = f'Select Uncompressed {purpose.capitalize()} Image Directory'
-        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, os.getcwd())
+        target_folder = self.ui.trianing_LE.text()
+        if not os.path.exists(target_folder):
+            target_folder = os.getcwd()
+        folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, dialog_title, target_folder)
         if folder_path:
             if os.path.isdir(folder_path):
                 if purpose == 'training':
@@ -133,10 +157,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def load_xml(self):
         xml_file = None
         training_folder = self.ui.trianing_LE.text()
-        for file in os.listdir(training_folder):
-            if file.endswith('.xml'):
-                xml_file = os.path.join(training_folder, file)
-                break
+        custom_xml = choose_xml(self)
+        if custom_xml:
+            xml_file, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select XML File for Segmentation Settings:",
+                                                                 training_folder, "XML Files (*.xml)")
+        else:
+            for file in os.listdir(training_folder):
+                if file.endswith('.xml'):
+                    xml_file = os.path.join(training_folder, file)
+                    break
         if xml_file:
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
@@ -149,7 +178,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 import traceback
                 print(traceback.format_exc())
         else:
-            QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+            if custom_xml:
+                QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file was selected.')
+            else:
+                QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+        self.loaded_xml = True
 
     def parse_xml_to_dataframe(self, xml_file):
         """
@@ -260,6 +293,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def check_for_trained_model(self):
         model_exists = False
+        self.loaded_xml = False
         if os.path.isdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
             for file in os.listdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
                 if 'best_model' in file and file.endswith('.keras'):
@@ -366,7 +400,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def fill_form_and_continue(self):
         """Fill the form, process data, and switch to the next tab if successful."""
         if self.fill_form():
-            if not self.prerecorded_data:
+            if not (self.prerecorded_data or self.loaded_xml):
                 self.load_xml()  # Load and parse the XML file only if not using prerecorded data
             next_tab_index = self.ui.tabWidget.currentIndex() + 1
             if next_tab_index < self.ui.tabWidget.count():
@@ -1057,6 +1091,42 @@ class MainWindow(QtWidgets.QMainWindow):
             layer_name = self.combined_df.iloc[updated_selected_row]['Layer Name']
             print(f"Color changed for {layer_name} to {new_rgb}")
 
+        self.populate_table_widget(self.combined_df, coloring=True)
+
+    def change_class_name(self):
+        self.delete_count = 0
+        # Initialize combined_df if it is None
+        if self.combined_df is None:
+            self.combined_df = self.df.copy()
+            self.combined_df['Layer idx'] = self.combined_df.index + 1  # Store the original row numbers +1
+            self.combined_df['Deleted'] = False
+            self.combined_df['Component analysis'] = np.nan
+
+        table = self.ui.tissue_segmentation_TW
+        selected_items = table.selectedItems()
+        selected_column = selected_items[0].column()
+        if selected_column > 0:
+            return
+
+        selected_row = selected_items[0].row()
+
+        updated_selected_row = selected_row
+
+        # Mark the selected rows as deleted
+        for idx in self.combined_df.index:
+            if self.combined_df.at[idx, 'Deleted'] == True:
+                self.delete_count += 1
+            elif idx - self.delete_count == selected_row:
+                updated_selected_row = idx
+        new_name, ok = QtWidgets.QInputDialog.getText(self, "New Class Name", "Enter a new name for the selected class:")
+        if not ok or not new_name or not all(char.isalnum() or char in ' _' for char in new_name):
+            QtWidgets.QMessageBox.warning(self, "Invalid Class Name",
+                                          "Please introduce a name that does not contain any special characters.")
+            return
+
+
+        # Update the DataFrame
+        self.combined_df.at[updated_selected_row, 'Layer Name'] = new_name
         self.populate_table_widget(self.combined_df, coloring=True)
 
     def initialize_advanced_settings(self):
