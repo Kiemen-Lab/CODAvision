@@ -103,11 +103,11 @@ Access the sample dataset [here](https://drive.google.com/drive/folders/1dkF10oj
 
 ### 📝 Instructions to Run on Sample Data
 
-Acess the demo instructions [here]() 
+Acess the demo instructions [here](https://drive.google.com/file/d/1ZtL0MrC_uGJmYUgUi4EBto6gyXNsg3Hh/view?usp=drive_link) 
 
 ### 📊 Expected Output
 
-Acess the expected output [here]().
+Acess the expected output [here](https://drive.google.com/drive/folders/1D3xujNXFZjP76CYznlfZtLYrKdyaKGDU?usp=sharing).
 
 ### ⏳ Expected Runtime
 
