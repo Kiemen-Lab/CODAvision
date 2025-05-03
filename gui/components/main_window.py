@@ -182,7 +182,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file was selected.')
             else:
                 QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+            return False
         self.loaded_xml = True
+        return True
 
     def parse_xml_to_dataframe(self, xml_file):
         """
@@ -401,9 +403,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """Fill the form, process data, and switch to the next tab if successful."""
         if self.fill_form():
             if not (self.prerecorded_data or self.loaded_xml):
-                self.load_xml()  # Load and parse the XML file only if not using prerecorded data
+                loaded = self.load_xml()  # Load and parse the XML file only if not using prerecorded data
+            else:
+                loaded =True
             next_tab_index = self.ui.tabWidget.currentIndex() + 1
-            if next_tab_index < self.ui.tabWidget.count():
+            if loaded and next_tab_index < self.ui.tabWidget.count():
                 self.switch_to_next_tab()
 
     def reset_combo(self):
