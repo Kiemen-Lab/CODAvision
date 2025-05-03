@@ -112,7 +112,7 @@ Acess the expected output [here]().
 ### ⏳ Expected Runtime
 
 - **GPU-Powered Workstation:** Approximately 2–3 hours for model training and image processing.
-- **Standard Desktop Computer:** Image processing and training time may extend up to 10 hours.
+- **Desktop Computer with no GPU:** Image processing and training time may extend up to 10 hours.
 
 ---
 
