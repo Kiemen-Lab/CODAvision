@@ -1,4 +1,5 @@
 # CODAvision
+[![bioRxiv](https://img.shields.io/badge/bioRxiv-10.1101/2025.04.11.648464-blue)](https://www.biorxiv.org/content/10.1101/2025.04.11.648464v1)
 
 CODAvision is an open-source Python package designed for microanatomical tissue labeling. It facilitates deep learning-based semantic segmentation of Whole Slide Images (WSI) through a user-friendly interface.
 
