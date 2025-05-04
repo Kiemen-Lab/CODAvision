@@ -1132,6 +1132,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Update the DataFrame
         self.combined_df.at[updated_selected_row, 'Layer Name'] = new_name
         self.populate_table_widget(self.combined_df, coloring=True)
+        self.populate_combo_boxes()
 
     def initialize_advanced_settings(self):
         # Clear table before populating
