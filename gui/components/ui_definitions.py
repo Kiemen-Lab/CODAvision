@@ -589,6 +589,7 @@ class Ui_MainWindow:
 
         self.tabWidget.setCurrentIndex(0)
         self.tts_CB.setCurrentIndex(4)
+        self.loading_dialog = LoadingDialog(self.centralwidget)
 
         QMetaObject.connectSlotsByName(MainWindow)
 
