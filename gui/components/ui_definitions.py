@@ -398,7 +398,7 @@ class Ui_MainWindow:
         self.horizontalLayout_8.setObjectName(u"horizontalLayout_8")
         self.return_nesting_PB = QPushButton(self.tab_3)
         self.return_nesting_PB.setObjectName(u"return_nesting_PB")
-        self.return_nesting_PB.setGeometry(QRect(200, 400, 140, 30))
+        #self.return_nesting_PB.setGeometry(QRect(200, 400, 140, 30))
 
         self.horizontalLayout_8.addWidget(self.return_nesting_PB)
 
@@ -410,11 +410,7 @@ class Ui_MainWindow:
         self.horizontalLayout_8.addWidget(self.save_nesting_PB)
         self.horizontalLayout_8.addWidget(self.AS_PB)
         self.verticalLayout_6.addLayout(self.horizontalLayout_8)
-        container = QWidget(self.tab_3)
-        container.setLayout(self.verticalLayout_6)
-        container.setGeometry(QRect(275, 340, 410, 45))
-
-        # self.gridLayout_5.addLayout(self.verticalLayout_6, 1, 3, 1, 1)
+        self.gridLayout_5.addLayout(self.verticalLayout_6, 1, 1, 1, 4)
 
         self.tabWidget.addTab(self.tab_3, "")
         self.tab_4 = QWidget()
@@ -493,7 +489,7 @@ class Ui_MainWindow:
         self.vtn_SB.setObjectName(u"vtn_SB")
         self.vtn_SB.setMaximum(100)
         self.vtn_SB.setSingleStep(1)
-        self.vtn_SB.setValue(3)
+        self.vtn_SB.setValue(1)
         self.vtn_SB.lineEdit().setReadOnly(True)
 
         self.horizontalLayout_13.addWidget(self.vtn_SB)
@@ -519,11 +515,18 @@ class Ui_MainWindow:
         self.TA_CB.setObjectName(u"TA_CB")
         self.label_69 = QLabel(self.tab_4)
         self.label_69.setObjectName(u"label_69")
+        self.redo_TA_CB = QCheckBox(self.tab_4)
+        self.redo_TA_CB.setObjectName(u"redo_TA_CB")
+        self.label_73 = QLabel(self.tab_4)
+        self.label_73.setObjectName(u"label_73")
 
         self.horizontalLayout_14.addWidget(self.TA_SB)
         self.horizontalLayout_14.addSpacing(40)
         self.horizontalLayout_14.addWidget(self.label_69)
         self.horizontalLayout_14.addWidget(self.TA_CB)
+        self.horizontalLayout_14.addSpacing(40)
+        self.horizontalLayout_14.addWidget(self.label_73)
+        self.horizontalLayout_14.addWidget(self.redo_TA_CB)
         self.verticalLayout_10.addLayout(self.horizontalLayout_14)
 
         self.horizontalLayout_15 = QHBoxLayout()
@@ -534,9 +537,6 @@ class Ui_MainWindow:
         self.model_type_CB = QComboBox(self.tab_4)
         self.model_type_CB.addItem("DeepLabV3_plus")
         self.model_type_CB.addItem("UNet")
-        # self.model_type_CB.addItem("UNet3_plus")
-        # self.model_type_CB.addItem("TransUNet")
-        # self.model_type_CB.addItem("CASe_UNet")
         self.model_type_CB.setObjectName(u"model_type_CB")
         self.horizontalLayout_15.addWidget(self.model_type_CB)
         self.verticalLayout_10.addLayout(self.horizontalLayout_15)
@@ -589,6 +589,7 @@ class Ui_MainWindow:
 
         self.tabWidget.setCurrentIndex(0)
         self.tts_CB.setCurrentIndex(4)
+        self.loading_dialog = LoadingDialog(self.centralwidget)
 
         QMetaObject.connectSlotsByName(MainWindow)
 
@@ -686,6 +687,7 @@ class Ui_MainWindow:
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"Validation tiles number:", None))
         self.label_12.setText(QCoreApplication.translate("MainWindow", u"Tissue mask evaluation:", None))
         self.label_69.setText(QCoreApplication.translate("MainWindow", u"Individual tissue mask evaluation:", None))
+        self.label_73.setText(QCoreApplication.translate("MainWindow", u"Remake tissue masks:", None))
         self.label_42.setText(QCoreApplication.translate("MainWindow", u"Training images", None))
         self.label_44.setText(QCoreApplication.translate("MainWindow", u"Testing images", None))
         self.label_43.setText(QCoreApplication.translate("MainWindow", u"Scaling factor", None))
