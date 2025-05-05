@@ -261,9 +261,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 addnonws_layer_name = self.df.iloc[ws[1][1] - 1]['Layer Name']
                 count = 0
                 for i in self.combined_df['Layer idx']:
-                    if isinstance(i, list) and np.isin(ws[1][0], i):
+                    if (isinstance(i, list) and np.isin(ws[1][0], i)) or (not isinstance(i, list) and i==ws[1][0] and self.combined_df.iloc[count]['Layer Name']!=addws_layer_name):
                         addws_layer_name = self.combined_df.iloc[count]['Layer Name']
-                    elif isinstance(i, list) and np.isin(ws[1][1], i):
+                    elif (isinstance(i, list) and np.isin(ws[1][1], i)) or (not isinstance(i, list) and i==ws[1][1] and self.combined_df.iloc[count]['Layer Name']!=addnonws_layer_name):
                         addnonws_layer_name = self.combined_df.iloc[count]['Layer Name']
                     count += 1
                 self.ui.addws_CB.setCurrentText(addws_layer_name)
