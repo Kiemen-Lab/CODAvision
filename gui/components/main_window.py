@@ -9,20 +9,20 @@ Updated: March 2025
 """
 
 import os
-
+import shutil
+import xml.etree.ElementTree as ET
 import numpy as np
 import pandas as pd
 from datetime import datetime
 import pickle
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush, QRegularExpressionValidator
-from PySide6.QtWidgets import QColorDialog, QHeaderView
-from PySide6.QtCore import Qt, QRegularExpression
+from PySide6.QtWidgets import QColorDialog, QHeaderView, QProgressBar
+from PySide6.QtCore import Qt, QThread, Signal, QObject
 
 # Import from base package
 from base.data.annotation import extract_annotation_layers
 from base import save_model_metadata_GUI
-from base.WSI2tif import WSI2tif
 
 # Import GUI components
 from .ui_definitions import Ui_MainWindow
@@ -58,6 +58,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.setCentralWidget(self.ui.centralwidget)
+        self.progress_bar = QProgressBar()
         self.ui.Save_FL_PB.clicked.connect(self.fill_form_and_continue)
         self.ui.trainin_PB.clicked.connect(lambda: self.select_imagedir('training'))
         self.ui.testing_PB.clicked.connect(lambda: self.select_imagedir('testing'))
@@ -110,7 +111,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(1, self.ui.tabWidget.count()):
             self.ui.tabWidget.setTabEnabled(i, False)
 
-        self.setWindowTitle("CODA Vision")
+        self.setWindowTitle("CODAvision")
 
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""
@@ -154,6 +155,22 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 self.ui.path_check.exec_()
 
+    def renumber_xml_layers(self):
+        self.loader = xml_sorter(self.ui.trianing_LE.text(),self.ui.testing_LE.text())
+        self.process_thread = ProcessThread(self.loader)
+        self.loader.started.connect(self.on_processing_started)
+        self.loader.finished.connect(self.on_processing_finished)
+        self.process_thread.start()
+
+
+    def on_processing_started(self):
+        # Show dialog when processing starts
+        self.ui.loading_dialog.exec()
+
+    def on_processing_finished(self):
+        # Close dialog when processing is complete
+        self.ui.loading_dialog.accept()
+
     def load_xml(self):
         xml_file = None
         training_folder = self.ui.trianing_LE.text()
@@ -182,7 +199,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file was selected.')
             else:
                 QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file found in the training annotations folder.')
+            return False
         self.loaded_xml = True
+        return True
 
     def parse_xml_to_dataframe(self, xml_file):
         """
@@ -259,9 +278,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 addnonws_layer_name = self.df.iloc[ws[1][1] - 1]['Layer Name']
                 count = 0
                 for i in self.combined_df['Layer idx']:
-                    if isinstance(i, list) and np.isin(ws[1][0], i):
+                    if (isinstance(i, list) and np.isin(ws[1][0], i)) or (not isinstance(i, list) and i==ws[1][0] and self.combined_df.iloc[count]['Layer Name']!=addws_layer_name):
                         addws_layer_name = self.combined_df.iloc[count]['Layer Name']
-                    elif isinstance(i, list) and np.isin(ws[1][1], i):
+                    elif (isinstance(i, list) and np.isin(ws[1][1], i)) or (not isinstance(i, list) and i==ws[1][1] and self.combined_df.iloc[count]['Layer Name']!=addnonws_layer_name):
                         addnonws_layer_name = self.combined_df.iloc[count]['Layer Name']
                     count += 1
                 self.ui.addws_CB.setCurrentText(addws_layer_name)
@@ -400,10 +419,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def fill_form_and_continue(self):
         """Fill the form, process data, and switch to the next tab if successful."""
         if self.fill_form():
+            self.renumber_xml_layers()
             if not (self.prerecorded_data or self.loaded_xml):
-                self.load_xml()  # Load and parse the XML file only if not using prerecorded data
+                loaded = self.load_xml()  # Load and parse the XML file only if not using prerecorded data
+            else:
+                loaded =True
             next_tab_index = self.ui.tabWidget.currentIndex() + 1
-            if next_tab_index < self.ui.tabWidget.count():
+            if loaded and next_tab_index < self.ui.tabWidget.count():
                 self.switch_to_next_tab()
 
     def reset_combo(self):
@@ -1128,6 +1150,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Update the DataFrame
         self.combined_df.at[updated_selected_row, 'Layer Name'] = new_name
         self.populate_table_widget(self.combined_df, coloring=True)
+        self.populate_combo_boxes()
 
     def initialize_advanced_settings(self):
         # Clear table before populating
@@ -1428,8 +1451,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Number of validations tiles
         nvalidate = self.nval
-        # Number of TA images to evaluate (coming soon)
+        # Number of TA images to evaluate
         nTA = self.TA
+        #Redo TA evaluation
+        self.redo_TA = self.ui.redo_TA_CB.isChecked()
         # Type of model
         model_type = self.ui.model_type_CB.currentText()
         self.model_type = model_type
@@ -1522,6 +1547,72 @@ class MainWindow(QtWidgets.QMainWindow):
         self.classify = True
         print('Closing model creation GUI. Initializing classification GUI')
         self.close()
+
+    class Worker(QObject):
+        finished = Signal()
+
+        def run(self):
+              # Simulate long task
+            self.finished.emit()
+
+class xml_sorter(QObject):
+    started = Signal()
+    finished = Signal()
+    def __init__(self, pth, pthtest):
+        super().__init__()
+        self.pth = pth
+        self.pthtest = pthtest
+
+    def sort_xml(self):
+        """
+            Renumbers the <Annotation Id="..."> elements in all XML files in the folder `pth`.
+            A backup of each original file is saved to `pth/backup_xml/`.
+        """
+        self.started.emit()
+        for current_pth in [self.pth, self.pthtest]:
+            backup_dir = os.path.join(current_pth, 'backup_xml')
+            if os.path.isdir(backup_dir):
+                existing_backup = 1
+            else:
+                # Create backup directory
+                os.makedirs(backup_dir, exist_ok=True)
+                existing_backup=0
+            # Get all XML files in the directory
+            xml_files = [f for f in os.listdir(current_pth) if f.endswith('.xml')]
+            for idx, filename in enumerate(xml_files, 1):
+                file_path = os.path.join(current_pth, filename)
+                print(f"Checking file {idx} of {len(xml_files)}: {filename}")
+                if not existing_backup:
+                    # Backup the file
+                    shutil.copyfile(file_path, os.path.join(backup_dir, filename))
+                try:
+                    # Parse the XML
+                    tree = ET.parse(file_path)
+                    root = tree.getroot()
+                    # Typically <Annotations> is the root, or contains all annotations
+                    annotations = root.findall('.//Annotation')
+                    changed = False
+                    for i, ann in enumerate(annotations, 1):
+                        current_id = ann.attrib.get('Id')
+                        if current_id is not None and int(current_id) != i:
+                            ann.set('Id', str(i))
+                            changed = True
+                    if changed:
+                        print("  Sorting layer IDs of current file")
+                        tree.write(file_path, encoding='utf-8', xml_declaration=True)
+                    else:
+                        print("  Layer IDs are already sorted")
+                except Exception as e:
+                    print(f"  Failed to process {filename}: {e}")
+        self.finished.emit()
+
+class ProcessThread(QThread):
+    def __init__(self, loader):
+        super().__init__()
+        self.loader = loader
+
+    def run(self):
+        self.loader.sort_xml()
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication([])
