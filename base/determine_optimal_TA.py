@@ -103,7 +103,11 @@ def determine_optimal_TA(pthim,pthtestim, numims, redo):
             qimage = QtGui.QImage(image_array.data, width, height, bytes_per_line, QtGui.QImage.Format_RGB888)
             pixmap = QtGui.QPixmap.fromImage(qimage)
             self.ui.cropped.setGeometry(QRect(50, 40, szz, szz))
-            self.ui.cropped.setPixmap(pixmap)
+            self.ui.cropped.setPixmap(pixmap.scaled(
+                self.ui.cropped.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            ))
             frame_geom = self.frameGeometry()
             screen = QtWidgets.QApplication.primaryScreen()
             center_point = screen.availableGeometry().center()
