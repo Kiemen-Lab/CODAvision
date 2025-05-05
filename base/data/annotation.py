@@ -854,10 +854,11 @@ def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = False
         annotations = [annotations]
 
     xyout = []
+    layer_id = 0
     for layer in annotations:
+        layer_id += 1
         if 'Region' in layer.get("Regions", {}):
             try:
-                layer_id = int(layer.get('@Id'))
                 regions = layer["Regions"]["Region"]
 
                 # Process regions (could be list or single region)
