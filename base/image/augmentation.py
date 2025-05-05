@@ -118,7 +118,7 @@ def augment_image(
     # Hue augmentation (color shifting)
     if hue_shift:
         # Random factors for each channel, either reducing or increasing intensity
-        factors = np.concatenate((np.arange(0.88, 0.99, 0.01), np.arange(1.02, 1.13, 0.01)))
+        factors = np.concatenate((np.arange(0.88, 0.98, 0.01), np.arange(1.02, 1.12, 0.01)))
 
         # Apply different random factors to each channel
         for channel in range(3):
