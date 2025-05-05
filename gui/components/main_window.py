@@ -110,7 +110,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(1, self.ui.tabWidget.count()):
             self.ui.tabWidget.setTabEnabled(i, False)
 
-        self.setWindowTitle("CODA Vision")
+        self.setWindowTitle("CODAvision")
 
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""
@@ -1433,8 +1433,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Number of validations tiles
         nvalidate = self.nval
-        # Number of TA images to evaluate (coming soon)
+        # Number of TA images to evaluate
         nTA = self.TA
+        #Redo TA evaluation
+        self.redo_TA = self.ui.redo_TA_CB.isChecked()
         # Type of model
         model_type = self.ui.model_type_CB.currentText()
         self.model_type = model_type

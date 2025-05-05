@@ -8,7 +8,7 @@ from PySide6 import QtGui, QtWidgets, QtCore
 from PySide6.QtCore import Qt, QRect
 import cv2
 
-def determine_optimal_TA(pthim,pthtestim, numims):
+def determine_optimal_TA(pthim,pthtestim, numims, redo):
     from gui.components.dialogs import (
         Ui_choose_area, Ui_disp_crop, Ui_choose_TA,
         Ui_choose_images_reevaluated, Ui_use_current_TA
@@ -302,52 +302,6 @@ def determine_optimal_TA(pthim,pthtestim, numims):
         app.exec()
         return window.stop, window.TA, window.mode
 
-
-    class confirm_TA_ui(QtWidgets.QMainWindow):
-        def __init__(self):
-            super(confirm_TA_ui, self).__init__()
-            self.ui = Ui_use_current_TA()
-            self.ui.setupUi(self)
-            central_widget = self.ui.centralwidget
-            main_layout = QtWidgets.QVBoxLayout()
-            main_layout.setContentsMargins(10, 10, 10, 10)
-            main_layout.setSpacing(10)
-            central_widget.setLayout(main_layout)
-            self.setCentralWidget(central_widget)
-            self.ui.text.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self.ui.text.setMinimumSize(500,60)
-            main_layout.addStretch()
-            main_layout.addWidget(self.ui.text)
-            buttons_layout =  QtWidgets.QHBoxLayout()
-            self.ui.keep_ta.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self.ui.keep_ta.setMinimumSize(248,40)
-            buttons_layout.addWidget(self.ui.keep_ta)
-            self.ui.new_ta.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self.ui.new_ta.setMinimumSize(248, 40)
-            buttons_layout.addWidget(self.ui.new_ta)
-            main_layout.addLayout(buttons_layout)
-            main_layout.addStretch()
-            self.setWindowTitle("Confirm tissue mask evaluation")
-            self.ui.keep_ta.clicked.connect(self.on_keep_TA)
-            self.ui.new_ta.clicked.connect(self.on_new_TA)
-
-        def on_keep_TA(self):
-            self.keep_TA = True
-            self.close()
-
-        def on_new_TA(self):
-            self.keep_TA = False
-            self.close()
-
-    def confirm_TA():
-        app = QtWidgets.QApplication.instance()
-        if app is None:
-            app = QtWidgets.QApplication(sys.argv)
-        window = confirm_TA_ui()
-        window.show()
-        app.exec()
-        return window.keep_TA
-
     class choose_images_TA_ui(QtWidgets.QMainWindow):
         def __init__(self):
             super(choose_images_TA_ui, self).__init__()
@@ -481,7 +435,7 @@ def determine_optimal_TA(pthim,pthtestim, numims):
         os.makedirs(outpath)
     if os.path.isfile(os.path.join(outpath,'TA_cutoff.pkl')):
         if numims>0:
-            keep_TA = confirm_TA()
+            keep_TA = not redo
             if keep_TA:
                 print('   Optimal cutoff already chosen, skip this step')
                 return
@@ -498,7 +452,7 @@ def determine_optimal_TA(pthim,pthtestim, numims):
                 done.append(index)
             imlist_temp = list(set(imlist) - set(done))
             if not imlist_temp:
-                keep_TA = confirm_TA()
+                keep_TA = not redo
                 if keep_TA:
                     print('   Optimal cutoff already chosen for all images, skip this step')
                     return

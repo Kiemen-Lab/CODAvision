@@ -99,6 +99,7 @@ def CODAVision():
         umpix = window.umpix
         resolution = window.resolution
         model_type = window.model_type
+        redo = window.redo_TA
 
         scale_images = not(window.create_down)
         not_downsamp_annotated = window.downsamp_annotated_images
@@ -128,7 +129,7 @@ def CODAVision():
         downsamp_time = time.time()-downsamp_time
 
         # Execute the model training pipeline
-        determine_optimal_TA(pthim, pthtestim, nTA)
+        determine_optimal_TA(pthim, pthtestim, nTA, redo)
         try:
             os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
             shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
