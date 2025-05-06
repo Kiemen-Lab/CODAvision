@@ -47,6 +47,11 @@ CODAvision is an open-source Python package designed for semantic segmentation o
 - Image Annotation Tool (choose one):
   - [Aperio ImageScope](https://www.leicabiosystems.com/digital-pathology/manage/aperio-imagescope)
   - [QuPath](https://qupath.github.io)
+    
+    > ⚠️ **Note for QuPath Users:**  
+    > To use the GUI-guided workflow in CODAvision with annotations created in QuPath, you must first export the annotations for each image as GeoJSON files via `File > Export Objects as GeoJSON`.  
+    > These GeoJSON files must then be converted into XML format, which is compatible with CODAvision.  
+    > You can perform this conversion using the scripts provided in the following repository: [GeoJSON2XML](https://github.com/Kiemen-Lab/GeoJSON2XML).
 
 ---
 
