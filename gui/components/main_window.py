@@ -101,7 +101,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.loaded_xml = False
         self.combined_df = None
         self.delete_count = 0
-        self.combo_count = 0
         self.classify = False
         self.img_type = '.ndpi'
         self.test_img_type = '.ndpi'
@@ -280,7 +279,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 for i in self.combined_df['Layer idx']:
                     if (isinstance(i, list) and np.isin(ws[1][0], i)) or (not isinstance(i, list) and i==ws[1][0] and self.combined_df.iloc[count]['Layer Name']!=addws_layer_name):
                         addws_layer_name = self.combined_df.iloc[count]['Layer Name']
-                    elif (isinstance(i, list) and np.isin(ws[1][1], i)) or (not isinstance(i, list) and i==ws[1][1] and self.combined_df.iloc[count]['Layer Name']!=addnonws_layer_name):
+                    if (isinstance(i, list) and np.isin(ws[1][1], i)) or (not isinstance(i, list) and i==ws[1][1] and self.combined_df.iloc[count]['Layer Name']!=addnonws_layer_name):
                         addnonws_layer_name = self.combined_df.iloc[count]['Layer Name']
                     count += 1
                 self.ui.addws_CB.setCurrentText(addws_layer_name)
@@ -470,65 +469,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.add_ws_to = self.ui.addws_CB.currentIndex()
         self.add_nonws_to = self.ui.addnonws_CB.currentIndex()
         self.delete_count = 0
-        self.combo_count = []
         placehold_ws = self.add_ws_to
         placehold_nonws = self.add_nonws_to
         if self.add_ws_to == self.add_nonws_to:
             placehold_nonws = -3
         iteration = self.combined_df.index
-        num_lists = []
-        for x in self.combined_df['Layer idx']:
-            if isinstance(x, list):
-                num_lists.extend(x[1:])
-        iteration = pd.RangeIndex(start=iteration.start, stop=iteration.stop + len(num_lists), step=iteration.step)
+        iteration = pd.RangeIndex(start=iteration.start, stop=iteration.stop, step=iteration.step)
         for idx in iteration:
-            if np.sum([x - 1 <= idx for x in self.combo_count]) > 0:
-                if idx - self.delete_count - np.sum([x - 1 <= idx for x in self.combo_count]) + 1 == placehold_ws:
-                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
-                                                                            list):
-                        self.add_ws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
-                        self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
-                    else:
-                        self.add_ws_to = idx
-                    placehold_ws = -2
-                elif idx - self.delete_count - np.sum(
-                        [x - 1 <= idx for x in self.combo_count]) + 1 == placehold_nonws:
-                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
-                                                                            list):
-                        self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
-                        self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
-                    else:
-                        self.add_nonws_to = idx
-                    placehold_nonws = -2
-                elif idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
-                                                                          list):
-                    self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
-                if idx < iteration.stop - len(num_lists) and self.combined_df.at[idx, 'Deleted'] == True:
-                    self.delete_count += 1
-            else:
-                if idx < iteration.stop - len(num_lists) and self.combined_df.at[idx, 'Deleted'] == True:
-                    self.delete_count += 1
-                if idx - self.delete_count - np.sum([x - 1 <= idx for x in self.combo_count]) + 1 == placehold_ws:
-                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
-                                                                            list):
-                        self.add_ws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
-                        self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
-                    else:
-                        self.add_ws_to = idx
-                    placehold_ws = -2
-                elif idx - self.delete_count - np.sum(
-                        [x - 1 <= idx for x in self.combo_count]) + 1 == placehold_nonws:
-                    if idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
-                                                                            list):
-                        self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
-                        self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
-                    else:
-                        self.add_nonws_to = idx
-                    placehold_nonws = -2
-                elif idx < iteration.stop - len(num_lists) and isinstance(self.combined_df.at[idx, 'Layer idx'],
-                                                                          list):
-                    self.combo_count.extend(self.combined_df.at[idx, 'Layer idx'][1:])
-
+            if self.combined_df.at[idx, 'Deleted'] == True:
+                self.delete_count += 1
+            if idx - self.delete_count + 1 == placehold_ws:
+                if isinstance(self.combined_df.at[idx, 'Layer idx'], list):
+                    self.add_ws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
+                else:
+                    self.add_ws_to = self.combined_df.at[idx, 'Layer idx'] - 1
+                placehold_ws = -2
+            if idx - self.delete_count + 1 == placehold_nonws:
+                if isinstance(self.combined_df.at[idx, 'Layer idx'], list):
+                    self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'][0] - 1
+                else:
+                    self.add_nonws_to = self.combined_df.at[idx, 'Layer idx'] - 1
+                placehold_nonws = -2
         self.add_ws_to += 1
         self.add_nonws_to += 1
         if placehold_nonws == -3:
@@ -1582,7 +1543,8 @@ class xml_sorter(QObject):
             for idx, filename in enumerate(xml_files, 1):
                 file_path = os.path.join(current_pth, filename)
                 print(f"Checking file {idx} of {len(xml_files)}: {filename}")
-                if not existing_backup:
+                modification_time = os.path.getmtime(file_path)
+                if (not os.path.isfile(os.path.join(backup_dir,filename))) or os.path.getmtime(os.path.join(backup_dir,filename))<modification_time:
                     # Backup the file
                     shutil.copyfile(file_path, os.path.join(backup_dir, filename))
                 try:
