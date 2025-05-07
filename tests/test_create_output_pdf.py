@@ -1,5 +1,13 @@
+"""
+PDF Report Generation Module Tests for CODAvision
+
+This module provides test cases for verifying the functionality of the PDF report
+generation module, ensuring proper creation of evaluation reports with expected
+sections including confusion matrices, annotations, classifications, and metrics.
+
+"""
+
 import pytest
-import os
 import pickle
 import pandas as pd
 import numpy as np
@@ -33,7 +41,6 @@ def create_dummy_csv(path: Path):
         'Whitespace PC': [500, 600],
         'ClassA TC(%)': [33.33, 37.5],
         'ClassB TC(%)': [66.67, 62.5],
-        # Note: Whitespace TC(%) is often excluded or handled differently
     }
     df = pd.DataFrame(data)
     df.to_csv(path, index=False)
@@ -52,8 +59,8 @@ def create_dummy_pkl(path: Path, model_name: str = "TestModel"):
             'nblack': 4,
             'ntrain': 10,
             'nvalidate': 2,
-            'final_df': pd.DataFrame(), # Add dummy df if needed
-            'combined_df': pd.DataFrame(), # Add dummy df if needed
+            'final_df': pd.DataFrame(),
+            'combined_df': pd.DataFrame(),
             'model_type': 'TestNet',
             'batch_size': 4,
             'nTA': 3,
@@ -67,7 +74,7 @@ def test_create_output_pdf_generates_valid_pdf(tmp_path):
     Tests if create_output_pdf runs and generates a readable PDF
     with expected section titles.
     """
-    # 1. Arrange: Set up mock files and directories
+    # Set up mock files and directories
     model_dir = tmp_path / "model_output"
     model_dir.mkdir()
     image_dir = tmp_path / "images"
@@ -149,7 +156,7 @@ def test_create_output_pdf_generates_valid_pdf(tmp_path):
 
             # Extract text from first few pages to check for headers
             extracted_text = ""
-            for i in range(min(7, len(reader.pages))): # Read first 7 pages or less
+            for i in range(min(7, len(reader.pages))): # Read first 7 pages or fewer
                  page = reader.pages[i]
                  extracted_text += page.extract_text()
 
@@ -188,7 +195,3 @@ def test_create_output_pdf_generates_valid_pdf(tmp_path):
         pytest.fail(f"Generated PDF is invalid or unreadable: {e}")
     except Exception as e:
          pytest.fail(f"An error occurred during PDF content verification: {e}")
-
-    # Optional: Check if the converted PNG for confusion matrix exists (if needed)
-    # converted_cm_path = model_dir / "confusion_matrix.png"
-    # assert converted_cm_path.exists(), "Converted confusion matrix PNG not found"

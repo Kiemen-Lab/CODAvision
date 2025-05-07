@@ -1,3 +1,20 @@
+"""
+Model Evaluation Report Generator for CODAvision
+
+This module provides functionality for generating PDF reports
+that summarize model evaluation results, including confusion matrices,
+color legends, annotations, classifications, tissue quantifications, and runtimes.
+
+The module creates structured reports with sections for each evaluation component,
+making it easy to assess model performance and share results.
+
+Authors:
+    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
+    Tyler Newton (JHU - DSAI)
+
+Updated: May 2025
+"""
+
 import os
 import pickle
 import pandas as pd
