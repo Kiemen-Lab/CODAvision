@@ -20,7 +20,7 @@ from .determine_optimal_TA import determine_optimal_TA
 from .data.tiles import create_training_tiles
 from .evaluation.image_quantification import quantify_images
 from .evaluation.object_quantification import quantify_objects
-from .create_output_pdf import create_output_pdf
+from .evaluation.pdf_report import create_output_pdf
 from .WSI2tif import WSI2tif
 from .data.annotation import (
     load_annotation_data,
