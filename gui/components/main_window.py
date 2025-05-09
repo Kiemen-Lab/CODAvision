@@ -1267,18 +1267,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
         selected_rows = list(set(item.row() for item in selected_items))
-        for idx in selected_rows:
-            if pd.isna(self.combined_df.at[idx, 'Whitespace Settings']):
-                QtWidgets.QMessageBox.warning(self, "Unable to Delete",
-                                              "You can only delete a class if it has an assigned whitespace value.")
-                return
-
-        for idx in selected_rows:
-            if isinstance(self.combined_df.at[idx, 'Layer idx'], list):
-                QtWidgets.QMessageBox.warning(self, "Invalid Selection",
-                                              "Cannot delete a combined class. Please reset the list first.")
-                return
-
         # Add 'Deleted' column to combined_df if not already present
         if 'Deleted' not in self.combined_df.columns:
             self.combined_df['Deleted'] = False
@@ -1292,6 +1280,14 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.combined_df.at[idx, 'Deleted'] == True:
                 self.delete_count += 1
             elif idx - self.delete_count in selected_rows:
+                if pd.isna(self.combined_df.at[idx, 'Whitespace Settings']):
+                    QtWidgets.QMessageBox.warning(self, "Unable to Delete",
+                                                  "You can only delete a class if it has an assigned whitespace value.")
+                    return
+                if isinstance(self.combined_df.at[idx, 'Layer idx'], list):
+                    QtWidgets.QMessageBox.warning(self, "Invalid Selection",
+                                                  "Cannot delete a combined class. Please reset the list first.")
+                    return
                 self.combined_df.at[idx, 'Deleted'] = True
                 upd_idx = np.where(position == -1)[0][0]
                 position[upd_idx] = 0
