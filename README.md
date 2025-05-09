@@ -91,6 +91,34 @@ Install the CODAvision package using pip:
 ```bash
   conda activate CODAvision
 ```
+> ⚠️ **Important Notice for macOS users:**  
+> TensorFlow GPU is not compatible with macOS systems.  
+> To ensure compatibility:  
+>   
+> 1. Open the `pyproject.toml` file in the root of the project directory.  
+> 2. Locate and **remove any version specifications** for both `tensorflow` and `keras`. For example, change:  
+>    ```
+>    "tensorflow==2.10.1"
+>    "keras==2.10.0"
+>    ```  
+>    to:  
+>    ```
+>    "tensorflow"
+>    "keras"
+>    ```  
+> 3. Locate the line that includes `tensorflow-gpu` and **comment it out** by adding a `#` at the beginning of the line:  
+>    ```
+>    # "tensorflow-gpu==2.10.0",
+>    ```  
+> 4. Save the file.  
+> 5. Reinstall the dependencies to ensure the environment is updated:  
+> 
+>    ```bash
+>    pip install -e .
+>    ```  
+>   > 💡 *Make sure you run this command from the directory where the `CODAvision` package is located.*  
+
+> After completing these steps, you can safely execute `CODAvision.py` on macOS.
 
 ### 🖼️ Step 5: Launch CODAvision GUI
 
