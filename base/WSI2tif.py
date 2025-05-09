@@ -12,30 +12,47 @@ import pydicom as dicom
 
 Image.MAX_IMAGE_PIXELS = None
 
-# from openslide import OpenSlide
+import os
+import platform
+import ctypes
 
-# Add the OpenSlide DLL directory
-#Try importing Openslide, if it fails, add the OpenSlide DLL directory manually
+# Try importing OpenSlide, handle platform-specific behavior
 try:
     from openslide import OpenSlide
 except ImportError:
-    # Add the OpenSlide DLL directory manually
+    system_platform = platform.system()
+
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
     except NameError:
         script_dir = os.getcwd()  # Fallback to the current working directory
-    openslide_path = os.path.join(script_dir, 'OpenSlide bin')
+    openslide_dll_path = os.path.join(script_dir, 'OpenSlide bin')
 
-    if hasattr(os, 'add_dll_directory'):
-        # Python 3.8+
-        with os.add_dll_directory(openslide_path):
+    if system_platform == "Windows":
+        # Add the OpenSlide DLL manually for Windows
+        dll_file = os.path.join(openslide_dll_path, 'libopenslide-1.dll')
+        if hasattr(os, 'add_dll_directory'):
+            # Python 3.8+
+            with os.add_dll_directory(openslide_dll_path):
+                ctypes.cdll.LoadLibrary(dll_file)
+                from openslide import OpenSlide
+        else:
+            # Earlier Python versions
+            if openslide_dll_path not in os.environ['PATH']:
+                os.environ['PATH'] = openslide_dll_path + os.pathsep + os.environ['PATH']
+            ctypes.cdll.LoadLibrary(dll_file)
             from openslide import OpenSlide
-    else:
-        # Earlier Python versions
-        if openslide_path not in os.environ['PATH']:
-            os.environ['PATH'] = openslide_path + os.pathsep + os.environ['PATH']
-        from openslide import OpenSlide
 
+    elif system_platform == "Darwin":  # macOS
+        # Load libopenslide.1.dylib for macOS
+        dylib_file = os.path.join(openslide_dll_path, 'libopenslide.1.dylib')
+        try:
+            ctypes.cdll.LoadLibrary(dylib_file)
+            from openslide import OpenSlide
+        except OSError as e:
+            raise ImportError(f"Failed to load {dylib_file} on macOS. Ensure it is installed.") from e
+    else:
+        raise ImportError(f"Unsupported platform: {system_platform}")
 
 def process_missing_images(pth, pthim, missing_images, umpix):
     """Process missing images by converting .ndpi or .svs files to .tif."""
