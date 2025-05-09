@@ -6,15 +6,15 @@ Date: August 14, 2024
 
 from PIL import Image
 import numpy as np
-import os
 import glob
 import pydicom as dicom
-
-Image.MAX_IMAGE_PIXELS = None
-
 import os
 import platform
 import ctypes
+
+
+Image.MAX_IMAGE_PIXELS = None
+
 
 # Try importing OpenSlide, handle platform-specific behavior
 try:
