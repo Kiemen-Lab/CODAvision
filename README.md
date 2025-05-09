@@ -91,34 +91,58 @@ Install the CODAvision package using pip:
 ```bash
   conda activate CODAvision
 ```
-> ⚠️ **Important Notice for macOS users:**  
-> TensorFlow GPU is not compatible with macOS systems.  
-> To ensure compatibility:  
->   
-> 1. Open the `pyproject.toml` file in the root of the project directory.  
-> 2. Locate and **remove any version specifications** for both `tensorflow` and `keras`. For example, change:  
->    ```
->    "tensorflow==2.10.1"
->    "keras==2.10.0"
->    ```  
->    to:  
->    ```
->    "tensorflow"
->    "keras"
->    ```  
-> 3. Locate the line that includes `tensorflow-gpu` and **comment it out** by adding a `#` at the beginning of the line:  
->    ```
->    # "tensorflow-gpu==2.10.0",
->    ```  
-> 4. Save the file.  
-> 5. Reinstall the dependencies to ensure the environment is updated:  
-> 
->    ```bash
->    pip install -e .
->    ```  
->   > 💡 *Make sure you run this command from the directory where the `CODAvision` package is located.*  
+> ⚠️ ### ⚠️ **Important Notice for macOS Users**  
 
-> After completing these steps, you can safely execute `CODAvision.py` on macOS.
+TensorFlow GPU is not natively supported on macOS as it is on Windows or Linux. However, for macOS systems with Apple Silicon chips (M1, M2, M3), you can leverage GPU acceleration by installing `tensorflow-macos` and `tensorflow-metal`. Follow one of the two options below based on your setup:
+
+---
+
+#### ✅ **Option 1: Using Apple Silicon (M1/M2/M3) with GPU Support**
+If you're on an Apple Silicon Mac and want to enable GPU acceleration via Metal:
+
+1. **Remove version constraints** from the `pyproject.toml` file:  
+   Change lines like:
+   ```
+   "tensorflow==2.10.1"
+   "keras==2.10.0"
+   ```
+   to:
+   ```
+   "tensorflow"
+   "keras"
+   ```
+
+2. **Comment out any `tensorflow-gpu` entries**, for example:
+   ```toml
+   # "tensorflow-gpu==2.10.0",
+   ```
+
+3. **Install the required Apple-specific TensorFlow packages manually**:
+   ```bash
+   pip install tensorflow-macos tensorflow-metal
+   ```
+
+4. **Install remaining dependencies**:
+   ```bash
+   pip install -e .
+   ```
+   > 💡 *Make sure to run this from the directory containing the `CODAvision` package.*
+
+---
+
+#### 🚫 **Option 2: Intel Mac or CPU-only Setup**
+If you are using an Intel-based Mac or do not require GPU acceleration:
+
+1. Follow steps 1–2 from above to remove version constraints and comment out `tensorflow-gpu`.
+
+2. Simply install the package dependencies:
+   ```bash
+   pip install -e .
+   ```
+
+---
+
+After completing the steps under your chosen option, you should be able to run `CODAvision.py` successfully on macOS.
 
 ### 🖼️ Step 5: Launch CODAvision GUI
 
