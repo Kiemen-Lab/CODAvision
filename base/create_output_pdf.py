@@ -257,3 +257,14 @@ def create_output_pdf(output_path, pthDL, confusion_matrix_path, color_legend_pa
     pdf.output(output_path)
     print(f'PDF report saved at: {output_path}')
 
+# Example usage
+if __name__ == '__main__':
+    create_output_pdf(
+        output_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_evaluation_report.pdf',
+        confusion_matrix_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\confusion_matrix.jpg',
+        color_legend_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024\model_color_legend.png',
+        check_annotations_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\check_annotations',
+        check_classification_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\check_classification',
+        quantifications_csv_path=r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\10x\classification_CODA_python_08_30_2024\image_quantifications.csv',
+        pthDL = r'\\10.99.68.52\Kiemendata\Valentina Matos\tissues for methods paper\human liver\CODA_python_08_30_2024'
+    )
