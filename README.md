@@ -47,6 +47,11 @@ CODAvision is an open-source Python package designed for semantic segmentation o
 - Image Annotation Tool (choose one):
   - [Aperio ImageScope](https://www.leicabiosystems.com/digital-pathology/manage/aperio-imagescope)
   - [QuPath](https://qupath.github.io)
+    
+    > ⚠️ **Note for QuPath Users:**  
+    > To use the GUI-guided workflow in CODAvision with annotations created in QuPath, you must first export the annotations for each image as GeoJSON files via `File > Export Objects as GeoJSON`.  
+    > These GeoJSON files must then be converted into XML format, which is compatible with CODAvision.  
+    > You can perform this conversion using the scripts provided in the following repository: [GeoJSON2XML](https://github.com/Kiemen-Lab/GeoJSON2XML).
 
 ---
 
@@ -86,6 +91,58 @@ Install the CODAvision package using pip:
 ```bash
   conda activate CODAvision
 ```
+> ⚠️ ### ⚠️ **Important Notice for macOS Users**  
+
+TensorFlow GPU is not natively supported on macOS as it is on Windows or Linux. However, for macOS systems with Apple Silicon chips (M1, M2, M3), you can leverage GPU acceleration by installing `tensorflow-macos` and `tensorflow-metal`. Follow one of the two options below based on your setup:
+
+---
+
+#### ✅ **Option 1: Using Apple Silicon (M1/M2/M3) with GPU Support**
+If you're on an Apple Silicon Mac and want to enable GPU acceleration via Metal:
+
+1. **Remove version constraints** from the `pyproject.toml` file:  
+   Change lines like:
+   ```
+   "tensorflow==2.10.1"
+   "keras==2.10.0"
+   ```
+   to:
+   ```
+   "tensorflow"
+   "keras"
+   ```
+
+2. **Comment out any `tensorflow-gpu` entries**, for example:
+   ```toml
+   # "tensorflow-gpu==2.10.0",
+   ```
+
+3. **Install the required Apple-specific TensorFlow packages manually**:
+   ```bash
+   pip install tensorflow-macos tensorflow-metal
+   ```
+
+4. **Install remaining dependencies**:
+   ```bash
+   pip install -e .
+   ```
+   > 💡 *Make sure to run this from the directory containing the `CODAvision` package.*
+
+---
+
+#### 🚫 **Option 2: Intel Mac or CPU-only Setup**
+If you are using an Intel-based Mac or do not require GPU acceleration:
+
+1. Follow steps 1–2 from above to remove version constraints and comment out `tensorflow-gpu`.
+
+2. Simply install the package dependencies:
+   ```bash
+   pip install -e .
+   ```
+
+---
+
+After completing the steps under your chosen option, you should be able to run `CODAvision.py` successfully on macOS.
 
 ### 🖼️ Step 5: Launch CODAvision GUI
 

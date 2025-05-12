@@ -103,7 +103,7 @@ def CODAVision():
 
         scale_images = not(window.create_down)
         not_downsamp_annotated = window.downsamp_annotated_images
-        
+
         print(' ')
         downsamp_time = time.time()
         if resolution == 'Custom':
