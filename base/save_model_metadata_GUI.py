@@ -5,7 +5,7 @@ Date: November 15, 2024
 
 import os
 import matplotlib.pyplot as plt
-from .plot_cmap_legend import plot_cmap_legend
+from .evaluation.visualize import plot_cmap_legend
 import pickle
 
 def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, nTA, final_df, combined_df, model_type, batch_size, uncomp_train_pth = '', uncomp_test_pth = '', scale = '', create_down = '', downsamp_annotated = ''):
@@ -133,6 +133,6 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
                          "combined_df": combined_df,"nvalidate": nvalidate, "nTA": nTA, "model_type":model_type, "batch_size": batch_size}, f)
 
     # plot color legend
-    plot_cmap_legend(cmap, classNames)
-    plt.savefig(os.path.join(pthDL, 'model_color_legend.jpg'))
+    save_path = os.path.join(pthDL, 'model_color_legend.jpg')
+    plot_cmap_legend(cmap, classNames, save_path=save_path)
 

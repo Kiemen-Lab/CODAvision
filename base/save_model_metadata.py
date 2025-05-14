@@ -5,7 +5,7 @@ Date: October 01, 2024
 
 import os
 import matplotlib.pyplot as plt
-from .plot_cmap_legend import plot_cmap_legend
+from .evaluation.visualize import plot_cmap_legend
 import pickle
 
 def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate):
@@ -100,5 +100,5 @@ def save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntra
                          "nvalidate": nvalidate}, f)
 
     # plot color legend
-    plot_cmap_legend(cmap, classNames)
-    plt.savefig(os.path.join(pthDL, 'model_color_legend.png'))
+    save_path = os.path.join(pthDL, 'model_color_legend.png')
+    plot_cmap_legend(cmap, classNames, save_path=save_path)
