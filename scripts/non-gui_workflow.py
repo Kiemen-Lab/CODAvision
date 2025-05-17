@@ -21,14 +21,19 @@ Authors:
     Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
     Tyler Newton (JHU - DSAI)
 
-Updated: March 21, 2025
+Updated: May 2025
 """
 
 import os
 import numpy as np
 import logging
 from datetime import datetime
-from base import *
+
+from base.models.utils import create_initial_model_metadata
+from base.data.annotation import load_annotation_data
+from base.data.tiles import create_training_tiles
+from base.models.training import train_segmentation_model_cnns
+from base.evaluation.testing import test_segmentation_model
 
 
 DEBUG_MODE = False
@@ -123,7 +128,21 @@ nvalidate = np.ceil(ntrain/5)  # Number of validation images (20% of training)
 numims = 2  # Number of images to process
 
 # Step 1: Save model configuration and metadata
-save_model_metadata(pthDL, pthim, WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate)
+create_initial_model_metadata(
+    pthDL=pthDL,
+    pthim=pthim,
+    WS=WS,
+    nm=nm,
+    umpix=umpix,
+    cmap=cmap,
+    sxy=sxy,
+    classNames=classNames,
+    ntrain=ntrain,
+    nvalidate=nvalidate,
+    pthtest=pthtest
+    # model_type="DeepLabV3_plus", # Optional: specify if not default
+    # batch_size=3 # Optional: specify if not default
+)
 
 # Step 2: Load annotation data from existing annotations
 [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim, classCheck)
