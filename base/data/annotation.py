@@ -17,11 +17,14 @@ Updated: March 2025
 """
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Set max image size for OpenCV
+
 import pickle
 import re
 import numpy as np
 import pandas as pd
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 from skimage import morphology
 from skimage.morphology import remove_small_objects
 from scipy.ndimage import binary_fill_holes
@@ -34,7 +37,6 @@ import xml.sax
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Set max image size for OpenCV
 
 
 # XML Parsing and Loading Utilities
@@ -1582,18 +1584,43 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
     # Try to load image with different extensions
     try:
         image = cv2.imread(os.path.join(path, f'{image_name}.tif'))
+        if image is None:
+            raise ValueError("Failed to load image with OpenCV")
         image = image[:, :, ::-1]  # Convert BGR to RGB
     except:
         try:
             image = cv2.imread(os.path.join(path, f'{image_name}.jpg'))
+            if image is None:
+                raise ValueError("Failed to load image with OpenCV")
             image = image[:, :, ::-1]
         except:
             try:
                 image = cv2.imread(os.path.join(path, f'{image_name}.jp2'))
+                if image is None:
+                    raise ValueError("Failed to load image with OpenCV")
                 image = image[:, :, ::-1]
             except:
-                image = cv2.imread(os.path.join(path, f'{image_name}.png'))
-                image = image[:, :, ::-1]
+                try:
+                    image = cv2.imread(os.path.join(path, f'{image_name}.png'))
+                    if image is None:
+                        raise ValueError("Failed to load image with OpenCV")
+                    image = image[:, :, ::-1]
+                except:
+                    # Fallback to Pillow
+                    try:
+                        with Image.open(os.path.join(path, f'{image_name}.tif')) as img:
+                            image = np.array(img.convert("RGB"))
+                    except:
+                        try:
+                            with Image.open(os.path.join(path, f'{image_name}.jpg')) as img:
+                                image = np.array(img.convert("RGB"))
+                        except:
+                            try:
+                                with Image.open(os.path.join(path, f'{image_name}.jp2')) as img:
+                                    image = np.array(img.convert("RGB"))
+                            except:
+                                with Image.open(os.path.join(path, f'{image_name}.png')) as img:
+                                    image = np.array(img.convert("RGB"))
 
     # Check if mask already exists
     if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
