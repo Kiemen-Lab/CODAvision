@@ -12,6 +12,7 @@ Updated: April 2025
 """
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Disable pixel limit safeguard
 import glob
 import shutil
 import time
@@ -19,6 +20,7 @@ import pickle
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Union, Any
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 import cv2
 import logging
 
@@ -26,6 +28,30 @@ from base.image import edit_annotation_tiles
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
+    """
+    Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
+
+    Args:
+        image_path: Path to the image file.
+        mode: Mode to convert the image to when using Pillow (default: "RGB").
+
+    Returns:
+        The loaded image as a NumPy array.
+    """
+    try:
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE if mode == "L" else cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Failed to load image with OpenCV")
+        if mode == "RGB" and len(image.shape) == 3:  # Convert BGR to RGB
+            image = image[:, :, ::-1]
+        return image
+    except:
+        with Image.open(image_path) as img:
+            return np.array(img.convert(mode))
+
+#
 
 
 def combine_annotations_into_tiles(
@@ -169,8 +195,11 @@ def combine_annotations_into_tiles(
         label_path = os.path.join(tile_path[0:path_separator_pos], 'label')
 
         # Load image and annotation mask
-        image = cv2.imread(tile_path)
-        annotation_mask = cv2.imread(os.path.join(label_path, tile_name), cv2.IMREAD_GRAYSCALE)
+
+        image = load_image_with_fallback(tile_path, 'RGB')
+        annotation_mask = load_image_with_fallback(os.path.join(label_path, tile_name), 'L')
+        # image = cv2.imread(tile_path)
+        # annotation_mask = cv2.imread(os.path.join(label_path, tile_name), cv2.IMREAD_GRAYSCALE)
 
         # Apply optional augmentation
         apply_augmentation = 1 if count % 3 == 1 else 0
