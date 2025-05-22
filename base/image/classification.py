@@ -27,6 +27,8 @@ Updated March 2025
 """
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Set max image size for OpenCV
+
 import time
 import numpy as np
 import cv2
@@ -34,6 +36,7 @@ import matplotlib.pyplot as plt
 import keras
 from glob import glob
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 from typing import Tuple, List
 from scipy.ndimage import binary_fill_holes
 
@@ -43,12 +46,37 @@ from base.image.utils import decode_segmentation_masks, create_overlay
 from base.data.loaders import load_model_metadata
 
 
+def load_image_with_fallback(image_path: str) -> np.ndarray:
+    """
+    Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
+
+    Args:
+        image_path: Path to the image file.
+
+    Returns:
+        The loaded image as a NumPy array.
+    """
+    try:
+        # Attempt to load the image using OpenCV
+        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        if image is not None:
+            # Convert BGR to RGB
+            return image[:, :, ::-1]
+    except Exception:
+        pass  # Ignore OpenCV errors and fallback to Pillow
+
+    # Fallback to Pillow
+    with Image.open(image_path) as img:
+        return np.array(img.convert("RGB"))
+
+
 class ImageClassifier:
     """
     A class for classifying images using a trained semantic segmentation model.
 
     This class handles loading model data, processing images, and saving classification results.
     """
+
 
     def __init__(self, image_path: str, model_path: str, model_type: str):
         """
@@ -183,7 +211,7 @@ class ImageClassifier:
             tissue_mask = binary_fill_holes(np.array(tissue_mask))
         except:
             # Create a mask if none exists
-            image = cv2.imread(image_path)
+            image = load_image_with_fallback(image_path)
             image = image[:, :, ::-1]  # BGR to RGB
             tissue_mask = np.array(image[:,:,1]) < 220
             tissue_mask = binary_fill_holes(tissue_mask.astype(bool))
@@ -201,7 +229,7 @@ class ImageClassifier:
             Tuple of (original image, classified image)
         """
         # Load the image
-        image = cv2.imread(image_path)
+        image = load_image_with_fallback(image_path)
         image = image[:, :, ::-1]  # BGR to RGB
 
         # Get tissue mask

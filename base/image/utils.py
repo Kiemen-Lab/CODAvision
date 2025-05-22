@@ -14,11 +14,39 @@ Updated: April 2025
 from typing import Optional, Tuple, Union, List, Any
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Set max image size for OpenCV
+
 import numpy as np
 import tensorflow as tf
 import keras
 import cv2
+
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
+
+
+def load_image_with_fallback(image_path: str) -> np.ndarray:
+    """
+    Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
+
+    Args:
+        image_path: Path to the image file.
+
+    Returns:
+        The loaded image as a NumPy array.
+    """
+    try:
+        # Attempt to load the image using OpenCV
+        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+        if image is not None:
+            # Convert BGR to RGB
+            return image[:, :, ::-1]
+    except Exception:
+        pass  # Ignore OpenCV errors and fallback to Pillow
+
+    # Fallback to Pillow
+    with Image.open(image_path) as img:
+        return np.array(img.convert("RGB"))
 
 
 def decode_segmentation_masks(mask: np.ndarray, colormap: np.ndarray, n_classes: int) -> np.ndarray:
@@ -108,7 +136,9 @@ def convert_to_array(image_path: str, prediction_mask: np.ndarray) -> Tuple[np.n
         Tuple of (image array, prediction mask array)
     """
     # Read the image
-    image = cv2.imread(image_path)
+    # image = cv2.imread(image_path)
+    image = load_image_with_fallback(image_path)
+
     image = image[:, :, ::-1]  # Convert BGR to RGB
 
     # Handle large images by resizing
