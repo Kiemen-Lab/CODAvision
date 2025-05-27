@@ -20,6 +20,10 @@ import numpy as np
 import pandas as pd
 import cv2
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 
 class ImageQuantifier:
     """
@@ -180,7 +184,7 @@ class ImageQuantifier:
         Raises:
             FileNotFoundError: If no classified images are found
         """
-        print('Quantifying images...')
+        logger.info('Quantifying images...')
         
         # Get column headers
         headers = self._create_column_headers()
@@ -199,7 +203,7 @@ class ImageQuantifier:
         
         # Process each image
         for j, image_name in enumerate(files):
-            print(f"Image {j + 1} / {num_files}: {image_name}")
+            logger.info(f"Image {j + 1} / {num_files}: {image_name}")
             
             try:
                 _, image_data = self._process_image(os.path.join(self.output_path, image_name))
@@ -209,7 +213,7 @@ class ImageQuantifier:
                 image_df.to_csv(csv_file, mode='a', header=False, index=False)
                 
             except RuntimeError as e:
-                print(f"  Warning: {str(e)}")
+                logger.info(f"  Warning: {str(e)}")
                 continue
         
         # Add additional information
@@ -219,7 +223,7 @@ class ImageQuantifier:
         ])
         additional_info.to_csv(csv_file, mode='a', header=False, index=False)
         
-        print(f"Quantification complete. Results saved to: {csv_file}")
+        logger.info(f"Quantification complete. Results saved to: {csv_file}")
         return csv_file
 
 

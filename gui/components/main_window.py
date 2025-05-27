@@ -20,6 +20,10 @@ from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush, QRe
 from PySide6.QtWidgets import QColorDialog, QHeaderView, QProgressBar
 from PySide6.QtCore import Qt, QThread, Signal, QObject
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 # Import from base package
 from base.data.annotation import extract_annotation_layers
 from base import save_model_metadata_GUI
@@ -186,13 +190,13 @@ class MainWindow(QtWidgets.QMainWindow):
             try:
                 self.df = self.parse_xml_to_dataframe(xml_file)
                 self.original_df = self.df.copy()
-                # print(f"Loaded XML file: {xml_file}")
-                # print(self.df)
+                # logger.info(f"Loaded XML file: {xml_file}")
+                # logger.info(self.df)
                 self.populate_table_widget()
             except Exception as e:
                 QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
                 import traceback
-                print(traceback.format_exc())
+                logger.error(traceback.format_exc())
         else:
             if custom_xml:
                 QtWidgets.QMessageBox.warning(self, 'Warning', 'No XML file was selected.')
@@ -215,13 +219,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 return pd.DataFrame()
 
             self.original_df = df.copy()
-            print(f"Loaded XML file: {xml_file}")
-            print(df)
+            logger.info(f"Loaded XML file: {xml_file}")
+            logger.info(df)
             return df
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to parse XML file: {str(e)}')
             import traceback
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
             return pd.DataFrame()
 
     def int_to_rgb(self, hex_color):
@@ -291,7 +295,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.nval = data['nvalidate']
                 self.TA = data['nTA']
                 self.load_saved_values()
-                print("Prerecorded data loaded successfully.")
+                logger.info("Prerecorded data loaded successfully.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
 
@@ -545,8 +549,8 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.df['Combined layers'] = (self.df.index + 1).astype(int)
 
-        # print("Updated Raw DataFrame from tab 2:")
-        # print(self.df)
+        # logger.info("Updated Raw DataFrame from tab 2:")
+        # logger.info(self.df)
 
         self.initialize_nesting_table()
 
@@ -716,8 +720,8 @@ class MainWindow(QtWidgets.QMainWindow):
             # Update the Nesting column for combined classes
             self.df['Nesting'] = [original_indices[name] + 1 for name in nesting_order_combined_names]
 
-        # print("Updated DataFrame:")
-        # print(self.df)
+        # logger.info("Updated DataFrame:")
+        # logger.info(self.df)
 
         # Check if advanced settings need to be modified
         if train == 2:
@@ -872,7 +876,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                           'training annotations folder, please select a different folder.')
             return False
 
-        print(
+        logger.info(
             f"Form filled with: \nTraining path: {pth}\nTesting path: {pthtest}\nModel name: {model_name}\nResolution: {resolution}")
         return True
 
@@ -897,7 +901,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         for index, data in df.iterrows():
             if data.get('Deleted', False):
-                # print(f"Skipping row {data['Layer Name']} marked as deleted")
+                # logger.info(f"Skipping row {data['Layer Name']} marked as deleted")
                 continue  # Skip rows marked as deleted
 
             row = table.rowCount()
@@ -1072,7 +1076,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 item.setBackground(new_color)
 
             layer_name = self.combined_df.iloc[updated_selected_row]['Layer Name']
-            print(f"Color changed for {layer_name} to {new_rgb}")
+            logger.info(f"Color changed for {layer_name} to {new_rgb}")
 
         self.populate_table_widget(self.combined_df, coloring=True)
 
@@ -1241,8 +1245,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.combined_df = pd.concat([self.combined_df.iloc[:insert_position], pd.DataFrame([combined_class]),
                                       self.combined_df.iloc[insert_position:]]).reset_index(drop=True)
 
-        # print("Combined DataFrame:")
-        # print(self.combined_df)
+        # logger.info("Combined DataFrame:")
+        # logger.info(self.combined_df)
         self.populate_table_widget(self.combined_df)  # Populate the table with the updated DataFrame
 
         # Populate whitespace/non-whitespace combo boxes
@@ -1308,9 +1312,9 @@ class MainWindow(QtWidgets.QMainWindow):
                     0]
                 self.df.at[original_idx, 'Delete layer'] = True
 
-        # print("Marked rows as deleted:", selected_rows)
-        # print("Updated DataFrame with 'Delete layer' column:")
-        # print(self.df)
+        # logger.info("Marked rows as deleted:", selected_rows)
+        # logger.info("Updated DataFrame with 'Delete layer' column:")
+        # logger.info(self.df)
 
         # Populate the table with the updated DataFrame
         self.populate_table_widget(self.combined_df)
@@ -1437,15 +1441,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         colormap = np.array(colormap)
 
-        # print("\nFinal Raw DataFrame with combined indexes:")
-        # print(final_df)
-        # print("\nFinal Combined DataFrame:")
-        # print(combined_df)
+        # logger.info("\nFinal Raw DataFrame with combined indexes:")
+        # logger.info(final_df)
+        # logger.info("\nFinal Combined DataFrame:")
+        # logger.info(combined_df)
 
         # Final Parameters
-        print('Classnames: ', classNames)
-        print('Colormap: ', colormap)
-        print('WS: ', WS)
+        logger.info(f'Classnames: {classNames}')
+        logger.info(f'Colormap: {colormap}')
+        logger.info(f'WS: {WS}')
 
         self.create_down = self.ui.create_downsample_CB.isChecked()
         self.downsamp_annotated_images = self.ui.use_anotated_images_CB.isChecked()
@@ -1486,7 +1490,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def get_pthim(self):
         pth = self.ui.trianing_LE.text()
         resolution = self.ui.resolution_CB.currentText()
-        # print(self.ui.custom_scale_LE.text())
+        # logger.info(self.ui.custom_scale_LE.text())
         if resolution == 'Custom':
             return os.path.join(pth, 'Custom_Scale_' + str(float(self.ui.custom_scale_LE.text())))
         else:
@@ -1502,7 +1506,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def open_classify(self):
         self.classify = True
-        print('Closing model creation GUI. Initializing classification GUI')
+        logger.info('Closing model creation GUI. Initializing classification GUI')
         self.close()
 
     class Worker(QObject):
@@ -1538,7 +1542,7 @@ class xml_sorter(QObject):
             xml_files = [f for f in os.listdir(current_pth) if f.endswith('.xml')]
             for idx, filename in enumerate(xml_files, 1):
                 file_path = os.path.join(current_pth, filename)
-                print(f"Checking file {idx} of {len(xml_files)}: {filename}")
+                logger.info(f"Checking file {idx} of {len(xml_files)}: {filename}")
                 modification_time = os.path.getmtime(file_path)
                 if (not os.path.isfile(os.path.join(backup_dir,filename))) or os.path.getmtime(os.path.join(backup_dir,filename))<modification_time:
                     # Backup the file
@@ -1556,12 +1560,12 @@ class xml_sorter(QObject):
                             ann.set('Id', str(i))
                             changed = True
                     if changed:
-                        print("  Sorting layer IDs of current file")
+                        logger.info("  Sorting layer IDs of current file")
                         tree.write(file_path, encoding='utf-8', xml_declaration=True)
                     else:
-                        print("  Layer IDs are already sorted")
+                        logger.info("  Layer IDs are already sorted")
                 except Exception as e:
-                    print(f"  Failed to process {filename}: {e}")
+                    logger.error(f"  Failed to process {filename}: {e}")
         self.finished.emit()
 
 class ProcessThread(QThread):

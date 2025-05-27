@@ -42,6 +42,10 @@ from base.image.segmentation import semantic_seg
 from base.image.utils import decode_segmentation_masks, create_overlay, load_image_with_fallback
 from base.data.loaders import load_model_metadata
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 
 class ImageClassifier:
     """
@@ -317,7 +321,7 @@ class ImageClassifier:
             image_list.extend(png_files)
 
         if not image_list:
-            print(f"No TIFF, PNG or JPG image files found in {self.image_path}")
+            logger.error(f"No TIFF, PNG or JPG image files found in {self.image_path}")
 
         return sorted(image_list)
 
@@ -385,14 +389,14 @@ class ImageClassifier:
         for i, img_path in enumerate(image_list):
             classification_start = time.time()
             img_name = os.path.basename(img_path)
-            print(f'Starting classification of image {i + 1} of {len(image_list)}: {img_name}')
+            logger.info(f'Starting classification of image {i + 1} of {len(image_list)}: {img_name}')
 
             # Define output path
             output_path = os.path.join(self.output_path, f"{os.path.splitext(img_name)[0]}.tif")
 
             # Skip if already classified
             if os.path.exists(output_path):
-                print(f'Image already classified, skipping: {img_name}')
+                logger.info(f'Image already classified, skipping: {img_name}')
                 continue
 
             # Process the image
@@ -416,7 +420,7 @@ class ImageClassifier:
                 first_img_prediction = classified_image - 1
 
             elapsed_time = round(time.time() - classification_start)
-            print(f'Image {i + 1} of {len(image_list)} took {elapsed_time} s')
+            logger.info(f'Image {i + 1} of {len(image_list)} took {elapsed_time} s')
 
         # Display results if requested
         if display and first_image is not None and first_img_prediction is not None:
@@ -426,7 +430,7 @@ class ImageClassifier:
         end_time = time.time() - start_time
         hours, rem = divmod(end_time, 3600)
         minutes, seconds = divmod(rem, 60)
-        print(f'  Total time for classification: {int(hours)}h {int(minutes)}m {int(seconds)}s')
+        logger.info(f'  Total time for classification: {int(hours)}h {int(minutes)}m {int(seconds)}s')
 
         return self.output_path
 

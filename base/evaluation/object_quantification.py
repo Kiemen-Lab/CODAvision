@@ -22,6 +22,10 @@ from typing import List, Dict, Union, Optional, Tuple
 from skimage.measure import label
 from skimage.morphology import remove_small_objects
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 # Suppress warnings to avoid cluttering output
 warnings.filterwarnings("ignore")
 
@@ -107,7 +111,7 @@ class ObjectQuantifier:
         
         # Get the class name for the specified ID
         class_name = self.class_names[class_id-1]
-        print(f'_______Starting object analysis for {class_name}________')
+        logger.info(f'_______Starting object analysis for {class_name}________')
         
         # Define output CSV file path
         csv_file = os.path.join(self.output_path, f'{class_name}_count_analysis.csv')
@@ -125,15 +129,15 @@ class ObjectQuantifier:
         # Process each image
         for image_path in image_files:
             image_name = os.path.basename(image_path)
-            print(f'Processing image {image_name}')
+            logger.info(f'Processing image {image_name}')
             
             # Read the classified image
             img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
             if img is None:
-                print(f"  Warning: Failed to read image {image_path}")
+                logger.info(f"  Warning: Failed to read image {image_path}")
                 continue
             
-            print(f'  Analyzing annotation class: {class_name}')
+            logger.info(f'  Analyzing annotation class: {class_name}')
             
             # Create mask for the target class
             label_mask = (img == class_id)
@@ -166,23 +170,23 @@ class ObjectQuantifier:
                     all_props.append([image_name, f"{class_name} {object_ID}", size])
         
         if not all_props:
-            print(f"  No objects found for class '{class_name}' with minimum size {min_size}")
+            logger.info(f"  No objects found for class '{class_name}' with minimum size {min_size}")
             return ""
         
         # Create DataFrame and save to CSV
         props_df = pd.DataFrame(all_props, columns=["Image", "Object ID", "Object Size (pixels)"])
-        print(f'DataFrame to be written for {class_name}:\n{props_df}')
+        logger.info(f'DataFrame to be written for {class_name}:\n{props_df}')
         
         try:
             props_df.to_csv(csv_file, mode='w', header=True, index=False)
         except PermissionError as e:
-            print(f"PermissionError: {e}")
+            logger.error(f"PermissionError: {e}")
             return ""
         except ValueError as e:
-            print(f"ValueError: {e}")
+            logger.error(f"ValueError: {e}")
             return ""
         
-        print('_______Object analysis completed________')
+        logger.info('_______Object analysis completed________')
         return csv_file
     
     def quantify_multiple_classes(self, class_ids: List[int], min_size: int = 500) -> List[str]:
@@ -224,7 +228,7 @@ def quantify_objects(pthDL: str, quantpath: str, tissue: int, min_size: int = 50
         quantifier = ObjectQuantifier(pthDL, quantpath)
         return quantifier.quantify_class(tissue, min_size)
     except Exception as e:
-        print(f"Error in object quantification: {e}")
+        logger.error(f"Error in object quantification: {e}")
         return ""
 
 

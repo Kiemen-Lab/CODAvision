@@ -197,11 +197,11 @@ class Logger:
             process_memory = process.memory_info().rss / 1024 / 1024  # MB
 
             # Log general system information
-            self.logger.info("\nSystem Resources:")
-            self.logger.info(f"CPU Usage: {cpu_percent}%")
-            self.logger.info(
+            self.logger.debug("\nSystem Resources:")
+            self.logger.debug(f"CPU Usage: {cpu_percent}%")
+            self.logger.debug(
                 f"System Memory: {memory.used / 1024 / 1024 / 1024:.1f}GB / {memory.total / 1024 / 1024 / 1024:.1f}GB ({memory.percent}%)")
-            self.logger.info(f"Process Memory: {process_memory:.1f}MB")
+            self.logger.debug(f"Process Memory: {process_memory:.1f}MB")
 
             # Record memory information for trend analysis
             memory_info = {
@@ -214,27 +214,27 @@ class Logger:
             self.memory_logs.append(memory_info)
 
             # Log GPU information if available
-            self.logger.info("\nGPU Information:")
+            self.logger.debug("\nGPU Information:")
             gpu_info = self.get_gpu_info()
 
             if isinstance(gpu_info, list):
                 for gpu in gpu_info:
-                    self.logger.info(f"\nDevice: {gpu['device']}")
+                    self.logger.debug(f"\nDevice: {gpu['device']}")
                     if 'name' in gpu:
-                        self.logger.info(f"Name: {gpu['name']}")
+                        self.logger.debug(f"Name: {gpu['name']}")
                     if 'error' in gpu:
-                        self.logger.warning(f"Error: {gpu['error']}")
+                        self.logger.debug(f"Error: {gpu['error']}")
                     else:
                         if 'memory_used' in gpu and 'memory_total' in gpu:
-                            self.logger.info(f"Memory: {gpu['memory_used']}MB / {gpu['memory_total']}MB")
+                            self.logger.debug(f"Memory: {gpu['memory_used']}MB / {gpu['memory_total']}MB")
                         if 'utilization' in gpu:
-                            self.logger.info(f"Utilization: {gpu['utilization']}%")
+                            self.logger.debug(f"Utilization: {gpu['utilization']}%")
                         if 'current_memory' in gpu:
-                            self.logger.info(f"Current Memory: {gpu['current_memory']}MB")
+                            self.logger.debug(f"Current Memory: {gpu['current_memory']}MB")
                         if 'peak_memory' in gpu:
-                            self.logger.info(f"Peak Memory: {gpu['peak_memory']}MB")
+                            self.logger.debug(f"Peak Memory: {gpu['peak_memory']}MB")
             else:
-                self.logger.info(gpu_info)
+                self.logger.debug(gpu_info)
 
         except Exception as e:
             self.logger.error(f"Error in system info logging: {str(e)}")
@@ -266,14 +266,14 @@ class Logger:
                 lr = float(model.optimizer.learning_rate.numpy())
                 batch_info['learning_rate'] = lr
                 metrics_str = " - ".join(f"{k}: {v:.4f}" for k, v in metrics.items())
-                self.logger.info(f"Batch {batch_number}: {metrics_str} - lr: {lr:.6f}")
+                self.logger.debug(f"Batch {batch_number}: {metrics_str} - lr: {lr:.6f}")
             except Exception as e:
                 self.logger.warning(f"Could not get learning rate: {str(e)}")
                 metrics_str = " - ".join(f"{k}: {v:.4f}" for k, v in metrics.items())
-                self.logger.info(f"Batch {batch_number}: {metrics_str}")
+                self.logger.debug(f"Batch {batch_number}: {metrics_str}")
         else:
             metrics_str = " - ".join(f"{k}: {v:.4f}" for k, v in metrics.items())
-            self.logger.info(f"Batch {batch_number}: {metrics_str}")
+            self.logger.debug(f"Batch {batch_number}: {metrics_str}")
 
         self.batch_history.append(batch_info)
         self.last_log_time = current_time
@@ -299,9 +299,9 @@ class Logger:
                     self.logger.error(f"Unexpected batch format in {dataset_name} dataset")
                     return
 
-                self.logger.info(f"\n{dataset_name} Dataset Information:")
-                self.logger.info(f"Image batch shape: {images.shape}")
-                self.logger.info(f"Mask batch shape: {masks.shape}")
+                self.logger.debug(f"\n{dataset_name} Dataset Information:")
+                self.logger.debug(f"Image batch shape: {images.shape}")
+                self.logger.debug(f"Mask batch shape: {masks.shape}")
 
                 # Calculate class distribution
                 try:
@@ -323,9 +323,9 @@ class Logger:
                             'percentage': f"{percentage:.2f}%"
                         }
 
-                    self.logger.info("Class distribution in sample batch:")
+                    self.logger.debug("Class distribution in sample batch:")
                     for cls, stats in class_distribution.items():
-                        self.logger.info(f"  {cls}: {stats['count']} pixels ({stats['percentage']})")
+                        self.logger.debug(f"  {cls}: {stats['count']} pixels ({stats['percentage']})")
 
                 except Exception as e:
                     self.logger.error(f"Error calculating class distribution: {str(e)}")
@@ -335,7 +335,7 @@ class Logger:
             # Count total number of batches
             try:
                 total_batches = sum(1 for _ in dataset)
-                self.logger.info(f"Total number of batches: {total_batches}")
+                self.logger.debug(f"Total number of batches: {total_batches}")
             except Exception as e:
                 self.logger.error(f"Error counting batches: {str(e)}")
 
@@ -364,9 +364,9 @@ class Logger:
         }
 
         # Log dataset shapes
-        self.logger.info(f"\nValidation Run {self.validation_runs} Dataset Shapes:")
-        self.logger.info(f"Logits shape: {val_logits.shape}")
-        self.logger.info(f"Labels shape: {y_val.shape}")
+        self.logger.debug(f"\nValidation Run {self.validation_runs} Dataset Shapes:")
+        self.logger.debug(f"Logits shape: {val_logits.shape}")
+        self.logger.debug(f"Labels shape: {y_val.shape}")
 
         try:
             # Analyze ground truth class distribution
@@ -377,9 +377,9 @@ class Logger:
                 f"Class {int(cls)}": f"{(count / total_pixels * 100):.2f}%"
                 for cls, count in zip(unique_classes.numpy(), counts.numpy())
             }
-            self.logger.info("Validation class distribution:")
+            self.logger.debug("Validation class distribution:")
             for cls, percentage in class_distribution.items():
-                self.logger.info(f"  {cls}: {percentage}")
+                self.logger.debug(f"  {cls}: {percentage}")
 
             # Analyze model prediction distribution
             predictions = tf.argmax(val_logits, axis=-1)
@@ -388,9 +388,9 @@ class Logger:
                 f"Class {int(cls)}": f"{(count / tf.reduce_sum(pred_counts) * 100):.2f}%"
                 for cls, count in zip(pred_unique.numpy(), pred_counts.numpy())
             }
-            self.logger.info("Prediction distribution:")
+            self.logger.debug("Prediction distribution:")
             for cls, percentage in pred_distribution.items():
-                self.logger.info(f"  {cls}: {percentage}")
+                self.logger.debug(f"  {cls}: {percentage}")
 
         except Exception as e:
             self.logger.error(f"Error analyzing class distributions: {str(e)}")
@@ -417,9 +417,9 @@ class Logger:
         # Store validation info
         self.validation_history.append(validation_info)
 
-        self.logger.info(f"Validation Metrics - Run {self.validation_runs}:")
-        self.logger.info(f"Loss: {loss:.4f}")
-        self.logger.info(f"Accuracy: {accuracy:.4f}")
+        self.logger.debug(f"Validation Metrics - Run {self.validation_runs}:")
+        self.logger.debug(f"Loss: {loss:.4f}")
+        self.logger.debug(f"Accuracy: {accuracy:.4f}")
 
     def log_error(self, error_msg: str, include_trace: bool = True) -> None:
         """

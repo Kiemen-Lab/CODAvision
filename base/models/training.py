@@ -19,14 +19,11 @@ import os
 import warnings
 from glob import glob
 from typing import Dict, List, Optional, Tuple, Union, Any
-
 import numpy as np
 import tensorflow as tf
 import keras
-from tensorflow import image as tf_image
-from tensorflow import data as tf_data
-from tensorflow import io as tf_io
-import GPUtil
+import logging
+import traceback
 
 from base.models.backbones import model_call, unfreeze_model
 from base.utils.logger import Logger
@@ -37,6 +34,9 @@ from base.data.loaders import create_dataset, load_model_metadata
 warnings.filterwarnings('ignore')
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
+
+# Setup a logger for the module level
+module_logger = logging.getLogger(__name__)
 
 
 class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
@@ -205,9 +205,9 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         self.stopped_epoch = 0
         self.lr_factor = lr_factor
 
-        # Log validation dataset information if logger is available
+        # Log validation dataset information
         if self.logger:
-            self.logger.logger.info("\nInitial Validation Dataset Information:")
+            self.logger.logger.debug("\nInitial Validation Dataset Information:")
             self.logger.log_dataset_info(val_data, "Initial-Validation")
 
     @property
@@ -289,7 +289,7 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
             self._model.optimizer.learning_rate.assign(new_lr)
 
             if self.verbose > 0 and self.logger:
-                self.logger.logger.info(
+                self.logger.logger.debug(
                     f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr} to {new_lr}"
                 )
 
@@ -365,7 +365,7 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
                             save_format='tf'
                         )
                         if self.verbose > 0 and self.logger:
-                            self.logger.logger.info(
+                            self.logger.logger.debug(
                                 f'\nEpoch {self.current_epoch + 1}: '
                                 f'Model saved to {self.save_path}'
                             )
@@ -376,7 +376,7 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
                         self.stopped_epoch = self.current_epoch
                         self._model.stop_training = True
                         if self.verbose > 0 and self.logger:
-                            self.logger.logger.info(
+                            self.logger.logger.debug(
                                 f'\nEpoch {self.current_epoch + 1}: early stopping'
                             )
 
@@ -649,7 +649,10 @@ class SegmentationModelTrainer:
         training_time = time.time() - start_time
         hours, rem = divmod(training_time, 3600)
         minutes, seconds = divmod(rem, 60)
-        print(f"Training time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
+        if self.logger:
+            self.logger.logger.info(f"Training time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
+        else:
+            module_logger.info(f"Training time: {int(hours)}h {int(minutes)}m {int(seconds)}s")
 
         # Save metadata
         metadata_update = {
@@ -714,7 +717,10 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
         Returns:
             Training history
         """
-        print('Starting DeepLabV3+ model training...')
+        if self.logger:
+            self.logger.logger.info('Starting DeepLabV3+ model training...')
+        else:
+            module_logger.info('Starting DeepLabV3+ model training...')
 
         history = model.fit(
             self.train_dataset,
@@ -776,12 +782,16 @@ class UNetTrainer(SegmentationModelTrainer):
         Returns:
             Training history from the final phase
         """
-        print('Starting UNet model training...')
+        if self.logger:
+            self.logger.logger.info('Starting UNet model training...')
+            self.logger.logger.info('Phase 1: Training with frozen encoder layers...')
+        else:
+            module_logger.info('Starting UNet model training...')
+            module_logger.info('Phase 1: Training with frozen encoder layers...')
 
         # Initial training phase with frozen encoder
         initial_epochs = 5
 
-        print('Phase 1: Training with frozen encoder layers...')
         history_initial = model.fit(
             self.train_dataset,
             validation_data=self.val_dataset,
@@ -791,7 +801,10 @@ class UNetTrainer(SegmentationModelTrainer):
         )
 
         # Fine-tuning phase with unfrozen encoder
-        print('Phase 2: Fine-tuning with unfrozen encoder layers...')
+        if self.logger:
+            self.logger.logger.info('Phase 2: Fine-tuning with unfrozen encoder layers...')
+        else:
+            module_logger.info('Phase 2: Fine-tuning with unfrozen encoder layers...')
         model = unfreeze_model(model)
 
         # Recompile with lower learning rate
@@ -848,7 +861,7 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
 
     # Check if model already exists and should not be retrained
     if os.path.isfile(os.path.join(pthDL, f'best_model_{model_type}.keras')) and not retrain_model:
-        print(f'Model already trained with name {model_name}. Use retrain_model=True to retrain.')
+        module_logger.info(f'Model already trained with name {model_name}. Use retrain_model=True to retrain.')
         return
 
     # Create and use the appropriate trainer
@@ -861,9 +874,8 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
         # Train the model
         trainer.train()
 
-        print(f"Successfully trained {model_type} model.")
+        module_logger.info(f"Successfully trained {model_type} model.")
 
     except Exception as e:
-        print(f"Error during model training: {e}")
-        import traceback
-        print(traceback.format_exc())
+        module_logger.error(f"Error during model training: {e}")
+        module_logger.error(f"Traceback:\n{traceback.format_exc()}")

@@ -15,6 +15,10 @@ import pickle
 import shutil
 from PySide6 import QtWidgets
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 # Import from base package
 from base import (
     determine_optimal_TA, load_annotation_data, create_training_tiles,
@@ -135,7 +139,7 @@ def CODAVision():
             shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
                         os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
         except:
-            print('No TA cutoff file found, using default value')
+            logger.error('No TA cutoff file found, using default value')
         load_time = time.time()
         [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
         load_time = time.time()-load_time
@@ -206,7 +210,7 @@ def CODAVision():
             if not os.path.isfile(os.path.join(quantpath, classNames[tissue - 1] + '_count_analysis.csv')):
                 quantify_objects(pthDL, quantpath, tissue)
             else:
-                print(f'Object quantification already done for {classNames[tissue - 1]}')
+                logger.info(f'Object quantification already done for {classNames[tissue - 1]}')
         comp_time = time.time()-comp_time
         comp_time = str(int(comp_time // 3600)) + ':' + str(int((comp_time % 3600) // 60)) + ':' + str(
             round(comp_time % 60, 2))
@@ -232,4 +236,4 @@ def CODAVision():
     hours, remainder = divmod(execution_time, 3600)
     minutes, seconds = divmod(remainder, 60)
 
-    print(f"Execution time: {int(hours)} hours, {int(minutes)} minutes, and {seconds:.2f} seconds")
+    logger.info(f"Execution time: {int(hours)} hours, {int(minutes)} minutes, and {seconds:.2f} seconds")

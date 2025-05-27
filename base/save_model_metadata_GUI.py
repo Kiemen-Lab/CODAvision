@@ -8,6 +8,11 @@ import matplotlib.pyplot as plt
 from .evaluation.visualize import plot_cmap_legend
 import pickle
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
+
 def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, classNames, ntrain, nvalidate, nTA, final_df, combined_df, model_type, batch_size, uncomp_train_pth = '', uncomp_test_pth = '', scale = '', create_down = '', downsamp_annotated = ''):
     """
       Saves model metadata to a pickle file and generates a color map legend plot.
@@ -38,7 +43,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
     if not os.path.isdir(pthDL):
         os.mkdir(pthDL)
 
-    print('Saving model metadata and classification colormap...')
+    logger.info('Saving model metadata and classification colormap...')
 
     if classNames[-1] != "black":
         classNames.append("black")
@@ -60,12 +65,12 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
                 nload = [n for n in nload if n != b]
 
                 if len(classNames) == max(WS[2]):
-                    # print(classNames)
+                    # logger.info(classNames)
                     zz = [i for i in range(len(classNames)) if i + 1 not in [oldnum]]
                     classNames = [classNames[i] for i in zz]
-                    # print(classNames)
+                    # logger.info(classNames)
                     cmap = cmap[zz]
-                    # print(cmap)
+                    # logger.info(cmap)
 
                 WS[2] = ncombine
 
@@ -75,8 +80,8 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
 
     nwhite = WS[2]
     nwhite = nwhite[WS[1][0] - 1]
-    # print(f'Max WS[2]: {max(WS[2])}')
-    print(f'Classnames: {classNames}')
+    # logger.info(f'Max WS[2]: {max(WS[2])}')
+    logger.info(f'Classnames: {classNames}')
     if max(WS[2]) != len(classNames):
         raise ValueError('The length of classNames does not match the number of classes specified in WS[2].')
     if classNames[-1] != "black":
@@ -92,7 +97,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
 
     # Save the data to a pickle file
     if os.path.exists(datafile):
-        print('Net file already exists, updating data...')
+        logger.info('Net file already exists, updating data...')
         with open(datafile, 'rb') as f:
             try:
                 existing_data = pickle.load(f)
@@ -117,7 +122,7 @@ def save_model_metadata_GUI(pthDL, pthim, pthtest,  WS, nm, umpix, cmap, sxy, cl
         with open(datafile, 'wb') as f:
             pickle.dump(existing_data, f)
     else:
-        print('Creating Net metadata file...')
+        logger.info('Creating Net metadata file...')
         with open(datafile, 'wb') as f:
             if umpix == 'TBD':
                 pickle.dump({"pthim": pthim, "pthDL": pthDL, "pthtest": pthtest, "WS": WS, "nm": nm, "umpix": umpix,

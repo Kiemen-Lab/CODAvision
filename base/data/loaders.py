@@ -20,6 +20,10 @@ import cv2
 import pickle
 from skimage.morphology import remove_small_objects
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 
 def read_image(
     image_input: Union[str, np.ndarray],
@@ -55,7 +59,7 @@ def read_image(
                 image = tf.image.resize(images=image, size=[image_size, image_size])
         return image
     except Exception as e:
-        print(f"Error reading image {image_input}: {e}")
+        logger.info(f"Error reading image {image_input}: {e}")
         return None
 
 
@@ -168,11 +172,11 @@ def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tup
     # Check if tissue mask already exists
     if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
         tissue_mask = cv2.imread(os.path.join(output_path, f'{image_name}.tif'), cv2.IMREAD_GRAYSCALE)
-        print('  Existing TA loaded')
+        logger.info('  Existing TA loaded')
         return image, tissue_mask, output_path
 
     # Calculate tissue mask
-    print('  Calculating TA image')
+    logger.info('  Calculating TA image')
     mode = 'H&E'
     # Try to load cutoff values from pickle file
     if os.path.isfile(os.path.join(output_path, 'TA_cutoff.pkl')):

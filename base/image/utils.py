@@ -24,6 +24,10 @@ import cv2
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 
 def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
     """
@@ -119,7 +123,7 @@ def read_image_overlay(image_input: Union[str, np.ndarray]) -> Optional[tf.Tenso
             image.set_shape([None, None, 3])
         return image
     except Exception as e:
-        print(f"Error reading image {image_input}: {e}")
+        logger.error(f"Error reading image {image_input}: {e}")
         return None
 
 

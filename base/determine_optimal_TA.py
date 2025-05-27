@@ -5,9 +5,11 @@ import sys
 import pickle
 from PySide6 import QtGui, QtWidgets, QtCore
 from PySide6.QtCore import Qt, QRect
-import cv2
-from PIL import Image
 from base.image import load_image_with_fallback
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 
@@ -430,7 +432,7 @@ def determine_optimal_TA(pthim, pthtestim, numims, redo):
         if png_files:
             imtestlist.extend(png_files)
     if not imlist:
-        print(f"No TIFF, PNG or JPG image files found in either {pthim} or {pthtestim}")
+        logger.info(f"No TIFF, PNG or JPG image files found in either {pthim} or {pthtestim}")
     print('   ')
     i = 0
     for image in imlist:
@@ -447,7 +449,7 @@ def determine_optimal_TA(pthim, pthtestim, numims, redo):
         if numims > 0:
             keep_TA = not redo
             if keep_TA:
-                print('   Optimal cutoff already chosen, skip this step')
+                logger.info('   Optimal cutoff already chosen, skip this step')
                 return
             with open(os.path.join(outpath, 'TA_cutoff.pkl'), 'rb') as f:
                 data = pickle.load(f)
@@ -464,7 +466,7 @@ def determine_optimal_TA(pthim, pthtestim, numims, redo):
             if not imlist_temp:
                 keep_TA = not redo
                 if keep_TA:
-                    print('   Optimal cutoff already chosen for all images, skip this step')
+                    logger.info('   Optimal cutoff already chosen for all images, skip this step')
                     return
                 else:
                     apply_all, redo_list = choose_images_TA()
@@ -475,24 +477,24 @@ def determine_optimal_TA(pthim, pthtestim, numims, redo):
     if numims > 0:
         numims = min(numims, len(imlist))
         imlist = np.random.choice(imlist, size=numims, replace=False)
-        print(f'Evaluating {numims} randomly selected images to choose a good whitespace detection...')
+        logger.info(f'Evaluating {numims} randomly selected images to choose a good whitespace detection...')
         average_TA = True
     else:
         numims = len(imlist)
-        print(f'Evaluating all training images to choose a good whitespace detection...')
+        logger.info(f'Evaluating all training images to choose a good whitespace detection...')
         average_TA = False
 
     count = 0
     for nm in imlist:
         count += 1
         if len(nm) > len(pthtestim) and nm[:len(pthtestim)] == pthtestim:
-            print(f'    Loading image {count} of {numims}: {nm[len(pthtestim) + 1:]}')
+            logger.info(f'    Loading image {count} of {numims}: {nm[len(pthtestim) + 1:]}')
             im0 = load_image_with_fallback(nm)
         else:
-            print(f'    Loading image {count} of {numims}: {nm}')
+            logger.info(f'    Loading image {count} of {numims}: {nm}')
             im0 = load_image_with_fallback(os.path.join(pthim, nm))
         im0 = im0[:, :, ::-1]
-        print('     Image loaded')
+        logger.info('     Image loaded')
         rsf = min(1500 / im0.shape[1], 780 / im0.shape[0])
         do_again = 1
         while do_again == 1:
@@ -537,7 +539,7 @@ def determine_optimal_TA(pthim, pthtestim, numims, redo):
             do_again = check_region(szz, cropped)
         sstop, CT0, mode = select_TA(szz, cropped, CT0, mode)
         if sstop:
-            print('Whitespace detection process stopped by the user')
+            logger.info('Whitespace detection process stopped by the user')
             return
         if nm in cts:
             cts[nm] = CT0

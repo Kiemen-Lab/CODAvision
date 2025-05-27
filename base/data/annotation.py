@@ -36,7 +36,10 @@ import codecs
 import xml.sax
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+import logging
 
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 # XML Parsing and Loading Utilities
@@ -56,7 +59,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
     Returns:
         Tuple of (bounding box file list, annotation counts array, create_new_tiles flag)
     """
-    print('\nImporting annotation data...')
+    logger.info('\nImporting annotation data...')
 
     # Load model metadata
     with open(os.path.join(model_path, 'net.pkl'), 'rb') as f:
@@ -102,7 +105,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
     # Process each XML file
     for idx, imnm in enumerate(imlist, start=1):
         base_name = imnm[:-4]
-        print(f'Image {idx} of {len(imlist)}: {base_name}')
+        logger.info(f'Image {idx} of {len(imlist)}: {base_name}')
         outpth = os.path.join(annotation_path, 'data py', base_name)
         annotations_file = os.path.join(outpth, 'annotations.pkl')
 
@@ -122,15 +125,15 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
 
         # Skip if already processed and parameters haven't changed
         if str(dm)== str(date_modified) and bb == 1 and reload_xml == 0:
-            print(' annotation data previously loaded')
+            logger.info(' annotation data previously loaded')
             with open(annotations_file, 'rb') as f:
                 data = pickle.load(f)
                 numann, ctlist = data.get('numann', []), data.get('ctlist', [])
             numann0.extend(numann)
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
-            # print(numann0)
-            # print(ctlist0)
+            # logger.info(numann0)
+            # logger.info(ctlist0)
             continue
 
         create_new_tiles = True
@@ -188,9 +191,9 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
             numann0.extend(numann)
             ctlist0['tile_name'].extend(ctlist['tile_name'])
             ctlist0['tile_pth'].extend(ctlist['tile_pth'])
-            # print(numann0)
-            # print(ctlist0)
-            # print(" ")
+            # logger.info(numann0)
+            # logger.info(ctlist0)
+            # logger.info(" ")
 
     # Check if any annotations were found
     if not numann0:
@@ -220,14 +223,14 @@ def import_xml(annotations_file: str, xml_file: str, date_modified: str = None, 
     if date_modified is None:
         date_modified = []
 
-    print(' 1. of 4. Importing annotation data from xml file')
+    logger.info(' 1. of 4. Importing annotation data from xml file')
     
     try:
         reduced_annotations, xyout_df = load_annotations(xml_file)
     except Exception as e:
-        print(f'  Error reading XML file: {str(e)}')
+        logger.info(f'  Error reading XML file: {str(e)}')
         import traceback
-        print(traceback.format_exc())
+        logger.info(traceback.format_exc())
         return pd.DataFrame(), 0
 
     reduced_annotations = float(reduced_annotations)
@@ -243,7 +246,7 @@ def import_xml(annotations_file: str, xml_file: str, date_modified: str = None, 
 
         # Update or create pickle file
         if os.path.exists(annotations_file):
-            print('File already exists, updating data...')
+            logger.info('File already exists, updating data...')
             with open(annotations_file, 'rb') as f:
                 try:
                     existing_data = pickle.load(f)
@@ -254,13 +257,13 @@ def import_xml(annotations_file: str, xml_file: str, date_modified: str = None, 
             with open(annotations_file, 'wb') as f:
                 pickle.dump(existing_data, f)
         else:
-            print(' Creating file...')
+            logger.info(' Creating file...')
             with open(annotations_file, 'wb') as f:
                 pickle.dump({'xyout': xyout_df.values, 'reduce_annotations': reduced_annotations, 'dm': date_modified}, f)
     else:
         # Delete empty subfolder
         outpth = os.path.dirname(annotations_file)
-        print(f' WARNING: No annotations found in {xml_file}, deleting the subfolder {outpth}')
+        logger.info(f' WARNING: No annotations found in {xml_file}, deleting the subfolder {outpth}')
         if os.path.isdir(outpth):
             import shutil
             shutil.rmtree(outpth)
@@ -300,10 +303,10 @@ def extract_annotation_layers(xml_path: str, debug: bool = False) -> pd.DataFram
 
     # Skip hidden files
     if file_name.startswith('_'):
-        print(f"Skipping hidden file: {file_name}")
+        logger.info(f"Skipping hidden file: {file_name}")
         return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
     
-    print(f"Extracting annotation layers from: {file_name}")
+    logger.info(f"Extracting annotation layers from: {file_name}")
 
     # Try to extract layers from original file
     try:
@@ -336,7 +339,7 @@ def extract_annotation_layers(xml_path: str, debug: bool = False) -> pd.DataFram
                     })
                 except Exception as e:
                     if debug:
-                        print(f"  {file_name}: Error processing layer: {str(e)}")
+                        logger.info(f"  {file_name}: Error processing layer: {str(e)}")
 
             if data:
                 return pd.DataFrame(data)
@@ -357,15 +360,15 @@ def extract_annotation_layers(xml_path: str, debug: bool = False) -> pd.DataFram
                     })
                 except Exception as e:
                     if debug:
-                        print(f"  {file_name}: Error processing color value: {str(e)}")
+                        logger.info(f"  {file_name}: Error processing color value: {str(e)}")
 
             if data:
                 return pd.DataFrame(data)
     except Exception as e:
         if debug:
-            print(f"  {file_name}: Error extracting from file: {str(e)}")
+            logger.info(f"  {file_name}: Error extracting from file: {str(e)}")
 
-    print(f"  {file_name}: All extraction methods failed. No annotation layers found.")
+    logger.info(f"  {file_name}: All extraction methods failed. No annotation layers found.")
     return pd.DataFrame(columns=['Layer Name', 'Color', 'Whitespace Settings'])
 
 
@@ -382,7 +385,7 @@ def read_xml_file(xml_path: str, debug: bool = False) -> Tuple[str, str]:
     """
     file_name = os.path.basename(xml_path)
     if debug:
-        print(f"Reading XML file: {file_name}")
+        logger.info(f"Reading XML file: {file_name}")
 
     if not os.path.exists(xml_path):
         raise FileNotFoundError(f"XML file not found: {xml_path}")
@@ -402,16 +405,16 @@ def read_xml_file(xml_path: str, debug: bool = False) -> Tuple[str, str]:
     for bom, encoding in bom_encodings.items():
         if raw_data.startswith(bom):
             if debug:
-                print(f"  {file_name}: Found BOM for encoding: {encoding}")
+                logger.info(f"  {file_name}: Found BOM for encoding: {encoding}")
             raw_data = raw_data[len(bom):]
             try:
                 decoded_text = raw_data.decode(encoding)
                 if debug:
-                    print(f"  {file_name}: Successfully decoded with BOM-detected encoding: {encoding}")
+                    logger.info(f"  {file_name}: Successfully decoded with BOM-detected encoding: {encoding}")
                 return clean_xml_content(decoded_text, debug), encoding
             except UnicodeDecodeError:
                 if debug:
-                    print(f"  {file_name}: Failed to decode with BOM-detected encoding: {encoding}")
+                    logger.info(f"  {file_name}: Failed to decode with BOM-detected encoding: {encoding}")
                 pass
 
     # Try different encodings
@@ -420,7 +423,7 @@ def read_xml_file(xml_path: str, debug: bool = False) -> Tuple[str, str]:
     # Check for Mac OS X metadata
     if "Mac OS X" in str_content_latin1[:100]:
         if debug:
-            print(f"  {file_name}: Detected Mac OS X metadata")
+            logger.info(f"  {file_name}: Detected Mac OS X metadata")
         clean_content, encoding = find_xml_after_mac_metadata(str_content_latin1, debug, file_name)
         if clean_content:
             return clean_content, encoding
@@ -433,16 +436,16 @@ def read_xml_file(xml_path: str, debug: bool = False) -> Tuple[str, str]:
             clean_content = clean_xml_content(decoded_text, debug, file_name)
             if clean_content.strip().startswith('<?xml') or clean_content.strip().startswith('<Annotations'):
                 if debug:
-                    print(f"  {file_name}: Successfully decoded with {encoding}")
+                    logger.info(f"  {file_name}: Successfully decoded with {encoding}")
                 return clean_content, encoding
         except UnicodeDecodeError:
             if debug:
-                print(f"  {file_name}: Failed to decode with {encoding}")
+                logger.info(f"  {file_name}: Failed to decode with {encoding}")
 
     # Fallback to latin-1 with error replacement
     decoded_text = raw_data.decode('latin-1', errors='replace')
     if debug:
-        print(f"  {file_name}: Falling back to latin-1 with error replacement")
+        logger.info(f"  {file_name}: Falling back to latin-1 with error replacement")
 
     clean_content = clean_xml_content(decoded_text, debug, file_name)
     return clean_content, 'latin-1'
@@ -473,7 +476,7 @@ def find_xml_after_mac_metadata(content: str, debug: bool = False, file_name: st
     if start_index != -1:
         clean_content = content[start_index:]
         if debug:
-            print(f"  {file_name}: Found XML marker at position {start_index}. First 50 chars: {clean_content[:50]}")
+            logger.info(f"  {file_name}: Found XML marker at position {start_index}. First 50 chars: {clean_content[:50]}")
         return clean_content, 'detected-after-mac-metadata'
 
     # Try other common markers
@@ -491,12 +494,12 @@ def find_xml_after_mac_metadata(content: str, debug: bool = False, file_name: st
                 if next_line_pos != -1:
                     clean_content = content[next_line_pos+1:]
                     if debug:
-                        print(f"  {file_name}: Skipped to after [ZoneTransfer]. First 50 chars: {clean_content[:50]}")
+                        logger.info(f"  {file_name}: Skipped to after [ZoneTransfer]. First 50 chars: {clean_content[:50]}")
                     return clean_content, 'detected-after-zonetransfer'
             else:
                 clean_content = content[pos:]
                 if debug:
-                    print(f"  {file_name}: Found marker {marker} at position {pos}. First 50 chars: {clean_content[:50]}")
+                    logger.info(f"  {file_name}: Found marker {marker} at position {pos}. First 50 chars: {clean_content[:50]}")
                 return clean_content, 'detected-after-marker'
 
     # Try to find any XML-like tag
@@ -506,12 +509,12 @@ def find_xml_after_mac_metadata(content: str, debug: bool = False, file_name: st
         start_index = match.start()
         clean_content = content[start_index:]
         if debug:
-            print(f"  {file_name}: Found XML-like pattern at position {start_index}. First 50 chars: {clean_content[:50]}")
+            logger.info(f"  {file_name}: Found XML-like pattern at position {start_index}. First 50 chars: {clean_content[:50]}")
         return clean_content, 'detected-xml-pattern'
 
     # No XML content found
     if debug:
-        print(f"  {file_name}: WARNING: Could not identify XML content in the file")
+        logger.info(f"  {file_name}: WARNING: Could not identify XML content in the file")
     return content, 'original-unmodified'
 
 
@@ -540,7 +543,7 @@ def clean_xml_content(content: str, debug: bool = False, file_name: str = "unkno
         if pos != -1:
             start_index = pos
             if debug:
-                print(f"  {file_name}: Clean operation - Found XML marker '{marker}' at position {pos}")
+                logger.info(f"  {file_name}: Clean operation - Found XML marker '{marker}' at position {pos}")
             break
 
     if start_index != -1:
@@ -551,7 +554,7 @@ def clean_xml_content(content: str, debug: bool = False, file_name: str = "unkno
     match = xml_pattern.search(content)
     if match:
         if debug:
-            print(f"  {file_name}: Clean operation - Found XML-like tag <{match.group(1)}> at position {match.start()}")
+            logger.info(f"  {file_name}: Clean operation - Found XML-like tag <{match.group(1)}> at position {match.start()}")
         return content[match.start():]
 
     return content
@@ -574,11 +577,11 @@ def parse_xml(xml_content: str, debug: bool = False, file_name: str = "unknown")
         import xmltodict
         result = xmltodict.parse(xml_content)
         if debug:
-            print(f"  {file_name}: Successfully parsed with xmltodict")
+            logger.info(f"  {file_name}: Successfully parsed with xmltodict")
         return result
     except Exception as e:
         if debug:
-            print(f"  {file_name}: xmltodict parsing error: {str(e)}")
+            logger.info(f"  {file_name}: xmltodict parsing error: {str(e)}")
 
     # Try using ElementTree
     try:
@@ -587,7 +590,7 @@ def parse_xml(xml_content: str, debug: bool = False, file_name: str = "unknown")
         root = tree.getroot()
 
         if debug:
-            print(f"  {file_name}: Successfully parsed with ElementTree")
+            logger.info(f"  {file_name}: Successfully parsed with ElementTree")
 
         # Convert ElementTree to dictionary
         def etree_to_dict(t):
@@ -613,26 +616,26 @@ def parse_xml(xml_content: str, debug: bool = False, file_name: str = "unknown")
         return etree_to_dict(root)
     except Exception as et_error:
         if debug:
-            print(f"  {file_name}: ElementTree parsing error: {str(et_error)}")
+            logger.info(f"  {file_name}: ElementTree parsing error: {str(et_error)}")
 
     # Try using SAX parser
     try:
         xml.sax.parseString(xml_content, xml.sax.ContentHandler())
         if debug:
-            print(f"  {file_name}: SAX parser could parse the XML, but xmltodict and ElementTree failed.")
+            logger.info(f"  {file_name}: SAX parser could parse the XML, but xmltodict and ElementTree failed.")
 
         # Try manual extraction
         return manual_extract_annotations(xml_content, debug, file_name)
     except xml.sax.SAXParseException as sax_error:
         if debug:
-            print(f"  {file_name}: SAX parser failed: {str(sax_error)}")
-            print(f"  {file_name}: Error at line {sax_error.getLineNumber()}, column {sax_error.getColumnNumber()}")
+            logger.info(f"  {file_name}: SAX parser failed: {str(sax_error)}")
+            logger.info(f"  {file_name}: Error at line {sax_error.getLineNumber()}, column {sax_error.getColumnNumber()}")
 
             # Show error line
             lines = xml_content.split('\n')
             if sax_error.getLineNumber() <= len(lines):
                 error_line = lines[sax_error.getLineNumber() - 1]
-                print(f"  {file_name}: Error line content: {error_line}")
+                logger.info(f"  {file_name}: Error line content: {error_line}")
 
                 # Try to fix errors
                 fixed_content = fix_common_xml_errors(xml_content, sax_error.getLineNumber(), debug, file_name)
@@ -641,15 +644,15 @@ def parse_xml(xml_content: str, debug: bool = False, file_name: str = "unknown")
                         import xmltodict
                         result = xmltodict.parse(fixed_content)
                         if debug:
-                            print(f"  {file_name}: Successfully parsed with xmltodict after fixing XML errors")
+                            logger.info(f"  {file_name}: Successfully parsed with xmltodict after fixing XML errors")
                         return result
                     except Exception as retry_error:
                         if debug:
-                            print(f"  {file_name}: Failed to parse fixed XML: {str(retry_error)}")
+                            logger.info(f"  {file_name}: Failed to parse fixed XML: {str(retry_error)}")
 
     # All parsing methods failed
     if debug:
-        print(f"  {file_name}: All parsing methods failed")
+        logger.info(f"  {file_name}: All parsing methods failed")
     return None
 
 
@@ -680,14 +683,14 @@ def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool 
         tag_name = unclosed_tag_match.group(1)
         line = line + ">"
         if debug:
-            print(f"  {file_name}: Fixed unclosed tag <{tag_name}> on line {error_line_number}")
+            logger.info(f"  {file_name}: Fixed unclosed tag <{tag_name}> on line {error_line_number}")
 
     # Fix unquoted attributes
     attr_no_quotes = re.findall(r'(\w+)=([^"\'][^\s>]*)', line)
     for attr, value in attr_no_quotes:
         line = line.replace(f"{attr}={value}", f'{attr}="{value}"')
         if debug:
-            print(f"  {file_name}: Fixed unquoted attribute {attr}={value} on line {error_line_number}")
+            logger.info(f"  {file_name}: Fixed unquoted attribute {attr}={value} on line {error_line_number}")
 
     # Fix unescaped entities within text
     for char, entity in [('&', '&amp;'), ('<', '&lt;'), ('>', '&gt;'), ('"', '&quot;'), ("'", '&apos;')]:
@@ -708,7 +711,7 @@ def fix_common_xml_errors(xml_content: str, error_line_number: int, debug: bool 
             elif (not in_tag or in_attr) and line[i:i+1] == char and char != '<' and char != '>':
                 new_line += entity
                 if debug:
-                    print(f"  {file_name}: Escaped {char} to {entity} on line {error_line_number}")
+                    logger.info(f"  {file_name}: Escaped {char} to {entity} on line {error_line_number}")
             else:
                 new_line += line[i:i+1]
             i += 1
@@ -740,7 +743,7 @@ def manual_extract_annotations(xml_content: str, debug: bool = False, file_name:
                                      xml_content, re.DOTALL)
         if annotations_match:
             if debug:
-                print(f"  {file_name}: Found Annotations element. Attempting to extract data...")
+                logger.info(f"  {file_name}: Found Annotations element. Attempting to extract data...")
 
             # Find all Annotation tags
             annotation_pattern = re.compile(r'<Annotation[^>]*?Id="(\d+)"[^>]*?Name="([^"]*)"[^>]*?LineColor="([^"]*)"')
@@ -748,7 +751,7 @@ def manual_extract_annotations(xml_content: str, debug: bool = False, file_name:
 
             if annotations:
                 if debug:
-                    print(f"  {file_name}: Manually extracted {len(annotations)} annotations")
+                    logger.info(f"  {file_name}: Manually extracted {len(annotations)} annotations")
 
                 # Build result dictionary
                 result = {"Annotations": {"Annotation": []}}
@@ -795,7 +798,7 @@ def manual_extract_annotations(xml_content: str, debug: bool = False, file_name:
                 return result
     except Exception as e:
         if debug:
-            print(f"  {file_name}: Error in manual extraction: {str(e)}")
+            logger.info(f"  {file_name}: Error in manual extraction: {str(e)}")
 
     return None
 
@@ -837,18 +840,18 @@ def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = False
     try:
         reduced_annotations = float(xml_dict['Annotations'].get('@MicronsPerPixel', 1))
         if debug:
-            print(f"  {file_name}: Found MicronsPerPixel: {reduced_annotations}")
+            logger.info(f"  {file_name}: Found MicronsPerPixel: {reduced_annotations}")
     except:
         reduced_annotations = 1.0
         if debug:
-            print(f"  {file_name}: Warning: Could not find or parse MicronsPerPixel, using default value 1")
+            logger.info(f"  {file_name}: Warning: Could not find or parse MicronsPerPixel, using default value 1")
 
     # Get annotations
     annotations = xml_dict.get("Annotations", {}).get("Annotation", [])
 
     if not annotations:
         if debug:
-            print(f"  {file_name}: Warning: No annotations found in the XML")
+            logger.info(f"  {file_name}: Warning: No annotations found in the XML")
         return reduced_annotations, pd.DataFrame(columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
 
     # Ensure annotations is a list
@@ -881,10 +884,10 @@ def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = False
                                     xyout.append([layer_id, annotation_number, x, y])
                                 except Exception as vertex_error:
                                     if debug:
-                                        print(f"  {file_name}: Error processing vertex: {str(vertex_error)}")
+                                        logger.info(f"  {file_name}: Error processing vertex: {str(vertex_error)}")
                         except Exception as annotation_error:
                             if debug:
-                                print(f"  {file_name}: Error processing annotation: {str(annotation_error)}")
+                                logger.info(f"  {file_name}: Error processing annotation: {str(annotation_error)}")
                 elif isinstance(regions, dict):
                     try:
                         annotation_number = float(regions.get("@Id"))
@@ -901,20 +904,20 @@ def extract_annotation_coordinates(xml_dict: Dict[str, Any], debug: bool = False
                                 xyout.append([layer_id, annotation_number, x, y])
                             except Exception as vertex_error:
                                 if debug:
-                                    print(f"  {file_name}: Error processing vertex: {str(vertex_error)}")
+                                    logger.info(f"  {file_name}: Error processing vertex: {str(vertex_error)}")
                     except Exception as region_error:
                         if debug:
-                            print(f"  {file_name}: Error processing region: {str(region_error)}")
+                            logger.info(f"  {file_name}: Error processing region: {str(region_error)}")
             except Exception as layer_error:
                 if debug:
-                    print(f"  {file_name}: Error processing layer: {str(layer_error)}")
+                    logger.info(f"  {file_name}: Error processing layer: {str(layer_error)}")
 
     if not xyout:
         if debug:
-            print(f"  {file_name}: Warning: No valid annotation coordinates were extracted")
+            logger.info(f"  {file_name}: Warning: No valid annotation coordinates were extracted")
     else:
         if debug:
-            print(f"  {file_name}: Successfully extracted {len(xyout)} annotation coordinates")
+            logger.info(f"  {file_name}: Successfully extracted {len(xyout)} annotation coordinates")
 
     return reduced_annotations, pd.DataFrame(xyout, columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
 
@@ -934,43 +937,43 @@ def load_xml_annotations(xml_path: str, debug: bool = False) -> Tuple[float, pd.
 
     # Skip hidden files
     if file_name.startswith('_'):
-        print(f"Skipping hidden file: {file_name}")
+        logger.info(f"Skipping hidden file: {file_name}")
         return 1.0, pd.DataFrame(columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
 
-    print(f"Loading XML annotations from: {file_name}")
+    logger.info(f"Loading XML annotations from: {file_name}")
 
     # Try to load original file
     try:
         if debug:
-            print(f"  {file_name}: Attempting to load original file without cleaning")
+            logger.info(f"  {file_name}: Attempting to load original file without cleaning")
 
         # Read XML content
         xml_content, encoding = read_xml_file(xml_path, debug)
 
         if debug:
-            print(f"  {file_name}: Read original XML content with encoding {encoding}")
+            logger.info(f"  {file_name}: Read original XML content with encoding {encoding}")
 
         xml_dict = parse_xml(xml_content, debug, file_name)
 
         if xml_dict:
             if debug:
-                print(f"  {file_name}: Successfully parsed original XML file")
+                logger.info(f"  {file_name}: Successfully parsed original XML file")
             return extract_annotation_coordinates(xml_dict, debug, file_name)
 
         # Try manual extraction
         if debug:
-            print(f"  {file_name}: Standard parsing failed. Attempting manual extraction...")
+            logger.info(f"  {file_name}: Standard parsing failed. Attempting manual extraction...")
 
         manual_dict = manual_extract_annotations(xml_content, debug, file_name)
         if manual_dict:
             if debug:
-                print(f"  {file_name}: Successfully extracted annotations manually from original file")
+                logger.info(f"  {file_name}: Successfully extracted annotations manually from original file")
             return extract_annotation_coordinates(manual_dict, debug, file_name)
 
     except Exception as e:
         if debug:
-            print(f"  {file_name}: Error loading original XML file: {str(e)}")
-            print(f"  {file_name}: Attempting to clean and retry...")
+            logger.info(f"  {file_name}: Error loading original XML file: {str(e)}")
+            logger.info(f"  {file_name}: Attempting to clean and retry...")
 
     # Try cleaning the file
     temp_path = xml_path + ".clean.tmp"
@@ -980,18 +983,18 @@ def load_xml_annotations(xml_path: str, debug: bool = False) -> Tuple[float, pd.
         try:
             # Try to load cleaned file
             if debug:
-                print(f"  {file_name}: Attempting to load cleaned XML file")
+                logger.info(f"  {file_name}: Attempting to load cleaned XML file")
 
             xml_content, encoding = read_xml_file(temp_path, debug)
 
             if debug:
-                print(f"  {file_name}: Read cleaned XML file with encoding {encoding}")
+                logger.info(f"  {file_name}: Read cleaned XML file with encoding {encoding}")
 
             xml_dict = parse_xml(xml_content, debug, file_name)
 
             if xml_dict:
                 if debug:
-                    print(f"  {file_name}: Successfully parsed cleaned XML file")
+                    logger.info(f"  {file_name}: Successfully parsed cleaned XML file")
                 result = extract_annotation_coordinates(xml_dict, debug, file_name)
                 # Clean up temp file
                 os.remove(temp_path)
@@ -999,12 +1002,12 @@ def load_xml_annotations(xml_path: str, debug: bool = False) -> Tuple[float, pd.
 
             # Try manual extraction
             if debug:
-                print(f"  {file_name}: Standard parsing failed on cleaned file. Attempting manual extraction...")
+                logger.info(f"  {file_name}: Standard parsing failed on cleaned file. Attempting manual extraction...")
 
             manual_dict = manual_extract_annotations(xml_content, debug, file_name)
             if manual_dict:
                 if debug:
-                    print(f"  {file_name}: Successfully extracted annotations manually from cleaned file")
+                    logger.info(f"  {file_name}: Successfully extracted annotations manually from cleaned file")
                 result = extract_annotation_coordinates(manual_dict, debug, file_name)
                 # Clean up temp file
                 os.remove(temp_path)
@@ -1014,14 +1017,14 @@ def load_xml_annotations(xml_path: str, debug: bool = False) -> Tuple[float, pd.
             os.remove(temp_path)
         except Exception as e:
             if debug:
-                print(f"  {file_name}: Error processing cleaned XML file: {str(e)}")
+                logger.info(f"  {file_name}: Error processing cleaned XML file: {str(e)}")
             # Clean up temp file
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
     # All parsing methods failed
     if debug:
-        print(f"  {file_name}: All parsing methods failed. Returning empty DataFrame.")
+        logger.info(f"  {file_name}: All parsing methods failed. Returning empty DataFrame.")
     return 1.0, pd.DataFrame(columns=['Annotation Id', 'Annotation Number', 'X vertex', 'Y vertex'])
 
 
@@ -1040,10 +1043,10 @@ def clean_xml_file(input_path: str, output_path: str) -> bool:
 
     # Skip hidden files
     if file_name.startswith('_'):
-        print(f"Skipping hidden file: {file_name}")
+        logger.info(f"Skipping hidden file: {file_name}")
         return False
     
-    print(f"Processing XML file: {file_name}")
+    logger.info(f"Processing XML file: {file_name}")
 
     try:
         # Read file content
@@ -1055,19 +1058,19 @@ def clean_xml_file(input_path: str, output_path: str) -> bool:
         if content.startswith(b'\xef\xbb\xbf'):
             content = content[3:]
             bom_removed = True
-            print(f"  {file_name}: UTF-8 BOM detected and removed")
+            logger.info(f"  {file_name}: UTF-8 BOM detected and removed")
         elif content.startswith(b'\xfe\xff'):
             try:
                 content = content[2:].decode('utf-16-be').encode('utf-8')
                 bom_removed = True
-                print(f"  {file_name}: UTF-16 BE BOM detected and removed")
+                logger.info(f"  {file_name}: UTF-16 BE BOM detected and removed")
             except UnicodeError:
                 pass
         elif content.startswith(b'\xff\xfe'):
             try:
                 content = content[2:].decode('utf-16-le').encode('utf-8')
                 bom_removed = True
-                print(f"  {file_name}: UTF-16 LE BOM detected and removed")
+                logger.info(f"  {file_name}: UTF-16 LE BOM detected and removed")
             except UnicodeError:
                 pass
 
@@ -1078,7 +1081,7 @@ def clean_xml_file(input_path: str, output_path: str) -> bool:
             try:
                 decoded_content = content.decode(encoding)
                 detected_encoding = encoding
-                print(f"  {file_name}: Successfully decoded using {encoding} encoding")
+                logger.info(f"  {file_name}: Successfully decoded using {encoding} encoding")
                 break
             except UnicodeDecodeError:
                 continue
@@ -1087,17 +1090,17 @@ def clean_xml_file(input_path: str, output_path: str) -> bool:
         if decoded_content is None:
             decoded_content = content.decode('utf-8', errors='replace')
             detected_encoding = 'utf-8-replace'
-            print(f"  {file_name}: Falling back to UTF-8 with character replacement")
+            logger.info(f"  {file_name}: Falling back to UTF-8 with character replacement")
 
         # Normalize line endings
         normalized_content = decoded_content.replace('\r\n', '\n').replace('\r', '\n').replace('\n', '\r\n')
-        print(f"  {file_name}: Line endings normalized to CRLF")
+        logger.info(f"  {file_name}: Line endings normalized to CRLF")
 
         # Remove control characters
         original_length = len(normalized_content)
         clean_content = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', normalized_content)
         if len(clean_content) != original_length:
-            print(f"  {file_name}: Removed {original_length - len(clean_content)} control characters")
+            logger.info(f"  {file_name}: Removed {original_length - len(clean_content)} control characters")
 
         # Find start of XML content
         xml_start = clean_content.find('<?xml')
@@ -1111,7 +1114,7 @@ def clean_xml_file(input_path: str, output_path: str) -> bool:
                 pos = clean_content.find(root)
                 if pos != -1:
                     xml_start = pos
-                    print(f"  {file_name}: XML content starts with '{root}' at position {pos}")
+                    logger.info(f"  {file_name}: XML content starts with '{root}' at position {pos}")
                     break
 
         # Try to find any tag if common roots not found
@@ -1119,11 +1122,11 @@ def clean_xml_file(input_path: str, output_path: str) -> bool:
             tag_match = re.search(r'<[a-zA-Z_][a-zA-Z0-9_:.-]*(?:\s+[^>]*)?>', clean_content)
             if tag_match:
                 xml_start = tag_match.start()
-                print(f"  {file_name}: Found XML tag at position {xml_start}")
+                logger.info(f"  {file_name}: Found XML tag at position {xml_start}")
 
         if xml_start >= 0:
             if xml_start > 0:
-                print(f"  {file_name}: Skipping {xml_start} bytes of non-XML content at beginning of file")
+                logger.info(f"  {file_name}: Skipping {xml_start} bytes of non-XML content at beginning of file")
 
             xml_content = clean_content[xml_start:]
 
@@ -1140,34 +1143,34 @@ def clean_xml_file(input_path: str, output_path: str) -> bool:
                 if 'encoding=' in xml_decl:
                     xml_decl = re.sub(r'encoding="[^"]*"', 'encoding="utf-8"', xml_decl)
                     xml_decl = re.sub(r"encoding='[^']*'", "encoding='utf-8'", xml_decl)
-                    print(f"  {file_name}: Updated XML declaration encoding to UTF-8")
+                    logger.info(f"  {file_name}: Updated XML declaration encoding to UTF-8")
                 else:
                     # Add encoding attribute
                     xml_decl = xml_decl.replace('?>', ' encoding="utf-8"?>')
-                    print(f"  {file_name}: Added UTF-8 encoding to XML declaration")
+                    logger.info(f"  {file_name}: Added UTF-8 encoding to XML declaration")
             else:
                 # Add XML declaration
                 xml_decl = '<?xml version="1.0" encoding="utf-8"?>\r\n'
                 xml_body = xml_content
-                print(f"  {file_name}: Added XML declaration with UTF-8 encoding")
+                logger.info(f"  {file_name}: Added XML declaration with UTF-8 encoding")
 
             # Remove duplicate declarations
             if '<?xml' in xml_body and xml_body.strip().startswith('<?xml'):
                 second_decl_end = xml_body.find('?>') + 2
                 xml_body = xml_body[second_decl_end:]
-                print(f"  {file_name}: Removed duplicate XML declaration")
+                logger.info(f"  {file_name}: Removed duplicate XML declaration")
 
             # Write cleaned XML to output file
             with open(output_path, 'w', encoding='utf-8', newline='\r\n') as f:
                 f.write(xml_decl + xml_body)
 
-            print(f"  {file_name}: Cleaned XML saved to {os.path.basename(output_path)}")
+            logger.info(f"  {file_name}: Cleaned XML saved to {os.path.basename(output_path)}")
             return True
 
-        print(f"  {file_name}: Could not identify XML content in the file")
+        logger.info(f"  {file_name}: Could not identify XML content in the file")
         return False
     except Exception as e:
-        print(f"  {file_name}: Error cleaning XML file: {e}")
+        logger.info(f"  {file_name}: Error cleaning XML file: {e}")
         return False
 
 
@@ -1191,7 +1194,7 @@ def save_annotation_mask(image: np.ndarray, output_path: str, whitespace_setting
     Returns:
         Annotation mask as numpy array
     """
-    print(' 2. of 4. Interpolating annotated regions and saving mask image')
+    logger.info(' 2. of 4. Interpolating annotated regions and saving mask image')
 
     try:   
         with open(os.path.join(output_path, 'annotations.pkl'), 'rb') as f:
@@ -1277,7 +1280,7 @@ def save_annotation_mask(image: np.ndarray, output_path: str, whitespace_setting
                     indices = np.ravel_multi_index((y_new, x_new), shape)
                     class_masks.flat[indices] = True
                 except ValueError:
-                    print('  annotation out of bounds')
+                    logger.info('  annotation out of bounds')
                     continue
 
             # Fill holes and add to class mask
@@ -1293,12 +1296,12 @@ def save_annotation_mask(image: np.ndarray, output_path: str, whitespace_setting
 
             # Add to annotation masks
             class_idx = k - 1
-            # print(f"  Processing class k={k}, type={type(k)}, class_idx={class_idx}, num_classes={num_classes}")
+            # logger.info(f"  Processing class k={k}, type={type(k)}, class_idx={class_idx}, num_classes={num_classes}")
             class_idx_int = int(class_idx)  # Convert float to integer
             if 0 <= class_idx_int < num_classes:
                 annotation_masks[:, :, class_idx_int] = temp_mask == k
             else:
-                print(
+                logger.info(
                     f"  Warning: class_idx {class_idx_int} (k={k}) out of bounds (num_classes={num_classes}), skipping")
 
         # Format whitespace
@@ -1403,7 +1406,7 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
         - numann: Array containing the number of pixels per class per bounding box
         - ctlist: Dictionary of tile names and paths
     """
-    print(' 4. of 4. Creating bounding box tiles of all annotations')
+    logger.info(' 4. of 4. Creating bounding box tiles of all annotations')
 
     # Set PIL decompression bomb limit higher for large histology images
     Image.MAX_IMAGE_PIXELS = 1000000000
@@ -1525,26 +1528,26 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
 
             # Check if all required keys exist
             if not all(key in data for key in ['WS', 'umpix', 'nwhite', 'pthim']):
-                print('WS, umpix, nwhite, or pthim are missing in the pickle file. Reload the XML file to add them.')
+                logger.info('WS, umpix, nwhite, or pthim are missing in the pickle file. Reload the XML file to add them.')
                 reload_xml = 1
             else:
                 # Check if parameters have changed
                 if data['WS'] != WS:
-                    print('Reload annotation data with updated WS.')
+                    logger.info('Reload annotation data with updated WS.')
                     reload_xml = 1
                 if data['umpix'] != umpix:
-                    print('Reload annotation data with updated umpix.')
+                    logger.info('Reload annotation data with updated umpix.')
                     reload_xml = 1
                 if data['nwhite'] != nwhite:
-                    print('Reload annotation data with updated nwhite.')
+                    logger.info('Reload annotation data with updated nwhite.')
                     reload_xml = 1
                 if data['pthim'] != pthim:
-                    print('Reload annotation data with updated pthim.')
+                    logger.info('Reload annotation data with updated pthim.')
                     reload_xml = 1
 
         TA_pkl = os.path.join(pthim, 'TA', 'TA_cutoff.pkl')
         if not os.path.exists(TA_pkl):
-            print('Tissue mask evaluation has not been performed')
+            logger.info('Tissue mask evaluation has not been performed')
         else:
             file = os.path.join(pthim, 'TA', image_name + '.tif')
             if os.path.exists(file):
@@ -1558,7 +1561,7 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
         return reload_xml
 
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        logger.info(f"An error occurred: {str(e)}")
         return 1
 
 
@@ -1625,11 +1628,11 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
     # Check if mask already exists
     if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
         tissue_mask = cv2.imread(os.path.join(output_path, f'{image_name}.tif'), cv2.IMREAD_GRAYSCALE)
-        print('  Existing TA loaded')
+        logger.info('  Existing TA loaded')
         return image, tissue_mask, output_path
 
     # Calculate tissue mask
-    print('  Calculating TA image')
+    logger.info('  Calculating TA image')
     mode = 'H&E'
     # Try to load saved threshold
     if os.path.isfile(os.path.join(output_path, 'TA_cutoff.pkl')):

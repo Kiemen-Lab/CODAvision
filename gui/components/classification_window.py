@@ -20,6 +20,10 @@ from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush, QIm
 from PySide6.QtWidgets import QColorDialog, QHeaderView, QDialog, QPushButton, QLabel, QVBoxLayout, QProgressBar, QProgressDialog, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 # Import from base package
 from base import classify_images, quantify_objects, quantify_images
 
@@ -58,7 +62,7 @@ class MainWindowClassify(QtWidgets.QMainWindow):
         self.model_type = model_type
         self.path_first_img = ''
         self.name_first_img =''
-        print(os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type))
+        logger.info(os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type))
         if os.path.isdir(os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type)):
             for filename in os.listdir(os.path.join(train_im_fold, 'classification_'+self.nm+'_'+self.model_type)):
                 if filename.lower().endswith(('.tiff', '.tif')):
@@ -176,7 +180,7 @@ class MainWindowClassify(QtWidgets.QMainWindow):
                 item.setBackground(new_color)
 
             layer_name = self.classNames[selected_row]
-            print(f"Color changed for {layer_name} to {new_rgb}")
+            logger.info(f"Color changed for {layer_name} to {new_rgb}")
 
         self.populate_cmap()
         self.show_image()
@@ -431,7 +435,7 @@ class WorkerThread(QThread):
             else:
                 im_jpg = im[:-3]
                 im_jpg = im_jpg + 'jpg'
-            print(f'  Applying colormap to image {count} of {len(imlist)}: {im}')
+            logger.info(f'  Applying colormap to image {count} of {len(imlist)}: {im}')
             if (not os.path.isfile(os.path.join(save_path, im_jpg))) or overwrite:
                 im0 = cv2.imread(os.path.join(classification_path, im), cv2.IMREAD_GRAYSCALE)  # Mask
                 im1 = cv2.imread(os.path.join(image_path, im))  # Image
@@ -453,7 +457,7 @@ class WorkerThread(QThread):
                 overlay = overlay[:, :, ::-1]
                 cv2.imwrite(os.path.join(save_path, im_jpg), overlay)
             else:
-                print(f'  Image {im} already classified with this colormap')
+                logger.info(f'  Image {im} already classified with this colormap')
             count += 1
 
     def run(self):
@@ -505,7 +509,7 @@ class WorkerThread(QThread):
                     if num_images != num_check_images:
                         self.apply_new_cmap(classification_path, image_path)
                     else:
-                        print('  All images already classified with this colormap')
+                        logger.info('  All images already classified with this colormap')
                 else:
                     self.apply_new_cmap(classification_path, image_path, overwrite)
             else:
