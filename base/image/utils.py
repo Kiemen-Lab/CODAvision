@@ -25,28 +25,27 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 
-def load_image_with_fallback(image_path: str) -> np.ndarray:
+def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
     """
     Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
 
     Args:
         image_path: Path to the image file.
+        mode: Mode to convert the image to when using Pillow (default: "RGB").
 
     Returns:
         The loaded image as a NumPy array.
     """
     try:
-        # Attempt to load the image using OpenCV
-        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-        if image is not None:
-            # Convert BGR to RGB
-            return image[:, :, ::-1]
-    except Exception:
-        pass  # Ignore OpenCV errors and fallback to Pillow
-
-    # Fallback to Pillow
-    with Image.open(image_path) as img:
-        return np.array(img.convert("RGB"))
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE if mode == "L" else cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Failed to load image with OpenCV")
+        if mode == "RGB" and len(image.shape) == 3:  # Convert BGR to RGB
+            image = image[:, :, ::-1]
+        return image
+    except:
+        with Image.open(image_path) as img:
+            return np.array(img.convert(mode))
 
 
 def decode_segmentation_masks(mask: np.ndarray, colormap: np.ndarray, n_classes: int) -> np.ndarray:
