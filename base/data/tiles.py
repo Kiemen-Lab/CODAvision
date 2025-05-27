@@ -24,34 +24,11 @@ Image.MAX_IMAGE_PIXELS = None
 import cv2
 import logging
 
-from base.image import edit_annotation_tiles
+from base.image import edit_annotation_tiles, load_image_with_fallback
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
-def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
-    """
-    Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
-
-    Args:
-        image_path: Path to the image file.
-        mode: Mode to convert the image to when using Pillow (default: "RGB").
-
-    Returns:
-        The loaded image as a NumPy array.
-    """
-    try:
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE if mode == "L" else cv2.IMREAD_COLOR)
-        if image is None:
-            raise ValueError("Failed to load image with OpenCV")
-        if mode == "RGB" and len(image.shape) == 3:  # Convert BGR to RGB
-            image = image[:, :, ::-1]
-        return image
-    except:
-        with Image.open(image_path) as img:
-            return np.array(img.convert(mode))
-
-#
 
 
 def combine_annotations_into_tiles(
