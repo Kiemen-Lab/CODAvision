@@ -27,8 +27,6 @@ Updated March 2025
 """
 
 import os
-os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Set max image size for OpenCV
-
 import time
 import numpy as np
 import cv2
@@ -36,38 +34,13 @@ import matplotlib.pyplot as plt
 import keras
 from glob import glob
 from PIL import Image
-Image.MAX_IMAGE_PIXELS = None
 from typing import Tuple, List
 from scipy.ndimage import binary_fill_holes
 
 from base.models.utils import get_model_paths
 from base.image.segmentation import semantic_seg
-from base.image.utils import decode_segmentation_masks, create_overlay
+from base.image.utils import decode_segmentation_masks, create_overlay, load_image_with_fallback
 from base.data.loaders import load_model_metadata
-
-
-def load_image_with_fallback(image_path: str) -> np.ndarray:
-    """
-    Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
-
-    Args:
-        image_path: Path to the image file.
-
-    Returns:
-        The loaded image as a NumPy array.
-    """
-    try:
-        # Attempt to load the image using OpenCV
-        image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-        if image is not None:
-            # Convert BGR to RGB
-            return image[:, :, ::-1]
-    except Exception:
-        pass  # Ignore OpenCV errors and fallback to Pillow
-
-    # Fallback to Pillow
-    with Image.open(image_path) as img:
-        return np.array(img.convert("RGB"))
 
 
 class ImageClassifier:
