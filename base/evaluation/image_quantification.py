@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Tuple, Union, Any
 
 import numpy as np
 import pandas as pd
-import cv2
+from base.image.utils import load_image_with_fallback
 
 # Set up logging
 import logging
@@ -144,7 +144,7 @@ class ImageQuantifier:
             image_name = os.path.basename(image_path)
             
             # Read the image in grayscale mode
-            image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            image = load_image_with_fallback(image_path, mode="L")
             if image is None:
                 raise RuntimeError(f"Failed to read image: {image_path}")
             

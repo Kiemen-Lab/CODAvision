@@ -37,6 +37,7 @@ import xml.sax
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 import logging
+from base.image.utils import load_image_with_fallback
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -1586,28 +1587,24 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
 
     # Try to load image with different extensions
     try:
-        image = cv2.imread(os.path.join(path, f'{image_name}.tif'))
+        image = load_image_with_fallback(os.path.join(path, f'{image_name}.tif'))
         if image is None:
             raise ValueError("Failed to load image with OpenCV")
-        image = image[:, :, ::-1]  # Convert BGR to RGB
     except:
         try:
-            image = cv2.imread(os.path.join(path, f'{image_name}.jpg'))
+            image = load_image_with_fallback(os.path.join(path, f'{image_name}.jpg'))
             if image is None:
                 raise ValueError("Failed to load image with OpenCV")
-            image = image[:, :, ::-1]
         except:
             try:
-                image = cv2.imread(os.path.join(path, f'{image_name}.jp2'))
+                image = load_image_with_fallback(os.path.join(path, f'{image_name}.jp2'))
                 if image is None:
                     raise ValueError("Failed to load image with OpenCV")
-                image = image[:, :, ::-1]
             except:
                 try:
-                    image = cv2.imread(os.path.join(path, f'{image_name}.png'))
+                    image = load_image_with_fallback(os.path.join(path, f'{image_name}.png'))
                     if image is None:
                         raise ValueError("Failed to load image with OpenCV")
-                    image = image[:, :, ::-1]
                 except:
                     # Fallback to Pillow
                     try:
@@ -1627,7 +1624,7 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
 
     # Check if mask already exists
     if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
-        tissue_mask = cv2.imread(os.path.join(output_path, f'{image_name}.tif'), cv2.IMREAD_GRAYSCALE)
+        tissue_mask = load_image_with_fallback(os.path.join(output_path, f'{image_name}.tif'), "L")
         logger.info('  Existing TA loaded')
         return image, tissue_mask, output_path
 

@@ -189,7 +189,6 @@ class ImageClassifier:
         except:
             # Create a mask if none exists
             image = load_image_with_fallback(image_path)
-            image = image[:, :, ::-1]  # BGR to RGB
             tissue_mask = np.array(image[:,:,1]) < 220
             tissue_mask = binary_fill_holes(tissue_mask.astype(bool))
 
@@ -207,7 +206,6 @@ class ImageClassifier:
         """
         # Load the image
         image = load_image_with_fallback(image_path)
-        image = image[:, :, ::-1]  # BGR to RGB
 
         # Get tissue mask
         tissue_mask = self._get_tissue_mask(image_path)

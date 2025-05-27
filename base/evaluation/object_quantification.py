@@ -17,10 +17,10 @@ import warnings
 import numpy as np
 import pandas as pd
 import pickle
-import cv2
 from typing import List, Dict, Union, Optional, Tuple
 from skimage.measure import label
 from skimage.morphology import remove_small_objects
+from base.image.utils import load_image_with_fallback
 
 # Set up logging
 import logging
@@ -132,7 +132,7 @@ class ObjectQuantifier:
             logger.info(f'Processing image {image_name}')
             
             # Read the classified image
-            img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+            img = load_image_with_fallback(image_path, mode="L")
             if img is None:
                 logger.info(f"  Warning: Failed to read image {image_path}")
                 continue

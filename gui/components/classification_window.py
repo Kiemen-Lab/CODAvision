@@ -9,12 +9,11 @@ Updated: March 2025
 """
 
 import os
-import cv2
-
 import pandas as pd
 import pickle
 import numpy as np
 import time
+import cv2
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush, QImage, QPixmap, QMouseEvent, QFont
 from PySide6.QtWidgets import QColorDialog, QHeaderView, QDialog, QPushButton, QLabel, QVBoxLayout, QProgressBar, QProgressDialog, QGraphicsPixmapItem
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Import from base package
 from base import classify_images, quantify_objects, quantify_images
+from base.image.utils import load_image_with_fallback
 
 # Import GUI components
 from .ui_definitions import Ui_classify_im
@@ -364,8 +364,8 @@ class ImageLoader(QObject):
     def load_image(self):
         self.started.emit()
         if self.image_displayed:
-            im0 = cv2.imread(self.pth_im0, cv2.IMREAD_GRAYSCALE)  # Mask
-            im = cv2.imread(self.pth_im)  # Image
+            im0 = load_image_with_fallback(self.pth_im0, mode="L") # Mask
+            im = load_image_with_fallback(self.pth_im, mode="RGB")  # Image
             im = im[:, :, ::-1]
             if im.shape[0] > 3500 or im.shape[1] > 3500:
                 im0 = im0[::10, ::10]
@@ -437,12 +437,12 @@ class WorkerThread(QThread):
                 im_jpg = im_jpg + 'jpg'
             logger.info(f'  Applying colormap to image {count} of {len(imlist)}: {im}')
             if (not os.path.isfile(os.path.join(save_path, im_jpg))) or overwrite:
-                im0 = cv2.imread(os.path.join(classification_path, im), cv2.IMREAD_GRAYSCALE)  # Mask
-                im1 = cv2.imread(os.path.join(image_path, im))  # Image
+                im0 = load_image_with_fallback(os.path.join(classification_path, im), mode="L")  # Mask
+                im1 = load_image_with_fallback(os.path.join(image_path, im), mode="RGB")  # Image
                 if im1 is None:
-                    im1 = cv2.imread(os.path.join(image_path, im[:-3] + 'png'))  # Image
+                    im1 = load_image_with_fallback(os.path.join(image_path, im[:-3] + 'png'), mode="RGB")  # Image
                 if im1 is None:
-                    im1 = cv2.imread(os.path.join(image_path, im[:-3] + 'jpg'))  # Image
+                    im1 = load_image_with_fallback(os.path.join(image_path, im[:-3] + 'jpg'), mode="RGB")
                 im1 = im1[:, :, ::-1]
                 r = np.zeros_like(im0).astype(np.uint8)
                 g = np.zeros_like(im0).astype(np.uint8)

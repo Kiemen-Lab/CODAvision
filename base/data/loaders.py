@@ -19,6 +19,7 @@ from PIL import Image
 import cv2
 import pickle
 from skimage.morphology import remove_small_objects
+from base.image.utils import load_image_with_fallback
 
 # Set up logging
 import logging
@@ -114,8 +115,7 @@ def convert_to_array(image_path: str, prediction_mask: np.ndarray) -> Tuple[np.n
         Tuple of (image array, prediction mask array)
     """
     # Read the image using OpenCV
-    image = cv2.imread(image_path)
-    image = image[:, :, ::-1]  # Convert BGR to RGB
+    image = load_image_with_fallback(image_path)
 
     # Resize large images to avoid memory issues
     if image.shape[0] > 20000 or image.shape[1] > 20000:
@@ -155,23 +155,19 @@ def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tup
     
     # Try to load the image from different file formats
     try:
-        image = cv2.imread(os.path.join(path, f'{image_name}.tif'))
-        image = image[:, :, ::-1]  # Convert BGR to RGB
+        image = load_image_with_fallback(os.path.join(path, f'{image_name}.tif'))
     except:
         try:
-            image = cv2.imread(os.path.join(path, f'{image_name}.jpg'))
-            image = image[:, :, ::-1]
+            image = load_image_with_fallback(os.path.join(path, f'{image_name}.jpg'))
         except:
             try:
-                image = cv2.imread(os.path.join(path, f'{image_name}.jp2'))
-                image = image[:, :, ::-1]
+                image = load_image_with_fallback(os.path.join(path, f'{image_name}.jp2'))
             except:
-                image = cv2.imread(os.path.join(path, f'{image_name}.png'))
-                image = image[:, :, ::-1]
+                image = load_image_with_fallback(os.path.join(path, f'{image_name}.png'))
     
     # Check if tissue mask already exists
     if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
-        tissue_mask = cv2.imread(os.path.join(output_path, f'{image_name}.tif'), cv2.IMREAD_GRAYSCALE)
+        tissue_mask = load_image_with_fallback(os.path.join(output_path, f'{image_name}.tif'), "L")
         logger.info('  Existing TA loaded')
         return image, tissue_mask, output_path
 

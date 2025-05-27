@@ -87,23 +87,32 @@ class Logger:
         Returns:
             Configured logger instance
         """
-        logger = logging.getLogger(f'training_logger_{self.model_name}')
+        logger_name = f'training_logger_{self.model_name}'
+        logger = logging.getLogger(logger_name)
+
+        # Clear any existing handlers to avoid duplication
+        logger.handlers.clear()
+
+        # Set logger level to DEBUG so it processes all messages
         logger.setLevel(logging.DEBUG)
 
-        # Create timestamp for log files
+        # Prevent propagation to parent loggers (including root logger)
+        logger.propagate = False
+
+        # Generate timestamp for log files
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-        # Setup main log file handler (INFO level)
+        # Main log file handler (INFO and above)
         main_log_file = os.path.join(self.log_dir, f'training_log_{timestamp}.log')
         main_handler = logging.FileHandler(main_log_file)
         main_handler.setLevel(logging.INFO)
 
-        # Setup debug log file handler (DEBUG level)
+        # Debug log file handler (DEBUG and above)
         debug_log_file = os.path.join(self.debug_dir, f'debug_log_{timestamp}.log')
         debug_handler = logging.FileHandler(debug_log_file)
         debug_handler.setLevel(logging.DEBUG)
 
-        # Setup console handler
+        # Console handler (INFO and above only)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
 
@@ -118,10 +127,12 @@ class Logger:
             datefmt='%Y-%m-%d %H:%M:%S'
         )
 
+        # Apply formatters
         main_handler.setFormatter(main_formatter)
         console_handler.setFormatter(main_formatter)
         debug_handler.setFormatter(debug_formatter)
 
+        # Add handlers
         logger.addHandler(main_handler)
         logger.addHandler(console_handler)
         logger.addHandler(debug_handler)

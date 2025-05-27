@@ -137,7 +137,7 @@ def combine_annotations_into_tiles(
         if class_type < current_annotations.shape[1]:
             candidate_tiles = np.where(current_annotations[:, class_type] > 0)[0]
         else:
-            logger.info(f"Warning: class_type {class_type} is out of bounds for current_annotations with shape {current_annotations.shape}")
+            logger.debug(f"Warning: class_type {class_type} is out of bounds for current_annotations with shape {current_annotations.shape}")
             candidate_tiles = np.array([], dtype=int)
 
         # Try to reset candidate tiles if empty
@@ -153,7 +153,7 @@ def combine_annotations_into_tiles(
 
         # Skip iteration if still no candidate tiles
         if len(candidate_tiles) == 0:
-            logger.info(f"  Skipping class_type {class_type} as no candidate tiles were found")
+            logger.debug(f"  Skipping class_type {class_type} as no candidate tiles were found")
             count += 1
             last_class_type = min(class_type, current_annotations.shape[1] - 1)  # Keep last_class_type in bounds
             iteration += 1
