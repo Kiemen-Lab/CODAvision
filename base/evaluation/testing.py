@@ -14,16 +14,14 @@ Updated March 2025
 import os
 import numpy as np
 from typing import Dict, Tuple, Any
-
-from tifffile import imread
 from skimage.morphology import remove_small_objects
-from PIL import Image
 
 from base.data.annotation import load_annotation_data
 from base.image.classification import classify_images
 from base.evaluation.confusion_matrix import ConfusionMatrixVisualizer
 from base.models.utils import get_model_paths
 from base.data.loaders import load_model_metadata
+from base.image.utils import load_image_with_fallback
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -100,9 +98,8 @@ class SegmentationModelTester:
             RuntimeError: If there's an error reading the image file
         """
         try:
-            img = Image.open(file_path)
-            img = img.convert('L')
-            return np.array(img).astype(np.double)
+            img = load_image_with_fallback(file_path, mode='L')
+            return img.astype(np.double)
         except Exception as e:
             raise RuntimeError(f"Error reading image file {file_path}: {e}")
 
@@ -175,7 +172,7 @@ class SegmentationModelTester:
 
                 # Load prediction
                 try:
-                    prediction = imread(os.path.join(classified_path, folder + '.tif'))
+                    prediction = load_image_with_fallback(os.path.join(classified_path, folder + '.tif'), mode='L')
                     prediction_array = np.array(prediction)
                 except Exception as e:
                     logger.error(f"Error loading prediction for {folder}: {e}")

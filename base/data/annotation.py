@@ -1588,23 +1588,15 @@ def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray,
     # Try to load image with different extensions
     try:
         image = load_image_with_fallback(os.path.join(path, f'{image_name}.tif'))
-        if image is None:
-            raise ValueError("Failed to load image with OpenCV")
     except:
         try:
             image = load_image_with_fallback(os.path.join(path, f'{image_name}.jpg'))
-            if image is None:
-                raise ValueError("Failed to load image with OpenCV")
         except:
             try:
                 image = load_image_with_fallback(os.path.join(path, f'{image_name}.jp2'))
-                if image is None:
-                    raise ValueError("Failed to load image with OpenCV")
             except:
                 try:
                     image = load_image_with_fallback(os.path.join(path, f'{image_name}.png'))
-                    if image is None:
-                        raise ValueError("Failed to load image with OpenCV")
                 except:
                     # Fallback to Pillow
                     try:
