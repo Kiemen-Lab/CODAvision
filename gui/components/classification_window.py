@@ -366,7 +366,6 @@ class ImageLoader(QObject):
         if self.image_displayed:
             im0 = load_image_with_fallback(self.pth_im0, mode="L") # Mask
             im = load_image_with_fallback(self.pth_im, mode="RGB")  # Image
-            im = im[:, :, ::-1]
             if im.shape[0] > 3500 or im.shape[1] > 3500:
                 im0 = im0[::10, ::10]
                 im = im[::10, ::10, :]
@@ -443,7 +442,6 @@ class WorkerThread(QThread):
                     im1 = load_image_with_fallback(os.path.join(image_path, im[:-3] + 'png'), mode="RGB")  # Image
                 if im1 is None:
                     im1 = load_image_with_fallback(os.path.join(image_path, im[:-3] + 'jpg'), mode="RGB")
-                im1 = im1[:, :, ::-1]
                 r = np.zeros_like(im0).astype(np.uint8)
                 g = np.zeros_like(im0).astype(np.uint8)
                 b = np.zeros_like(im0).astype(np.uint8)
@@ -454,7 +452,7 @@ class WorkerThread(QThread):
                     b[idx] = self.cmap[l - 1, 2]
                 prediction_cmap = np.stack([r, g, b], axis=2)
                 overlay = cv2.addWeighted(im1, 0.65, prediction_cmap, 0.35, 0)
-                overlay = overlay[:, :, ::-1]
+                # overlay = overlay[:, :, ::-1]
                 cv2.imwrite(os.path.join(save_path, im_jpg), overlay)
             else:
                 logger.info(f'  Image {im} already classified with this colormap')

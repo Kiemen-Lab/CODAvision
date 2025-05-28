@@ -493,7 +493,6 @@ def determine_optimal_TA(pthim, pthtestim, numims, redo):
         else:
             logger.info(f'    Loading image {count} of {numims}: {nm}')
             im0 = load_image_with_fallback(os.path.join(pthim, nm))
-        im0 = im0[:, :, ::-1]
         logger.info('     Image loaded')
         rsf = min(1500 / im0.shape[1], 780 / im0.shape[0])
         do_again = 1
