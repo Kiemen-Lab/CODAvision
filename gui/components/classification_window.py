@@ -452,7 +452,7 @@ class WorkerThread(QThread):
                     b[idx] = self.cmap[l - 1, 2]
                 prediction_cmap = np.stack([r, g, b], axis=2)
                 overlay = cv2.addWeighted(im1, 0.65, prediction_cmap, 0.35, 0)
-                # overlay = overlay[:, :, ::-1]
+                overlay = overlay[:, :, ::-1]
                 cv2.imwrite(os.path.join(save_path, im_jpg), overlay)
             else:
                 logger.info(f'  Image {im} already classified with this colormap')
