@@ -325,9 +325,12 @@ def combine_annotations_into_tiles(
                 mask_tile = composite_mask[row:row + tile_size, col:col + tile_size]
 
                 # Save tiles
-                cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"), image_tile)
+                # cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"), image_tile)
+                cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"),
+                            cv2.cvtColor(image_tile.astype(np.uint8), cv2.COLOR_RGB2BGR))
                 Image.fromarray(mask_tile.astype(np.uint8)).save(
                                                         os.path.join(output_path_labels, f"{next_image_number}.png"))
+
 
                 next_image_number += 1
             except ValueError:
@@ -337,7 +340,9 @@ def combine_annotations_into_tiles(
     # Save the big tile for reference
     big_tile_number = len([f for f in os.listdir(output_path_big_tiles) if f.startswith('HE')]) + 1
     logger.info('  Saving big tile')
-    cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"), composite_image)
+    # cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"), composite_image)
+    cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"),
+                cv2.cvtColor(composite_image.astype(np.uint8), cv2.COLOR_RGB2BGR))
     Image.fromarray(composite_mask).save(os.path.join(output_path_big_tiles, f"label_tile_{big_tile_number}.jpg"))
 
     return current_annotations, annotation_percentages
