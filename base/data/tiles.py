@@ -12,6 +12,7 @@ Updated: April 2025
 """
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Disable pixel limit safeguard
 import glob
 import shutil
 import time
@@ -19,13 +20,15 @@ import pickle
 import numpy as np
 from typing import Dict, List, Tuple, Optional, Union, Any
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 import cv2
-import logging
 
-from base.image import edit_annotation_tiles
+from base.image import edit_annotation_tiles, load_image_with_fallback
 
 # Set up logging
+import logging
 logger = logging.getLogger(__name__)
+
 
 
 def combine_annotations_into_tiles(
@@ -134,7 +137,7 @@ def combine_annotations_into_tiles(
         if class_type < current_annotations.shape[1]:
             candidate_tiles = np.where(current_annotations[:, class_type] > 0)[0]
         else:
-            logger.info(f"Warning: class_type {class_type} is out of bounds for current_annotations with shape {current_annotations.shape}")
+            logger.debug(f"Warning: class_type {class_type} is out of bounds for current_annotations with shape {current_annotations.shape}")
             candidate_tiles = np.array([], dtype=int)
 
         # Try to reset candidate tiles if empty
@@ -150,7 +153,7 @@ def combine_annotations_into_tiles(
 
         # Skip iteration if still no candidate tiles
         if len(candidate_tiles) == 0:
-            logger.info(f"  Skipping class_type {class_type} as no candidate tiles were found")
+            logger.debug(f"  Skipping class_type {class_type} as no candidate tiles were found")
             count += 1
             last_class_type = min(class_type, current_annotations.shape[1] - 1)  # Keep last_class_type in bounds
             iteration += 1
@@ -169,8 +172,11 @@ def combine_annotations_into_tiles(
         label_path = os.path.join(tile_path[0:path_separator_pos], 'label')
 
         # Load image and annotation mask
-        image = cv2.imread(tile_path)
-        annotation_mask = cv2.imread(os.path.join(label_path, tile_name), cv2.IMREAD_GRAYSCALE)
+
+        image = load_image_with_fallback(tile_path, 'RGB')
+        annotation_mask = load_image_with_fallback(os.path.join(label_path, tile_name), 'L')
+        # image = cv2.imread(tile_path)
+        # annotation_mask = cv2.imread(os.path.join(label_path, tile_name), cv2.IMREAD_GRAYSCALE)
 
         # Apply optional augmentation
         apply_augmentation = 1 if count % 3 == 1 else 0
@@ -197,7 +203,7 @@ def combine_annotations_into_tiles(
         logger.debug(f"After edit_annotation_tiles - kept_classes: {kept_classes}")
         logger.debug(f"Valid pixels in mask: {np.sum(valid_pixels)}")
         if np.sum(valid_pixels) < 30:
-            print('  Skipped tile with too few valid pixels')
+            logger.info('  Skipped tile with too few valid pixels')
             continue
 
         # Find optimal location to place this tile in the composite
@@ -319,9 +325,12 @@ def combine_annotations_into_tiles(
                 mask_tile = composite_mask[row:row + tile_size, col:col + tile_size]
 
                 # Save tiles
-                cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"), image_tile)
+                # cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"), image_tile)
+                cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"),
+                            cv2.cvtColor(image_tile.astype(np.uint8), cv2.COLOR_RGB2BGR))
                 Image.fromarray(mask_tile.astype(np.uint8)).save(
                                                         os.path.join(output_path_labels, f"{next_image_number}.png"))
+
 
                 next_image_number += 1
             except ValueError:
@@ -330,8 +339,10 @@ def combine_annotations_into_tiles(
 
     # Save the big tile for reference
     big_tile_number = len([f for f in os.listdir(output_path_big_tiles) if f.startswith('HE')]) + 1
-    print('  Saving big tile')
-    cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"), composite_image)
+    logger.info('  Saving big tile')
+    # cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"), composite_image)
+    cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"),
+                cv2.cvtColor(composite_image.astype(np.uint8), cv2.COLOR_RGB2BGR))
     Image.fromarray(composite_mask).save(os.path.join(output_path_big_tiles, f"label_tile_{big_tile_number}.jpg"))
 
     return current_annotations, annotation_percentages
@@ -374,7 +385,7 @@ def create_training_tiles(
     # Adjust class names if needed
     if class_names[-1] == "black":
         class_names = class_names[:-1]
-    print('')
+    logger.info('')
 
     # Verify annotations exist
     if not annotations or len(annotations) == 0:
@@ -383,7 +394,7 @@ def create_training_tiles(
         )
 
     # Calculate total number of pixels in training dataset
-    print('Calculating total number of pixels in the training dataset...')
+    logger.info('Calculating total number of pixels in the training dataset...')
     count_annotations = sum(annotations)
 
     # Validate annotations
@@ -404,9 +415,9 @@ def create_training_tiles(
     annotation_composition = count_annotations / max(count_annotations) * 100
     for b, count in enumerate(annotation_composition):
         if annotation_composition[b] == 100:
-            print(f' There are {count_annotations[b]} pixels of {class_names[b]}. This is the most common class.')
+            logger.info(f' There are {count_annotations[b]} pixels of {class_names[b]}. This is the most common class.')
         else:
-            print(
+            logger.info(
                 f' There are {count_annotations[b]} pixels of {class_names[b]}, {int(annotation_composition[b])}% of the most common class.')
 
     # Ensure all classes have annotations
@@ -416,8 +427,8 @@ def create_training_tiles(
         )
 
     # Create training tiles
-    print('')
-    print('Building training tiles...')
+    logger.info('')
+    logger.info('Building training tiles...')
     annotations_array = np.array(annotations)
     current_annotations = annotations_array.copy()
     annotation_percentages = np.double(annotations_array > 0)
@@ -432,7 +443,7 @@ def create_training_tiles(
 
     train_start = time.time()
     if len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) >= num_train_tiles:
-        print('  Already done.')
+        logger.info('  Already done.')
     else:
         while len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) < num_train_tiles:
             current_annotations, annotation_percentages = combine_annotations_into_tiles(
@@ -450,7 +461,7 @@ def create_training_tiles(
             logger.debug(f"After combine_annotations_into_tiles - unique values in annotation_percentages: {np.unique(annotation_percentages)}")
 
             elapsed_time = time.time() - train_start
-            print(
+            logger.info(
                 f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.jpg")))} of {num_train_tiles} training images completed in {int(elapsed_time / 60)} minutes')
 
             # Report usage statistics
@@ -463,13 +474,13 @@ def create_training_tiles(
             percent_unique_used = used_unique_annotations / base_unique_annotations * 100
 
             for b, class_name in enumerate(class_names):
-                print(f'  Used {percent_count_used[b]:.1f}% counts and {percent_unique_used[b]:.1f}% unique annotations of {class_name}')
+                logger.info(f'  Used {percent_count_used[b]:.1f}% counts and {percent_unique_used[b]:.1f}% unique annotations of {class_name}')
 
     # Report training tile creation time
     total_time_train_bigtiles = time.time() - train_start
     hours, rem = divmod(total_time_train_bigtiles, 3600)
     minutes, seconds = divmod(rem, 60)
-    print(f'  Elapsed time to create training big tiles: {int(hours)}h {int(minutes)}m {int(seconds)}s')
+    logger.info(f'  Elapsed time to create training big tiles: {int(hours)}h {int(minutes)}m {int(seconds)}s')
 
     # Create validation tiles
     output_type = 'validation'
@@ -483,10 +494,10 @@ def create_training_tiles(
     annotation_percentages_original = annotation_percentages.copy()
 
     validation_start_time = time.time()
-    print('Building validation tiles...')
+    logger.info('Building validation tiles...')
 
     if len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) >= num_validation_tiles:
-        print('  Already done.')
+        logger.info('  Already done.')
     else:
         while len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) < num_validation_tiles:
             current_annotations, annotation_percentages = combine_annotations_into_tiles(
@@ -501,7 +512,7 @@ def create_training_tiles(
             )
 
             elapsed_time = time.time() - validation_start_time
-            print(
+            logger.info(
                 f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.jpg")))} of {num_validation_tiles} validation images completed in {int(elapsed_time / 60)} minutes')
 
             # Report usage statistics
@@ -514,11 +525,11 @@ def create_training_tiles(
             percent_unique_used = used_unique_annotations / base_unique_annotations * 100
 
             for b, class_name in enumerate(class_names):
-                print(f'  Used {percent_count_used[b]:.1f}% counts and {percent_unique_used[b]:.1f}% unique annotations of {class_name}')
+                logger.info(f'  Used {percent_count_used[b]:.1f}% counts and {percent_unique_used[b]:.1f}% unique annotations of {class_name}')
 
     # Report validation tile creation time
     total_time_validation_bigtiles = time.time() - validation_start_time
     hours, rem = divmod(total_time_validation_bigtiles, 3600)
     minutes, seconds = divmod(rem, 60)
-    print(f'  Elapsed time to create validation big tiles: {int(hours)}h {int(minutes)}m {int(seconds)}s')
-    print('')
+    logger.info(f'  Elapsed time to create validation big tiles: {int(hours)}h {int(minutes)}m {int(seconds)}s')
+    logger.info('')

@@ -48,7 +48,7 @@ log_filename = os.path.join(logs_dir, f'{datetime.now().strftime("%Y%m%d_%H%M%S"
 if DEBUG_MODE:
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - [%(name)s:%(funcName)s:%(lineno)d] - %(message)s',
         handlers=[
             logging.FileHandler(log_filename),
             logging.StreamHandler()  # Console output
@@ -57,11 +57,10 @@ if DEBUG_MODE:
 else:
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - [%(name)s] - %(message)s',
         handlers=[logging.FileHandler(log_filename)]
     )
-logger = logging.getLogger(__name__)
-logger.info(f"Starting tissue segmentation workflow with debug logging to {log_filename}")
+logging.info(f"Starting tissue segmentation workflow. Log level set to {'DEBUG' if DEBUG_MODE else 'INFO'}. Logging to {log_filename}")
 
 # Set up data paths
 pth = '/Users/tnewton3/Desktop/liver_tissue_data'

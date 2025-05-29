@@ -18,6 +18,10 @@ import numpy as np
 import tensorflow as tf
 from base.evaluation.visualize import plot_cmap_legend
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 
 def save_model_metadata(model_path: str, metadata: Dict[str, Any]) -> None:
     """
@@ -38,10 +42,10 @@ def save_model_metadata(model_path: str, metadata: Dict[str, Any]) -> None:
             with open(data_file, 'rb') as f:
                 existing_data = pickle.load(f)
         except EOFError:
-            print(f"Warning: EOFError reading existing metadata file {data_file}. Starting with provided metadata.")
+            logger.error(f"Warning: EOFError reading existing metadata file {data_file}. Starting with provided metadata.")
             existing_data = {}  # Or initialize with metadata if update implies base exists
         except Exception as e:
-            print(f"Warning: Failed to load existing metadata file {data_file}: {e}. Starting with provided metadata.")
+            logger.error(f"Warning: Failed to load existing metadata file {data_file}: {e}. Starting with provided metadata.")
             existing_data = {}
 
     existing_data.update(metadata)
@@ -50,7 +54,7 @@ def save_model_metadata(model_path: str, metadata: Dict[str, Any]) -> None:
         with open(data_file, 'wb') as f:
             pickle.dump(existing_data, f)
     except Exception as e:
-        print(f"Critical Error: Failed to save metadata to {data_file}: {e}")
+        logger.error(f"Critical Error: Failed to save metadata to {data_file}: {e}")
         # Optionally, re-raise or handle more gracefully
         raise
 
@@ -86,7 +90,7 @@ def create_initial_model_metadata(
     if not os.path.isdir(pthDL):
         os.makedirs(pthDL)
 
-    print('Preparing initial model metadata and classification colormap...')
+    logger.info('Preparing initial model metadata and classification colormap...')
 
     # Make copies for manipulation if necessary, especially for classNames and WS
     _classNames = list(classNames)
@@ -136,20 +140,20 @@ def create_initial_model_metadata(
                 isinstance(_WS[2][original_whitespace_layer_idx - 1], int)):
             nwhite = _WS[2][original_whitespace_layer_idx - 1]
         else:
-            print(
+            logger.warning(
                 f"Warning: WS[2] seems not correctly formatted or index out of bounds for nwhite calculation. WS[1][0]={original_whitespace_layer_idx}, WS[2]={_WS[2]}")
 
     if nwhite == -1:  # Fallback if calculation failed
-        print("Warning: Could not determine nwhite from WS. Attempting to find 'whitespace' in classNames.")
+        logger.warning("Warning: Could not determine nwhite from WS. Attempting to find 'whitespace' in classNames.")
         try:
             # classNames here should be the list of semantic classes (before "black" is appended)
             nwhite = _classNames.index("whitespace") + 1  # Find 1-based index
         except ValueError:
             if _classNames:  # Default to last semantic class if "whitespace" not found.
-                print(f"Warning: 'whitespace' not in classNames. Defaulting nwhite to last class: {len(_classNames)}")
+                logger.warning(f"Warning: 'whitespace' not in classNames. Defaulting nwhite to last class: {len(_classNames)}")
                 nwhite = len(_classNames)
             else:  # No classes, problematic.
-                print("Warning: No classNames provided. Defaulting nwhite to 1.")
+                logger.warning("Warning: No classNames provided. Defaulting nwhite to 1.")
                 nwhite = 1
 
     # Prepare final_class_names for saving (conventionally with "black" as the last one for model output)
@@ -200,8 +204,8 @@ def create_initial_model_metadata(
     # Pass _classNames (semantic names) and corresponding cmap. plot_cmap_legend handles if len(titles) == len(cmap)+1.
     plot_cmap_legend(cmap, _classNames, save_path=plot_save_path)
 
-    print(f"Initial model metadata saved to {os.path.join(pthDL, 'net.pkl')}")
-    print(f"Color map legend saved to {plot_save_path}")
+    logger.info(f"Initial model metadata saved to {os.path.join(pthDL, 'net.pkl')}")
+    logger.info(f"Color map legend saved to {plot_save_path}")
 
 
 def setup_gpu() -> Dict[str, Any]:
@@ -223,7 +227,7 @@ def setup_gpu() -> Dict[str, Any]:
             # Use only the first GPU
             tf.config.set_visible_devices(physical_devices[0], 'GPU')
             logical_devices = tf.config.list_logical_devices('GPU')
-            print(f"TensorFlow is using the following GPU: {logical_devices[0]}")
+            logger.info(f"TensorFlow is using the following GPU: {logical_devices[0]}")
             
             # Get GPU memory info if possible
             try:
@@ -240,14 +244,14 @@ def setup_gpu() -> Dict[str, Any]:
                         'utilization': f"{gpu.load * 100:.1f}%"
                     }
             except ImportError:
-                print("GPUtil not available - limited GPU information will be displayed")
+                logger.error("GPUtil not available - limited GPU information will be displayed")
                 gpu_info = {'device': 'GPU available but detailed info unavailable'}
                 
         except RuntimeError as e:
-            print(f"GPU setup error: {e}")
+            logger.error(f"GPU setup error: {e}")
     else:
-        print("No GPU available. Operations will proceed on the CPU.")
-        print("Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
+        logger.warning("No GPU available. Operations will proceed on the CPU.")
+        logger.warning("Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
     
     return gpu_info
 
@@ -294,13 +298,13 @@ def calculate_class_weights(mask_list: List[str], num_classes: int) -> np.ndarra
     class_weights = median_freq / (freq + epsilon)
     
     # Print class distribution information
-    print("\nClass frequencies:")
+    logger.info("\nClass frequencies:")
     for i, f in enumerate(freq):
-        print(f"Class {i}: {f:.4f}")
+        logger.info(f"Class {i}: {f:.4f}")
     
-    print("\nClass weights:")
+    logger.info("\nClass weights:")
     for i, w in enumerate(class_weights):
-        print(f"Class {i}: {w:.4f}")
+        logger.info(f"Class {i}: {w:.4f}")
     
     return class_weights.astype(np.float32)
 
