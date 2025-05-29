@@ -12,6 +12,7 @@ Modules:
     utils: General utility functions
 """
 
+
 __version__ = '1.0.0'
 
 from .save_model_metadata_GUI import save_model_metadata_GUI
