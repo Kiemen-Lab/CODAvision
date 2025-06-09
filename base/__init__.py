@@ -14,7 +14,7 @@ Modules:
 
 __version__ = '1.0.0'
 
-from .save_model_metadata_GUI import save_model_metadata_GUI
+from .gui.utils import save_model_metadata_GUI
 from .determine_optimal_TA import determine_optimal_TA
 from .data.tiles import create_training_tiles
 from .evaluation.image_quantification import quantify_images

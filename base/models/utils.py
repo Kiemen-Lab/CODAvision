@@ -16,7 +16,6 @@ import pickle
 from typing import Dict, Any, List
 import numpy as np
 import tensorflow as tf
-from base.evaluation.visualize import plot_cmap_legend
 
 # Set up logging
 import logging
@@ -87,6 +86,9 @@ def create_initial_model_metadata(
     This function incorporates logic from the original base/save_model_metadata.py
     and can handle additional parameters typically set by the GUI.
     """
+    # avoid circular import issues
+    from base.evaluation.visualize import plot_cmap_legend
+
     if not os.path.isdir(pthDL):
         os.makedirs(pthDL)
 
