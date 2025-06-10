@@ -2,6 +2,10 @@ import os
 import json
 import xmltodict
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 def rgb2hex(rgb_list):  # rgb_list example: [255,0,3]
     r, g, b = rgb_list
     return "#{:02x}{:02x}{:02x}".format(r, g, b)
@@ -57,7 +61,7 @@ def geojson2xml(geojson_path):
     with open(output_filename, 'w') as f:
         f.write(xml_string)
 
-    print(f'XML file {output_filename} generated from GeoJSON file {geojson_path}')
+    logger.info(f'XML file {output_filename} generated from GeoJSON file {geojson_path}')
 
 # Example usage
 if __name__ == "__main__":

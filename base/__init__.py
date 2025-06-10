@@ -15,13 +15,13 @@ Modules:
 
 __version__ = '1.0.0'
 
-from .save_model_metadata_GUI import save_model_metadata_GUI
-from .determine_optimal_TA import determine_optimal_TA
+from .gui.utils import save_model_metadata_GUI
+from .tissue_area import determine_optimal_TA
 from .data.tiles import create_training_tiles
 from .evaluation.image_quantification import quantify_images
 from .evaluation.object_quantification import quantify_objects
 from .evaluation.pdf_report import create_output_pdf
-from .WSI2tif import WSI2tif
+from .image.wsi import WSI2tif
 from .data.annotation import (
     load_annotation_data,
     save_annotation_mask,

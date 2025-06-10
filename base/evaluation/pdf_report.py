@@ -24,6 +24,10 @@ from fpdf import FPDF
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
 pd.set_option('display.max_columns', None)
 
 # --- Constants ---
@@ -195,14 +199,14 @@ class PdfReportGenerator:
         """Loads the model name from the net.pkl file."""
         pkl_path = self.model_dir / MODEL_METADATA_FILE
         if not pkl_path.exists():
-            print(f"Warning: Model metadata file not found at {pkl_path}. Using 'Unknown Model'.")
+            logger.warning(f"Warning: Model metadata file not found at {pkl_path}. Using 'Unknown Model'.")
             return "Unknown Model"
         try:
             with open(pkl_path, 'rb') as f:
                 data = pickle.load(f)
             return data.get('nm', 'Unknown Model')
         except Exception as e:
-            print(f"Warning: Failed to load model metadata from {pkl_path}: {e}. Using 'Unknown Model'.")
+            logger.error(f"Warning: Failed to load model metadata from {pkl_path}: {e}. Using 'Unknown Model'.")
             return "Unknown Model"
 
     def _add_confusion_matrix_section(self):
@@ -216,19 +220,19 @@ class PdfReportGenerator:
         cm_image_path = self.confusion_matrix_path
         if self.confusion_matrix_path.suffix.lower() in ['.jpg', '.jpeg']:
             try:
-                print(f"Converting confusion matrix {self.confusion_matrix_path} to PNG...")
+                logger.info(f"Converting confusion matrix {self.confusion_matrix_path} to PNG...")
                 cm_image_path = _convert_to_png(self.confusion_matrix_path)
-                print(f"Converted to: {cm_image_path}")
+                logger.info(f"Converted to: {cm_image_path}")
             except (ValueError, RuntimeError, FileNotFoundError) as e:
                 self.pdf.chapter_body(f"Error processing confusion matrix image: {e}")
-                print(f"Error: {e}")
+                logger.error(f"Error: {e}")
                 return # Skip adding image if conversion fails
 
         try:
             self.pdf.add_full_width_image(cm_image_path)
         except (FileNotFoundError, ValueError) as e:
              self.pdf.chapter_body(f"Error adding confusion matrix image: {e}")
-             print(f"Error: {e}")
+             logger.error(f"Error: {e}")
 
 
     def _add_color_legend_section(self):
@@ -241,7 +245,7 @@ class PdfReportGenerator:
             self.pdf.add_scaled_image(self.color_legend_path, width=100)
         except (FileNotFoundError, ValueError) as e:
              self.pdf.chapter_body(f"Error adding color legend image: {e}")
-             print(f"Error: {e}")
+             logger.error(f"Error: {e}")
 
     def _add_check_annotations_section(self):
         """Adds the check annotations section to the PDF."""
@@ -258,7 +262,7 @@ class PdfReportGenerator:
             self.pdf.add_full_width_image(check_annotations_image)
         except (FileNotFoundError, ValueError) as e:
              self.pdf.chapter_body(f"Error adding check annotations image: {e}")
-             print(f"Error: {e}")
+             logger.error(f"Error: {e}")
 
     def _add_check_classification_section(self):
         """Adds the check classification section to the PDF."""
@@ -277,7 +281,7 @@ class PdfReportGenerator:
             self.pdf.add_full_width_image(check_classification_image)
         except (FileNotFoundError, ValueError) as e:
              self.pdf.chapter_body(f"Error adding check classification image: {e}")
-             print(f"Error: {e}")
+             logger.error(f"Error: {e}")
 
     def _add_quantification_section(self):
         """Adds the pixel and tissue composition quantification section."""
@@ -390,7 +394,7 @@ class PdfReportGenerator:
              self.pdf.chapter_body(f"Error: Missing expected column in CSV: {e}")
         except Exception as e:
             self.pdf.chapter_body(f"An unexpected error occurred while processing quantifications: {e}")
-            print(f"Quantification Error: {e}")
+            logger.error(f"Quantification Error: {e}")
 
 
     def _add_runtime_section(self):
@@ -479,7 +483,7 @@ class PdfReportGenerator:
 
     def generate_report(self):
         """Generates the complete PDF report."""
-        print('Generating model evaluation report...')
+        logger.info('Generating model evaluation report...')
 
         self._add_confusion_matrix_section()
         self._add_color_legend_section()
@@ -493,12 +497,12 @@ class PdfReportGenerator:
             # Ensure the output directory exists before saving
             self.output_path.parent.mkdir(parents=True, exist_ok=True)
             self.pdf.output(str(self.output_path), 'F')
-            print(f'PDF report saved at: {self.output_path}')
+            logger.info(f'PDF report saved at: {self.output_path}')
         except Exception as e:
-            print(f"Error saving PDF report: {e}")
+            logger.error(f"Error saving PDF report: {e}")
             # Consider logging the full traceback for debugging
             import traceback
-            print(traceback.format_exc())
+            logger.error(traceback.format_exc())
             raise  # Re-raise exception after logging
 
 # --- Wrapper Function (for backward compatibility) ---
@@ -541,6 +545,6 @@ def create_output_pdf(
         )
         report_generator.generate_report()
     except Exception as e:
-        print(f"Failed to generate PDF report: {e}")
+        logger.error(f"Failed to generate PDF report: {e}")
         # Optionally re-raise the exception if calling code needs to handle it
         # raise e

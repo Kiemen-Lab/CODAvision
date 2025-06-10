@@ -14,20 +14,21 @@ Updated March 2025
 import os
 import numpy as np
 from typing import Dict, Tuple, Any
-
-from tifffile import imread
 from skimage.morphology import remove_small_objects
-from PIL import Image
 
 from base.data.annotation import load_annotation_data
 from base.image.classification import classify_images
 from base.evaluation.confusion_matrix import ConfusionMatrixVisualizer
 from base.models.utils import get_model_paths
 from base.data.loaders import load_model_metadata
+from base.image.utils import load_image_with_fallback
 
 import warnings
-
 warnings.filterwarnings("ignore")
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SegmentationModelTester:
@@ -97,9 +98,8 @@ class SegmentationModelTester:
             RuntimeError: If there's an error reading the image file
         """
         try:
-            img = Image.open(file_path)
-            img = img.convert('L')
-            return np.array(img).astype(np.double)
+            img = load_image_with_fallback(file_path, mode='L')
+            return img.astype(np.double)
         except Exception as e:
             raise RuntimeError(f"Error reading image file {file_path}: {e}")
 
@@ -167,15 +167,15 @@ class SegmentationModelTester:
                     else:
                         ground_truth = self.read_image_as_double(annotation_file_raw_png)
                 except RuntimeError as e:
-                    print(e)
+                    logger.error(e)
                     continue
 
                 # Load prediction
                 try:
-                    prediction = imread(os.path.join(classified_path, folder + '.tif'))
+                    prediction = load_image_with_fallback(os.path.join(classified_path, folder + '.tif'), mode='L')
                     prediction_array = np.array(prediction)
                 except Exception as e:
-                    print(f"Error loading prediction for {folder}: {e}")
+                    logger.error(f"Error loading prediction for {folder}: {e}")
                     continue
 
                 # Clean small objects from ground truth
@@ -219,28 +219,28 @@ class SegmentationModelTester:
         label_percentages = (label_counts / label_counts.max() * 100).astype(int)
 
         # Display statistics
-        print('\nCalculating total number of pixels in the testing dataset...')
+        logger.info('\nCalculating total number of pixels in the testing dataset...')
         for i, count in enumerate(label_counts):
             if label_percentages[i] == 100:
-                print(f"  There are {count} pixels of {class_names[i]}. This is the most common class.")
+                logger.info(f"  There are {count} pixels of {class_names[i]}. This is the most common class.")
             else:
-                print(
+                logger.info(
                     f"  There are {count} pixels of {class_names[i]}, {label_percentages[i]}% of the most common class.")
 
         # Check for missing classes
         if 0 in label_counts:
             for i, count in enumerate(label_counts):
                 if count == 0:
-                    print(f"\n No testing annotations exist for class {class_names[i]}.")
+                    logger.error(f"\n No testing annotations exist for class {class_names[i]}.")
             raise ValueError("Cannot make confusion matrix. Please add testing annotations of missing class(es).")
 
         # Check for insufficient annotations
         min_recommended_pixels = 15000
         for i, count in enumerate(label_counts):
             if count < min_recommended_pixels:
-                print(f"\n  Only {count} testing pixels of {class_names[i]} found.")
-                print("    We suggest a minimum of 15,000 pixels for a good assessment of model accuracy.")
-                print("    Confusion matrix may be misleading.")
+                logger.warning(f"\n  Only {count} testing pixels of {class_names[i]} found.")
+                logger.warning("    We suggest a minimum of 15,000 pixels for a good assessment of model accuracy.")
+                logger.warning("    Confusion matrix may be misleading.")
 
         return label_counts
 
@@ -324,7 +324,7 @@ class SegmentationModelTester:
         Raises:
             ValueError: If testing fails
         """
-        print("Testing segmentation model......")
+        logger.info("Testing segmentation model......")
 
         try:
             # Prepare test data

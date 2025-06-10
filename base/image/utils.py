@@ -14,11 +14,42 @@ Updated: April 2025
 from typing import Optional, Tuple, Union, List, Any
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Set max image size for OpenCV
+
 import numpy as np
 import tensorflow as tf
 import keras
 import cv2
+
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
+
+def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
+    """
+    Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
+
+    Args:
+        image_path: Path to the image file.
+        mode: Mode to convert the image to when using Pillow (default: "RGB").
+
+    Returns:
+        The loaded image as a NumPy array.
+    """
+    try:
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE if mode == "L" else cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Failed to load image with OpenCV")
+        if mode == "RGB" and len(image.shape) == 3:  # Convert BGR to RGB
+            image = image[:, :, ::-1]
+        return image
+    except:
+        with Image.open(image_path) as img:
+            return np.array(img.convert(mode))
 
 
 def decode_segmentation_masks(mask: np.ndarray, colormap: np.ndarray, n_classes: int) -> np.ndarray:
@@ -92,7 +123,7 @@ def read_image_overlay(image_input: Union[str, np.ndarray]) -> Optional[tf.Tenso
             image.set_shape([None, None, 3])
         return image
     except Exception as e:
-        print(f"Error reading image {image_input}: {e}")
+        logger.error(f"Error reading image {image_input}: {e}")
         return None
 
 
@@ -108,8 +139,8 @@ def convert_to_array(image_path: str, prediction_mask: np.ndarray) -> Tuple[np.n
         Tuple of (image array, prediction mask array)
     """
     # Read the image
-    image = cv2.imread(image_path)
-    image = image[:, :, ::-1]  # Convert BGR to RGB
+    # image = cv2.imread(image_path)
+    image = load_image_with_fallback(image_path)
 
     # Handle large images by resizing
     if image.shape[0] > 20000 or image.shape[1] > 20000:
