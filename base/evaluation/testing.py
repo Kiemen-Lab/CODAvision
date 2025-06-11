@@ -3,12 +3,6 @@ Semantic Segmentation Model Testing and Evaluation
 
 This module provides functionality to test trained semantic segmentation models
 and evaluate their performance using confusion matrices and accuracy metrics.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated March 2025
 """
 
 import os

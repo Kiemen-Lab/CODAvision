@@ -12,8 +12,8 @@ from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import Qt, QRect, QPointF
 from typing import Optional, List, Tuple
 
-from ..models import ThresholdMode, RegionSelection
-from ..utils import create_tissue_mask
+from base.tissue_area.models import ThresholdMode, RegionSelection
+from base.tissue_area.utils import create_tissue_mask
 
 import logging
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class ImageDisplayDialog(QtWidgets.QMainWindow):
         super().__init__(parent)
         
         # Import here to avoid circular imports
-        from gui.components.dialogs import Ui_choose_area
+        from ..components.dialogs import Ui_choose_area
         
         self.ui = Ui_choose_area()
         self.ui.setupUi(self)
@@ -93,7 +93,7 @@ class RegionCheckDialog(QtWidgets.QMainWindow):
         super().__init__(parent)
         
         # Import here to avoid circular imports
-        from gui.components.dialogs import Ui_disp_crop
+        from ..components.dialogs import Ui_disp_crop
         
         self.ui = Ui_disp_crop()
         self.ui.setupUi(self)
@@ -193,7 +193,7 @@ class ThresholdSelectionDialog(QtWidgets.QMainWindow):
         super().__init__(parent)
         
         # Import here to avoid circular imports
-        from gui.components.dialogs import Ui_choose_TA
+        from ..components.dialogs import Ui_choose_TA
         
         self.ui = Ui_choose_TA()
         self.ui.setupUi(self)
@@ -458,7 +458,7 @@ class ImageSelectionDialog(QtWidgets.QMainWindow):
         super().__init__(parent)
         
         # Import here to avoid circular imports
-        from gui.components.dialogs import Ui_choose_images_reevaluated
+        from ..components.dialogs import Ui_choose_images_reevaluated
         
         self.ui = Ui_choose_images_reevaluated()
         self.ui.setupUi(self)

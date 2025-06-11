@@ -3,9 +3,6 @@ CODAvision GUI Application
 
 This module provides the main entry point for the CODAvision GUI application,
 orchestrating the workflow for model creation, training, and analysis.
-
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Updated: March 2025
 """
 
 import os
@@ -136,10 +133,13 @@ def CODAVision():
         determine_optimal_TA(pthim, pthtestim, nTA, redo)
         try:
             os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
-            shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
-                        os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
-        except:
-            logger.error('No TA cutoff file found, using default value')
+            # The TA file is saved in the parent directory of pthim, not in pthim itself
+            ta_source = os.path.join(os.path.dirname(pthim), 'TA', 'TA_cutoff.pkl')
+            ta_dest = os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')
+            shutil.copy(ta_source, ta_dest)
+            logger.info(f'Copied TA cutoff file from {ta_source} to {ta_dest}')
+        except Exception as e:
+            logger.warning(f'Could not copy TA cutoff file: {e}')
         load_time = time.time()
         [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
         load_time = time.time()-load_time

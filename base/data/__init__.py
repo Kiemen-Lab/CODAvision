@@ -11,15 +11,12 @@ from .annotation import (
     save_annotation_mask,
     format_white,
     save_bounding_boxes,
-    calculate_tissue_mask,
     check_if_model_parameters_changed
 )
 
 from .loaders import (
     read_image,
     create_dataset,
-    convert_to_array,
-    calculate_tissue_mask,
     load_model_metadata,
     DataGenerator
 )
@@ -28,3 +25,6 @@ from .tiles import (
     combine_annotations_into_tiles,
     create_training_tiles
 )
+
+from ..tissue_area.utils import calculate_tissue_mask
+from ..image.utils import convert_to_array

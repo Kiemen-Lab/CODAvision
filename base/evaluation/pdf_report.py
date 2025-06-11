@@ -7,12 +7,6 @@ color legends, annotations, classifications, tissue quantifications, and runtime
 
 The module creates structured reports with sections for each evaluation component,
 making it easy to assess model performance and share results.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: May 2025
 """
 
 import os

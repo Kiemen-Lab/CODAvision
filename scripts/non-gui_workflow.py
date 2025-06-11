@@ -16,12 +16,6 @@ The workflow:
 Usage:
     Run this script directly to execute the complete workflow
     python non-gui_workflow.py
-
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: May 2025
 """
 
 import os
@@ -63,7 +57,7 @@ else:
 logging.info(f"Starting tissue segmentation workflow. Log level set to {'DEBUG' if DEBUG_MODE else 'INFO'}. Logging to {log_filename}")
 
 # Set up data paths
-pth = '/Users/tnewton3/Desktop/liver_tissue_data'
+pth = '/path/to/liver_tissue_data'
 pthim = os.path.join(pth, '10x')  # Path to 10x magnification images
 umpix = 1  # Microns per pixel
 pthtest = os.path.join(pth, 'testing_image')  # Path to test dataset

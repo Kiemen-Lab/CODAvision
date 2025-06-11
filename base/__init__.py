@@ -14,8 +14,7 @@ Modules:
 
 __version__ = '1.0.0'
 
-from .gui.utils import save_model_metadata_GUI
-from .tissue_area import determine_optimal_TA
+from .tissue_area.threshold import determine_optimal_TA
 from .data.tiles import create_training_tiles
 from .evaluation.image_quantification import quantify_images
 from .evaluation.object_quantification import quantify_objects
@@ -26,9 +25,9 @@ from .data.annotation import (
     save_annotation_mask,
     format_white,
     save_bounding_boxes,
-    calculate_tissue_mask,
     extract_annotation_layers,
 )
+from .tissue_area.utils import calculate_tissue_mask
 
 from .models.training import train_segmentation_model_cnns
 from .models.training import save_model_metadata
@@ -39,7 +38,6 @@ from .image.utils import create_overlay
 
 __all__ = [
     'load_annotation_data',
-    'save_model_metadata_GUI',
     'determine_optimal_TA',
     'create_training_tiles',
     'train_segmentation_model_cnns',
@@ -53,5 +51,8 @@ __all__ = [
     'format_white',
     'save_bounding_boxes',
     'calculate_tissue_mask',
-    'extract_annotation_layers'
+    'extract_annotation_layers',
+    'save_model_metadata',
+    'augment_annotation',
+    'create_overlay'
 ]

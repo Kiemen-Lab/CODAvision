@@ -3,12 +3,6 @@ Model Metadata Management for CODAvision
 
 This module provides high-level interfaces for managing model metadata,
 including creation, updates, and validation of model configuration.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: March 2025
 """
 
 import os

@@ -3,9 +3,6 @@ Main Window Component for CODAvision GUI
 
 This module provides the main application window for the CODAvision application, allowing
 users to create, train, and manage tissue segmentation models through a graphical interface.
-
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Updated: March 2025
 """
 
 import os
@@ -26,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 # Import from base package
 from base.data.annotation import extract_annotation_layers
-from base import save_model_metadata_GUI
+# Import GUI utilities
+from gui.utils import save_model_metadata_GUI
 
 # Import GUI components
 from .ui_definitions import Ui_MainWindow

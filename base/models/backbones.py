@@ -11,12 +11,8 @@ CODAvision codebase.
 
 Original DeepLabV3+ implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
 
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
-    Arrun Sivasubramanian (Johns Hopkins - Kiemen Lab)
-
-Updated: March 12, 2025
+Note: Custom preprocessing functions are used instead of tf.keras.applications.*.preprocess_input
+to avoid serialization issues with Ellipsis objects that prevent model saving.
 """
 
 import os
@@ -81,6 +77,33 @@ class DeepLabV3Plus(BaseSegmentationModel):
         input_size (int): Size of the input images (assumes square images)
         num_classes (int): Number of segmentation classes
     """
+
+    def resnet50_preprocess(self, x):
+        """
+        Custom preprocessing for ResNet50 that avoids serialization issues.
+        
+        This replaces tf.keras.applications.resnet50.preprocess_input which
+        uses Ellipsis in its implementation and causes serialization errors.
+        
+        The preprocessing performs channel-wise centering using ImageNet statistics.
+        
+        Args:
+            x: Input tensor
+            
+        Returns:
+            Preprocessed tensor
+        """
+        # ImageNet mean values for each channel (BGR order)
+        mean = tf.constant([103.939, 116.779, 123.68], dtype=tf.float32)
+        mean = tf.reshape(mean, [1, 1, 1, 3])
+        
+        # Convert RGB to BGR by reversing channels
+        x = tf.reverse(x, axis=[-1])
+        
+        # Subtract ImageNet mean
+        x = x - mean
+        
+        return x
 
     def convolution_block(
         self,
@@ -162,7 +185,8 @@ class DeepLabV3Plus(BaseSegmentationModel):
         """
         # Input layer
         model_input = tf.keras.Input(shape=(self.input_size, self.input_size, 3))
-        preprocessed = applications.resnet50.preprocess_input(model_input)
+        # Use custom preprocessing to avoid Ellipsis serialization issue
+        preprocessed = self.resnet50_preprocess(model_input)
 
         # Encoder (ResNet50 backbone)
         resnet50 = applications.ResNet50(
@@ -277,8 +301,12 @@ class UNet(BaseSegmentationModel):
         # Input layer
         inputs = layers.Input(input_shape)
 
-        # Apply preprocessing for ResNet50
-        preprocessed = applications.resnet50.preprocess_input(inputs)
+        # Apply custom preprocessing to avoid Ellipsis serialization issue
+        # ImageNet mean values for each channel (BGR order)
+        mean = tf.constant([103.939, 116.779, 123.68], dtype=tf.float32)
+        mean = tf.reshape(mean, [1, 1, 1, 3])
+        # Convert RGB to BGR and subtract ImageNet mean
+        preprocessed = tf.reverse(inputs, axis=[-1]) - mean
 
         # Encoder (ResNet50 backbone)
         resnet50 = applications.ResNet50(

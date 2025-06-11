@@ -3,12 +3,6 @@ Model Utilities for Semantic Segmentation
 
 This module provides common utilities for loading, saving, and managing 
 semantic segmentation models and their metadata.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: March 2025
 """
 
 import os

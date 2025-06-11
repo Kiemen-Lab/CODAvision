@@ -4,13 +4,6 @@ using TensorFlow and Keras. It includes custom loss functions, data generators,
 and training utilities for various architectures including DeepLabV3+ and UNet.
 The original implementation of DeepLabv3+ was based on:
 https://keras.io/examples/vision/deeplabv3_plus/
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-    Arrun Sivasubramanian (Johns Hopkins - Kiemen Lab)
-
-Updated March 2025
 """
 
 import time

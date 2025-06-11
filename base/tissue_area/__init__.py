@@ -5,7 +5,8 @@ This module provides functionality for determining optimal tissue area threshold
 in histological images, particularly for distinguishing tissue from whitespace.
 """
 
-from .threshold import TissueAreaThresholdSelector, determine_optimal_TA
+# Don't import from threshold to avoid circular imports
+# Users should import directly from base.tissue_area.threshold
 from .models import (
     ThresholdConfig,
     ThresholdMode,
@@ -14,8 +15,6 @@ from .models import (
 )
 
 __all__ = [
-    'TissueAreaThresholdSelector',
-    'determine_optimal_TA',
     'ThresholdConfig',
     'ThresholdMode',
     'ImageThresholds',

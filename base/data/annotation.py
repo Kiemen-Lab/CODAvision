@@ -7,13 +7,6 @@ from various formats (primarily XML). It includes utilities for:
 - Creating annotation masks for segmentation tasks
 - Extracting bounding boxes from annotations
 - Working with annotation coordinates and layers
-
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
-    Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
-
-Updated: March 2025
 """
 
 import os
@@ -25,9 +18,9 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
-from skimage import morphology
 from skimage.morphology import remove_small_objects
 from scipy.ndimage import binary_fill_holes
+from ..tissue_area.utils import calculate_tissue_mask
 import cv2
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Tuple, Optional, Union, Any
@@ -37,7 +30,6 @@ import xml.sax
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 import logging
-from base.image.utils import load_image_with_fallback
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -1564,100 +1556,3 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
     except Exception as e:
         logger.info(f"An error occurred: {str(e)}")
         return 1
-
-
-def calculate_tissue_mask(path: str, image_name: str, test) -> Tuple[np.ndarray, np.ndarray, str]:
-    """
-    Reads an image and returns it along with a binary mask of tissue areas.
-
-    Args:
-        path: Directory path where the image is located
-        image_name: Name of the image file (without extension)
-
-    Returns:
-        Tuple of:
-        - image: The image as a numpy array
-        - tissue_mask: Binary mask where tissue areas are True
-        - output_path: Path where the tissue mask is saved
-    """
-    # Create output directory
-    output_path = os.path.join(path.rstrip(os.path.sep), 'TA')
-    if not os.path.isdir(output_path):
-        os.mkdir(output_path)
-
-    # Try to load image with different extensions
-    try:
-        image = load_image_with_fallback(os.path.join(path, f'{image_name}.tif'))
-    except:
-        try:
-            image = load_image_with_fallback(os.path.join(path, f'{image_name}.jpg'))
-        except:
-            try:
-                image = load_image_with_fallback(os.path.join(path, f'{image_name}.jp2'))
-            except:
-                try:
-                    image = load_image_with_fallback(os.path.join(path, f'{image_name}.png'))
-                except:
-                    # Fallback to Pillow
-                    try:
-                        with Image.open(os.path.join(path, f'{image_name}.tif')) as img:
-                            image = np.array(img.convert("RGB"))
-                    except:
-                        try:
-                            with Image.open(os.path.join(path, f'{image_name}.jpg')) as img:
-                                image = np.array(img.convert("RGB"))
-                        except:
-                            try:
-                                with Image.open(os.path.join(path, f'{image_name}.jp2')) as img:
-                                    image = np.array(img.convert("RGB"))
-                            except:
-                                with Image.open(os.path.join(path, f'{image_name}.png')) as img:
-                                    image = np.array(img.convert("RGB"))
-
-    # Check if mask already exists
-    if os.path.isfile(os.path.join(output_path, f'{image_name}.tif')):
-        tissue_mask = load_image_with_fallback(os.path.join(output_path, f'{image_name}.tif'), "L")
-        logger.info('  Existing TA loaded')
-        return image, tissue_mask, output_path
-
-    # Calculate tissue mask
-    logger.info('  Calculating TA image')
-    mode = 'H&E'
-    # Try to load saved threshold
-    if os.path.isfile(os.path.join(output_path, 'TA_cutoff.pkl')):
-        with open(os.path.join(output_path, 'TA_cutoff.pkl'), 'rb') as f:
-            data = pickle.load(f)
-            cutoffs_list = data['cts']
-            mode = data['mode']
-            average_TA = data['average_TA']
-            if test:
-                average_TA = True
-        if average_TA:
-            cutoff = 0
-            for value in cutoffs_list.values():
-                cutoff += value
-            cutoff = cutoff / len(cutoffs_list)
-        else:
-             imnm = os.path.basename(image_name)
-             cutoff = cutoffs_list[imnm+'.tif']
-    else:
-        # Use default threshold
-        cutoff = 205
-
-    if mode == 'H&E':
-        tissue_mask = image[:, :, 1] < cutoff  # Threshold the image green values
-    else:
-        tissue_mask = image[:, :, 1] > cutoff
-    kernel_size = 1
-    tissue_mask = tissue_mask.astype(np.uint8)
-    kernel = morphology.disk(kernel_size)
-    tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, kernel.astype(np.uint8))
-    tissue_mask = remove_small_objects(tissue_mask.astype(bool), min_size=10)
-    inverted_mask = ~tissue_mask
-    inverted_mask = remove_small_objects(inverted_mask, min_size=10)
-    tissue_mask = ~inverted_mask
-
-    # Save mask
-    cv2.imwrite(os.path.join(output_path, f'{image_name}.tif'), tissue_mask.astype(np.uint8))
-
-    return image, tissue_mask, output_path

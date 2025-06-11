@@ -3,12 +3,6 @@ Training Tile Creation Utilities for CODAvision
 
 This module provides functions for creating and managing training tiles from annotations.
 It handles the creation of training and validation tiles for deep learning model training.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: April 2025
 """
 
 import os
@@ -23,7 +17,8 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 import cv2
 
-from base.image import edit_annotation_tiles, load_image_with_fallback
+from base.image.augmentation import edit_annotation_tiles
+from base.image.utils import load_image_with_fallback
 
 # Set up logging
 import logging

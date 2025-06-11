@@ -4,12 +4,6 @@ Image Quantification Module for CODAvision
 This module provides functionality for quantifying the tissue composition
 of classified images, computing pixel counts and percentage compositions
 for each tissue class.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: April 2025
 """
 
 import os

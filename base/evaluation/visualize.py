@@ -3,12 +3,6 @@ Visualization Utilities for Model Evaluation in CODAvision
 
 This module provides functions for visualizing model components and evaluation results,
 such as colormap legends and confusion matrices.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: May 2025
 """
 
 import numpy as np

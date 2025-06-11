@@ -3,12 +3,6 @@ Semantic Segmentation Module
 
 This module provides the SemanticSegmenter class for performing semantic segmentation
 on images using trained deep learning models.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated March 2025
 """
 
 from typing import Optional, Union, Tuple

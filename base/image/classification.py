@@ -18,12 +18,6 @@ Example usage:
     # Using the class interface
     classifier = ImageClassifier("path/to/images", "path/to/model", "DeepLabV3_plus")
     output_path = classifier.classify(color_overlay=True, color_mask=True, display=True)
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated March 2025
 """
 
 import os

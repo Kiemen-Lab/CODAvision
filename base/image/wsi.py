@@ -3,12 +3,6 @@ Whole Slide Image (WSI) Processing Module for CODAvision
 
 This module provides functionality for converting and downsampling whole slide images
 from various formats (NDPI, SVS, DCM) to TIFF format with specified resolutions.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: May 2025
 """
 
 import os

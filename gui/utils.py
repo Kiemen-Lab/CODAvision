@@ -3,19 +3,13 @@ GUI Utility Functions for CODAvision
 
 This module provides utility functions that bridge the GUI components
 with the core CODAvision functionality.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: March 2025
 """
 
 from typing import List, Union, Any
 import numpy as np
 import pandas as pd
 
-from ..models.metadata import save_model_metadata_gui
+from base.models.metadata import save_model_metadata_gui
 
 
 def save_model_metadata_GUI(

@@ -3,13 +3,6 @@ Image Augmentation Utilities for CODAvision
 
 This module provides functions for augmenting images and masks during training to
 improve model generalization through data diversity.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: April 2025
 """
 
 from typing import Tuple, Optional, Union

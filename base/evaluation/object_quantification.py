@@ -4,12 +4,6 @@ Object Quantification Module for CODAvision
 This module provides functionality for quantifying and analyzing objects in classified
 images based on connected components analysis. It identifies, measures, and catalogs
 objects belonging to specific annotation classes.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: April 2025
 """
 
 import os

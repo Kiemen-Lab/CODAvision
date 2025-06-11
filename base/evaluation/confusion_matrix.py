@@ -3,12 +3,6 @@ Confusion Matrix Visualization for Semantic Segmentation Models
 
 This module provides classes and functions for creating, visualizing, and analyzing
 confusion matrices for semantic segmentation model evaluation.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated March 13, 2025
 """
 
 import os

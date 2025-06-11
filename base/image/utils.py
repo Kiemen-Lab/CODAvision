@@ -3,12 +3,6 @@ Image Utilities for Semantic Segmentation
 
 This module provides common image processing utilities used across the semantic
 segmentation pipeline, including loading, preprocessing, visualization, and overlay creation.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: April 2025
 """
 
 from typing import Optional, Tuple, Union, List, Any
@@ -127,32 +121,34 @@ def read_image_overlay(image_input: Union[str, np.ndarray]) -> Optional[tf.Tenso
         return None
 
 
-def convert_to_array(image_path: str, prediction_mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def convert_to_array(image_path: str, prediction_mask: np.ndarray, resize_factor: int = 4) -> Tuple[np.ndarray, np.ndarray]:
     """
     Convert image and prediction mask to numpy arrays with consistent dimensions.
 
     Args:
         image_path: Path to the image file
         prediction_mask: Prediction mask as numpy array
+        resize_factor: Factor to resize large images by (default: 4)
 
     Returns:
         Tuple of (image array, prediction mask array)
     """
-    # Read the image
-    # image = cv2.imread(image_path)
+    # Read the image using the fallback loader
     image = load_image_with_fallback(image_path)
 
-    # Handle large images by resizing
+    # Handle large images by resizing to avoid memory issues
     if image.shape[0] > 20000 or image.shape[1] > 20000:
         # Convert to PIL image for resizing
         image_pil = Image.fromarray(image)
         # Resize while maintaining aspect ratio
-        image_pil = image_pil.resize((image_pil.width // 4, image_pil.height // 4), Image.LANCZOS)
+        new_width = image_pil.width // resize_factor
+        new_height = image_pil.height // resize_factor
+        image_pil = image_pil.resize((new_width, new_height), Image.LANCZOS)
         image = np.array(image_pil)
 
         # Resize prediction mask to match
         prediction_mask_pil = Image.fromarray(prediction_mask)
-        prediction_mask_pil = prediction_mask_pil.resize((prediction_mask_pil.width // 4, prediction_mask_pil.height // 4), Image.LANCZOS)
+        prediction_mask_pil = prediction_mask_pil.resize((new_width, new_height), Image.LANCZOS)
         prediction_mask = np.array(prediction_mask_pil)
 
     return image, prediction_mask

@@ -13,11 +13,6 @@ Features:
 - Dataset analysis capabilities
 - Automatic debug summary generation
 - GPU monitoring with fallback options
-
-Authors:
-    Tyler Newton (JHU - DSAI)
-
-Updated: March 13, 2025
 """
 
 import time

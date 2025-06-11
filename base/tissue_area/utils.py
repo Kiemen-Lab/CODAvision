@@ -190,3 +190,102 @@ def create_tissue_mask(image: np.ndarray,
         mask = (green_channel < threshold) * 255
     
     return mask.astype(np.uint8)
+
+
+def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tuple[np.ndarray, np.ndarray, str]:
+    """
+    Reads an image and returns it along with a binary mask of tissue areas.
+
+    Args:
+        path: Directory path where the image is located
+        image_name: Name of the image file (without extension)
+        test: Whether this is for testing (affects averaging behavior)
+
+    Returns:
+        Tuple of:
+        - image: The image as a numpy array
+        - tissue_mask: Binary mask where tissue areas are True
+        - output_path: Path where the tissue mask is saved
+    """
+    import cv2
+    import pickle
+    from skimage.morphology import remove_small_objects, disk
+    from ..image.utils import load_image_with_fallback
+    
+    # Create output directory
+    output_path = os.path.join(path.rstrip(os.path.sep), 'TA')
+    if not os.path.isdir(output_path):
+        os.mkdir(output_path)
+
+    # Try to load image with different extensions
+    image_extensions = ['.tif', '.jpg', '.jp2', '.png']
+    image = None
+    
+    for ext in image_extensions:
+        try:
+            image = load_image_with_fallback(os.path.join(path, f'{image_name}{ext}'))
+            break
+        except Exception:
+            continue
+    
+    if image is None:
+        raise FileNotFoundError(f"Could not load image {image_name} with any supported extension")
+
+    # Check if mask already exists
+    mask_path = os.path.join(output_path, f'{image_name}.tif')
+    if os.path.isfile(mask_path):
+        tissue_mask = load_image_with_fallback(mask_path, "L")
+        logger.info('  Existing TA loaded')
+        return image, tissue_mask, output_path
+
+    # Calculate tissue mask
+    logger.info('  Calculating TA image')
+    mode = 'H&E'
+    cutoff = 205  # Default cutoff value
+    
+    # Try to load saved threshold
+    cutoff_file = os.path.join(output_path, 'TA_cutoff.pkl')
+    if os.path.isfile(cutoff_file):
+        with open(cutoff_file, 'rb') as f:
+            data = pickle.load(f)
+            cutoffs_list = data['cts']
+            mode = data['mode']
+            average_TA = data.get('average_TA', False)
+            
+            # Always use averaged cutoffs in test mode
+            if test:
+                average_TA = True
+                
+            if average_TA:
+                # Calculate average cutoff
+                cutoff = sum(cutoffs_list.values()) / len(cutoffs_list)
+            else:
+                # Try to get image-specific cutoff
+                img_key = f'{os.path.basename(image_name)}.tif'
+                if img_key in cutoffs_list:
+                    cutoff = cutoffs_list[img_key]
+
+    # Apply threshold based on mode
+    if mode == 'H&E':
+        tissue_mask = image[:, :, 1] < cutoff  # Green channel for H&E stains
+    else:
+        tissue_mask = image[:, :, 1] > cutoff  # Inverted for other stains
+
+    # Apply morphological operations to clean up the mask
+    kernel_size = 3  # Using larger kernel size from loaders.py for better cleaning
+    tissue_mask = tissue_mask.astype(np.uint8)
+    kernel = disk(kernel_size)
+    tissue_mask = cv2.morphologyEx(tissue_mask, cv2.MORPH_CLOSE, kernel.astype(np.uint8))
+    
+    # Remove small objects
+    tissue_mask = remove_small_objects(tissue_mask.astype(bool), min_size=10)
+    
+    # Additional cleaning step from annotation.py implementation
+    inverted_mask = ~tissue_mask
+    inverted_mask = remove_small_objects(inverted_mask, min_size=10)
+    tissue_mask = ~inverted_mask
+
+    # Save tissue mask
+    cv2.imwrite(mask_path, tissue_mask.astype(np.uint8) * 255)
+
+    return image, tissue_mask.astype(np.uint8) * 255, output_path
