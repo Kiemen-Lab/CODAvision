@@ -131,9 +131,17 @@ def WSI2tif(pth, resolution, umpix, image_format = '.ndpi', scale = 0, outpth ='
                 missing_images = images_names_wsi - images_names_tif
                 for idx, missing_image in enumerate(missing_images):
                     print(f"  {idx + 1} / {len(missing_images)} processing: {missing_image}")
-                    missing_images = images_names_wsi - images_names_tif
+                    # Try .ndpi first, then .svs
+                    ndpi_path = os.path.join(pth, missing_image + '.ndpi')
+                    svs_path = os.path.join(pth, missing_image + '.svs')
+                    if os.path.exists(ndpi_path):
+                        slide_path = ndpi_path
+                    elif os.path.exists(svs_path):
+                        slide_path = svs_path
+                    else:
+                        print(f"  File for {missing_image} not found as .ndpi or .svs")
+                        continue
 
-                    slide_path = os.path.join(pth, missing_image + '.ndpi')
                     wsi = OpenSlide(slide_path)
 
                     # Read the slide region
