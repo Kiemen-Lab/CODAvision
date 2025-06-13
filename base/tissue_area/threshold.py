@@ -64,16 +64,18 @@ def determine_optimal_TA(
     # Handle old calling convention with positional arguments
     if len(args) == 4:
         pthim, pthtestim, n_ta, redo = args
-        # Map old parameters to new ones
-        downsampled_path = pthim  # training images path
-        output_path = pthtestim   # where to save results
+        # Keep the original parameter meanings
+        training_path = pthim  # training images path
+        testing_path = pthtestim   # testing images path
+        num_images = n_ta  # number of images to sample
         test_ta_mode = 'redo' if redo else ''
         display_size = kwargs.get('display_size', 600)
-        sample_size = kwargs.get('sample_size', n_ta if n_ta > 0 else 20)
+        sample_size = n_ta if n_ta > 0 else 20
     # Handle new calling convention
-    elif 'downsampled_path' in kwargs and 'output_path' in kwargs:
-        downsampled_path = kwargs['downsampled_path']
-        output_path = kwargs['output_path']
+    elif 'training_path' in kwargs and 'testing_path' in kwargs:
+        training_path = kwargs['training_path']
+        testing_path = kwargs['testing_path']
+        num_images = kwargs.get('num_images', 0)
         test_ta_mode = kwargs.get('test_ta_mode', '')
         display_size = kwargs.get('display_size', 600)
         sample_size = kwargs.get('sample_size', 20)
@@ -81,14 +83,15 @@ def determine_optimal_TA(
         raise ValueError(
             "Invalid arguments. Expected either:\n"
             "1. Old style: determine_optimal_TA(pthim, pthtestim, nTA, redo)\n"
-            "2. New style: determine_optimal_TA(downsampled_path=..., output_path=...)"
+            "2. New style: determine_optimal_TA(training_path=..., testing_path=...)"
         )
     if _check_gui_available():
         # Use GUI version when available
         return determine_optimal_TA_gui(
-            downsampled_path=downsampled_path,
-            output_path=output_path,
-            test_ta_mode=test_ta_mode,
+            training_path=training_path,
+            testing_path=testing_path,
+            num_images=num_images,
+            redo=(test_ta_mode == 'redo'),
             display_size=display_size,
             sample_size=sample_size
         )
@@ -102,9 +105,10 @@ def determine_optimal_TA(
         )
         
         thresholds = determine_optimal_TA_core(
-            downsampled_path=downsampled_path,
-            output_path=output_path,
-            test_ta_mode=test_ta_mode,
+            training_path=training_path,
+            testing_path=testing_path,
+            num_images=num_images,
+            redo=(test_ta_mode == 'redo'),
             display_size=display_size,
             sample_size=sample_size
         )

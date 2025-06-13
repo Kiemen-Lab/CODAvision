@@ -19,6 +19,7 @@ import cv2
 
 from base.image.augmentation import edit_annotation_tiles
 from base.image.utils import load_image_with_fallback
+import gc
 
 # Set up logging
 import logging
@@ -167,11 +168,14 @@ def combine_annotations_into_tiles(
         label_path = os.path.join(tile_path[0:path_separator_pos], 'label')
 
         # Load image and annotation mask
-
-        image = load_image_with_fallback(tile_path, 'RGB')
-        annotation_mask = load_image_with_fallback(os.path.join(label_path, tile_name), 'L')
-        # image = cv2.imread(tile_path)
-        # annotation_mask = cv2.imread(os.path.join(label_path, tile_name), cv2.IMREAD_GRAYSCALE)
+        try:
+            image = load_image_with_fallback(tile_path, 'RGB')
+            annotation_mask = load_image_with_fallback(os.path.join(label_path, tile_name), 'L')
+        except Exception as e:
+            logger.error(f"Failed to load tile {tile_path}: {e}")
+            count += 1
+            iteration += 1
+            continue
 
         # Apply optional augmentation
         apply_augmentation = 1 if count % 3 == 1 else 0
@@ -296,6 +300,11 @@ def combine_annotations_into_tiles(
         count += 1
         last_class_type = class_type
         iteration += 1
+
+        # Garbage collection every 50 tiles to prevent memory buildup
+        if count % 50 == 0:
+            gc.collect()
+            logger.debug(f"Performed garbage collection after {count} tiles")
 
         elapsed_time = time.time() - iteration_start_time
 

@@ -31,29 +31,35 @@ class TissueAreaThresholdSelector:
     without any GUI dependencies.
     """
     
-    def __init__(self, config: ThresholdConfig, downsampled_path: str = None):
+    def __init__(self, config: ThresholdConfig):
         """
         Initialize the threshold selector.
         
         Args:
             config: Configuration for the threshold selection process
-            downsampled_path: Path to downsampled images (optional)
         """
         self.config = config
-        self.downsampled_path = downsampled_path or os.path.join(config.training_path, 'downsampled_tiles')
+        self.downsampled_path = config.training_path  # Use training path directly
         self.thresholds = self._load_existing_thresholds()
         
     def _get_local_images(self) -> List[str]:
-        """Get list of images from the downsampled path."""
+        """Get list of images from both training and testing paths."""
         from glob import glob
         
-        # Look for TIFF files first
-        imlist = sorted(glob(os.path.join(self.downsampled_path, '*.tif')))
+        # Get images from training path
+        imlist = sorted(glob(os.path.join(self.config.training_path, '*.tif')))
+        imtestlist = sorted(glob(os.path.join(self.config.testing_path, '*.tif')))
         
         # If no TIFF files, look for JPG and PNG
         if not imlist:
             for ext in ['*.jpg', '*.png']:
-                imlist.extend(glob(os.path.join(self.downsampled_path, ext)))
+                imlist.extend(glob(os.path.join(self.config.training_path, ext)))
+                imtestlist.extend(glob(os.path.join(self.config.testing_path, ext)))
+        
+        # Convert training paths to basenames only (matching original behavior)
+        imlist = [os.path.basename(img) for img in imlist]
+        # Keep full paths for test images
+        imlist.extend(imtestlist)
         
         return imlist
     
@@ -129,16 +135,28 @@ class TissueAreaThresholdSelector:
         Load and prepare an image for processing.
         
         Args:
-            image_path: Path to the image
+            image_path: Path to the image (can be basename or full path)
             
         Returns:
             Dictionary with image data or None if loading failed
         """
         try:
+            # Determine full path based on whether it's a basename or full path
+            if os.path.isabs(image_path) and os.path.exists(image_path):
+                full_path = image_path
+                image_name = os.path.basename(image_path)
+            else:
+                # Try to find in training path first
+                image_name = os.path.basename(image_path)
+                full_path = os.path.join(self.config.training_path, image_name)
+                if not os.path.exists(full_path):
+                    # Try testing path if not in training
+                    full_path = os.path.join(self.config.testing_path, image_name)
+            
             # Load image
-            image = load_image_with_fallback(image_path)
+            image = load_image_with_fallback(full_path)
             if image is None:
-                logger.error(f"Failed to load image: {image_path}")
+                logger.error(f"Failed to load image: {full_path}")
                 return None
             
             # Calculate resize factor for display
@@ -150,8 +168,8 @@ class TissueAreaThresholdSelector:
             
             return {
                 'image': image,
-                'image_path': image_path,
-                'image_name': os.path.basename(image_path),
+                'image_path': full_path,
+                'image_name': image_name,
                 'resize_factor': resize_factor
             }
             
@@ -195,15 +213,18 @@ class TissueAreaThresholdSelector:
         """
         return extract_cropped_region(image, region, resize_factor)
     
-    def save_image_threshold(self, image_name: str, threshold: int):
+    def save_image_threshold(self, image_name: str, threshold: int, mode: ThresholdMode = None):
         """
         Save threshold value for an image.
         
         Args:
             image_name: Name of the image
             threshold: Threshold value
+            mode: Threshold mode (optional, will use current mode if not specified)
         """
         self.thresholds.thresholds[image_name] = threshold
+        if mode is not None:
+            self.thresholds.mode = mode
         self.save_thresholds()
     
     def create_tissue_masks(self, mode: ThresholdMode = ThresholdMode.HE):
@@ -213,34 +234,129 @@ class TissueAreaThresholdSelector:
         Args:
             mode: Threshold mode to use
         """
-        for image_name, threshold in self.thresholds.thresholds.items():
-            image_path = os.path.join(self.downsampled_path, image_name)
+        # Create tissue masks for all images with saved thresholds
+        import cv2
+        from PIL import Image as PILImage
+        import gc
+        import platform
+        
+        logger.info("Creating tissue masks...")
+        
+        # Ensure output directory exists
+        os.makedirs(self.config.output_path, exist_ok=True)
+        
+        # Process images in batches to prevent file handle exhaustion
+        batch_size = 10  # Process 10 images at a time
+        threshold_items = list(self.thresholds.thresholds.items())
+        total_images = len(threshold_items)
+        
+        for batch_start in range(0, total_images, batch_size):
+            batch_end = min(batch_start + batch_size, total_images)
+            batch = threshold_items[batch_start:batch_end]
             
-            # Load image
-            image = load_image_with_fallback(image_path)
-            if image is None:
-                logger.warning(f"Failed to load image for mask creation: {image_path}")
-                continue
+            logger.info(f"Processing batch {batch_start//batch_size + 1}/{(total_images + batch_size - 1)//batch_size}")
             
-            # Create mask
-            mask = create_tissue_mask(image, threshold, mode)
+            for image_name, threshold in batch:
+                try:
+                    # Find the full path for this image
+                    full_path = None
+                    base_name = os.path.splitext(image_name)[0]
+                    
+                    # Try different extensions and paths
+                    for ext in ['.tif', '.tiff', '.jpg', '.jpeg', '.png']:
+                        # Try training path
+                        test_path = os.path.join(self.config.training_path, base_name + ext)
+                        if os.path.exists(test_path):
+                            full_path = test_path
+                            break
+                        # Try testing path
+                        test_path = os.path.join(self.config.testing_path, base_name + ext)
+                        if os.path.exists(test_path):
+                            full_path = test_path
+                            break
+                    
+                    if not full_path:
+                        logger.warning(f"Could not find image file for {image_name}")
+                        continue
+                    
+                    # Check if mask already exists
+                    mask_path = os.path.join(self.config.output_path, f'{base_name}.tif')
+                    if os.path.exists(mask_path) and not self.config.redo:
+                        logger.info(f"Tissue mask already exists: {mask_path}")
+                        continue
+                    
+                    # Load image using fallback method
+                    image = load_image_with_fallback(full_path)
+                    if image is None:
+                        logger.error(f"Failed to load image: {full_path}")
+                        continue
+                    
+                    # Create tissue mask based on mode
+                    if self.thresholds.mode == ThresholdMode.HE:
+                        # In H&E mode, tissue is where green < threshold
+                        tissue_mask = (image[:, :, 1] < threshold) * 255
+                    else:
+                        # In grayscale mode, tissue is where green > threshold
+                        tissue_mask = (image[:, :, 1] > threshold) * 255
+                    
+                    # Save tissue mask
+                    tissue_mask = tissue_mask.astype(np.uint8)
+                    
+                    # Handle Windows UNC paths for saving
+                    if platform.system() == 'Windows' and mask_path.startswith('\\\\'):
+                        try:
+                            # Try direct file writing for UNC paths
+                            import io
+                            mask_image = PILImage.fromarray(tissue_mask, mode='L')
+                            buffer = io.BytesIO()
+                            mask_image.save(buffer, format='TIFF')
+                            buffer.seek(0)
+                            
+                            with open(mask_path, 'wb') as f:
+                                f.write(buffer.getvalue())
+                            
+                            del buffer
+                            del mask_image
+                        except Exception as save_error:
+                            logger.error(f"Failed to save mask {mask_path}: {save_error}")
+                            continue
+                    else:
+                        # Standard saving for non-UNC paths
+                        try:
+                            cv2.imwrite(mask_path, tissue_mask)
+                        except Exception as cv_error:
+                            logger.debug(f"OpenCV failed to save {mask_path}: {cv_error}. Trying PIL.")
+                            # Fallback to PIL
+                            mask_image = PILImage.fromarray(tissue_mask, mode='L')
+                            mask_image.save(mask_path)
+                            del mask_image
+                    
+                    logger.info(f"Saved tissue mask: {mask_path}")
+                    
+                    # Clean up memory
+                    del image
+                    del tissue_mask
+                    
+                except Exception as e:
+                    logger.error(f"Failed to create tissue mask for {image_name}: {e}")
+                    continue
             
-            # Save mask
-            mask_name = image_name.replace('.tif', '_tissue_mask.tif')
-            mask_path = os.path.join(self.config.output_path, mask_name)
+            # Force garbage collection after each batch
+            gc.collect()
             
-            try:
-                from PIL import Image
-                Image.fromarray(mask).save(mask_path)
-                logger.info(f"Saved tissue mask: {mask_path}")
-            except Exception as e:
-                logger.error(f"Failed to save mask {mask_path}: {e}")
+            # Small delay to allow OS to reclaim file handles
+            import time
+            if batch_end < total_images:
+                time.sleep(0.1)  # 100ms delay between batches
+        
+        logger.info("Tissue mask creation completed.")
 
 
 def determine_optimal_TA_core(
-    downsampled_path: str,
-    output_path: str,
-    test_ta_mode: str = '',
+    training_path: str,
+    testing_path: str,
+    num_images: int = 0,
+    redo: bool = False,
     display_size: int = 600,
     sample_size: int = 20
 ) -> ImageThresholds:
@@ -251,9 +367,10 @@ def determine_optimal_TA_core(
     without any GUI dependencies.
     
     Args:
-        downsampled_path: Path to downsampled images
-        output_path: Path for output files
-        test_ta_mode: Mode for testing
+        training_path: Path to training images
+        testing_path: Path to testing images
+        num_images: Number of images to process
+        redo: Whether to redo threshold selection
         display_size: Size of display region (for compatibility)
         sample_size: Number of images to sample
         
@@ -261,28 +378,26 @@ def determine_optimal_TA_core(
         ImageThresholds object with determined thresholds
     """
     # Create a compatible config object
-    # Note: ThresholdConfig expects training_path, testing_path, num_images, redo
-    # We need to adapt the parameters
     config = ThresholdConfig(
-        training_path=os.path.dirname(downsampled_path),  # Parent directory
-        testing_path=output_path,  # Using output_path as testing_path
-        num_images=sample_size,
-        redo=(test_ta_mode == 'redo'),
+        training_path=training_path,
+        testing_path=testing_path,
+        num_images=num_images,
+        redo=redo,
         region_size=display_size
     )
     
-    selector = TissueAreaThresholdSelector(config, downsampled_path)
+    selector = TissueAreaThresholdSelector(config)
     
     # In non-GUI mode, we can only work with existing thresholds
     # or apply default thresholds
     if not selector.thresholds.thresholds:
         # Apply default thresholds to all images
-        # Get images from downsampled path only
+        # Get images from training path
         from glob import glob
-        all_images = sorted(glob(os.path.join(downsampled_path, '*.tif')))
+        all_images = sorted(glob(os.path.join(training_path, '*.tif')))
         if not all_images:
             for ext in ['*.jpg', '*.png']:
-                all_images.extend(glob(os.path.join(downsampled_path, ext)))
+                all_images.extend(glob(os.path.join(training_path, ext)))
         default_threshold = 205  # Default H&E threshold
         
         for image_path in all_images:

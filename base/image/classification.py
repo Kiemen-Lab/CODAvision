@@ -371,7 +371,7 @@ class ImageClassifier:
         if not image_list:
             return self.output_path
 
-        print('   ')
+        logger.info(f"Processing {len(image_list)} images for classification...")
 
         # For displaying results
         first_image = None

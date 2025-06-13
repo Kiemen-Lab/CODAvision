@@ -64,7 +64,17 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
         nwhite = data['nwhite']
         scale = None
         if umpix == 'TBD':
-            scale = float(data['scale'])
+            # Handle scale value with proper error handling
+            scale_value = data.get('scale', '')
+            if scale_value and str(scale_value).strip():
+                try:
+                    scale = float(scale_value)
+                except ValueError:
+                    logger.warning(f"Invalid scale value '{scale_value}', defaulting to 1.0")
+                    scale = 1.0
+            else:
+                logger.info("No scale value found, defaulting to 1.0")
+                scale = 1.0
 
     # Prepare color map and get class count
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255

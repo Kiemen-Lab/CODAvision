@@ -30,17 +30,16 @@ class TissueAreaThresholdGUI:
     to the TissueAreaThresholdSelector.
     """
     
-    def __init__(self, config: ThresholdConfig, downsampled_path: str = None):
+    def __init__(self, config: ThresholdConfig):
         """
         Initialize the GUI wrapper.
         
         Args:
             config: Configuration for the threshold selection process
-            downsampled_path: Path to downsampled images (optional)
         """
         self.config = config
-        self.downsampled_path = downsampled_path
-        self.selector = TissueAreaThresholdSelector(config, downsampled_path)
+        self.downsampled_path = config.training_path  # Use training path for images
+        self.selector = TissueAreaThresholdSelector(config)
         self.app = None
         
         # Store additional parameters that GUI needs
@@ -73,7 +72,7 @@ class TissueAreaThresholdGUI:
             True if successful, False if cancelled
         """
         self._ensure_qt_app()
-        print('Answer prompt pop-up window regarding tissue masks to proceed')
+        logger.info('Opening tissue mask selection dialog - user interaction required')
         
         # Check if we need to process
         if not self.selector.needs_processing():
@@ -114,17 +113,17 @@ class TissueAreaThresholdGUI:
     def _process_images_with_gui(self, images_to_process: List[str]) -> bool:
         """Process images with GUI interactions."""
         if not images_to_process:
-            print("No images to process!")
+            logger.info("No images to process!")
             return True
         
         processed_count = 0
         for idx, image_path in enumerate(images_to_process):
-            print(f"\nProcessing image {idx + 1}/{len(images_to_process)}: {image_path}")
+            logger.info(f"Processing image {idx + 1}/{len(images_to_process)}: {image_path}")
             
             # Load and prepare image
             image_data = self.selector.prepare_image(image_path)
             if image_data is None:
-                print(f"Failed to prepare image: {image_path}")
+                logger.error(f"Failed to prepare image: {image_path}")
                 # Save default threshold for failed images
                 image_name = os.path.basename(image_path)
                 self.selector.save_image_threshold(image_name, 205)  # Default H&E threshold
@@ -140,14 +139,17 @@ class TissueAreaThresholdGUI:
             if threshold is None:
                 return False  # User cancelled
             
-            # Save the threshold
-            self.selector.save_image_threshold(image_data['image_name'], threshold)
+            # Get the mode from the last threshold dialog
+            mode = getattr(self, '_last_mode', ThresholdMode.HE)
+            
+            # Save the threshold with mode
+            self.selector.save_image_threshold(image_data['image_name'], threshold, mode)
             processed_count += 1
         
         # Create tissue masks even if some images failed
-        print(f"\nProcessed {processed_count} images successfully")
+        logger.info(f"Processed {processed_count} images successfully")
         if processed_count > 0 or len(images_to_process) > 0:
-            print("Creating tissue masks...")
+            logger.info("Creating tissue masks...")
             self.selector.create_tissue_masks()
         
         return True
@@ -207,11 +209,13 @@ class TissueAreaThresholdGUI:
         threshold_dialog.update_images(cropped)
         self._show_dialog_modal(threshold_dialog)
         
-        # Get the result before the dialog is deleted
+        # Get the result and mode before the dialog is deleted
         if threshold_dialog.stop:
             result = None  # User cancelled
         else:
             result = threshold_dialog.threshold
+            # Store the mode for later use
+            self._last_mode = threshold_dialog.mode
         
         # Explicitly close and delete the dialog
         threshold_dialog.close()
@@ -220,9 +224,10 @@ class TissueAreaThresholdGUI:
 
 
 def determine_optimal_TA_gui(
-    downsampled_path: str,
-    output_path: str,
-    test_ta_mode: str = '',
+    training_path: str,
+    testing_path: str,
+    num_images: int = 0,
+    redo: bool = False,
     display_size: int = 600,
     sample_size: int = 20
 ) -> int:
@@ -233,9 +238,10 @@ def determine_optimal_TA_gui(
     decoupled architecture.
     
     Args:
-        downsampled_path: Path to downsampled images
-        output_path: Path for output files
-        test_ta_mode: Mode for testing ('redo' or '')
+        training_path: Path to training images
+        testing_path: Path to testing images
+        num_images: Number of images to process for threshold selection
+        redo: Whether to redo threshold selection
         display_size: Size of display region
         sample_size: Number of images to sample
         
@@ -243,17 +249,15 @@ def determine_optimal_TA_gui(
         Number of thresholds determined
     """
     # Create a compatible config object
-    # Note: ThresholdConfig expects training_path, testing_path, num_images, redo
-    import os
     config = ThresholdConfig(
-        training_path=os.path.dirname(downsampled_path),  # Parent directory
-        testing_path=output_path,  # Using output_path as testing_path
-        num_images=sample_size,
-        redo=(test_ta_mode == 'redo'),
+        training_path=training_path,
+        testing_path=testing_path,
+        num_images=num_images,
+        redo=redo,
         region_size=display_size
     )
     
-    gui = TissueAreaThresholdGUI(config, downsampled_path)
+    gui = TissueAreaThresholdGUI(config)
     success = gui.run()
     
     if success:

@@ -264,7 +264,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.resolution = umpix_to_resolution.get(umpix, 'Custom')
                 if self.resolution == 'Custom':
                     self.ui.use_anotated_images_CB.setChecked(data['downsamp_annotated'])
-                    self.ui.custom_scale_LE.setText(data['scale'])
+                    self.ui.custom_scale_LE.setText(str(data['scale']))
                     if self.ui.use_anotated_images_CB.isChecked():
                         self.ui.custom_img_LE.setText(data['uncomp_train_pth'])
                         self.ui.custom_test_img_LE.setText(data['uncomp_test_pth'])

@@ -23,6 +23,36 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def normalize_path_for_windows(path: str) -> str:
+    """
+    Normalize a path for Windows, handling UNC paths properly.
+    
+    Args:
+        path: The path to normalize
+        
+    Returns:
+        Normalized path suitable for Windows
+    """
+    import platform
+    
+    if platform.system() != 'Windows':
+        return path
+    
+    # Handle UNC paths
+    if path.startswith('\\\\'):
+        # Ensure all slashes are backslashes for UNC paths
+        path = path.replace('/', '\\')
+        # Remove any duplicate backslashes (except at the start)
+        parts = path[2:].split('\\')
+        parts = [p for p in parts if p]  # Remove empty parts
+        path = '\\\\' + '\\'.join(parts)
+    else:
+        # For regular paths, just normalize slashes
+        path = path.replace('/', '\\')
+    
+    return path
+
+
 def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
     """
     Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
@@ -34,16 +64,84 @@ def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
     Returns:
         The loaded image as a NumPy array.
     """
+    # Handle Windows UNC paths by using raw file operations
+    import platform
+    import gc
+    
+    # Store original path for error messages
+    original_path = image_path
+    
+    # Normalize path for Windows
+    image_path = normalize_path_for_windows(image_path)
+    
     try:
+        # Try OpenCV first
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE if mode == "L" else cv2.IMREAD_COLOR)
         if image is None:
             raise ValueError("Failed to load image with OpenCV")
         if mode == "RGB" and len(image.shape) == 3:  # Convert BGR to RGB
             image = image[:, :, ::-1]
         return image
-    except:
-        with Image.open(image_path) as img:
-            return np.array(img.convert(mode))
+    except cv2.error as e:
+        # OpenCV error (e.g., image too large), fall back to PIL
+        logger.debug(f"OpenCV failed to load {original_path}: {e}. Falling back to PIL.")
+        
+        # For UNC paths on Windows, use direct file reading
+        if platform.system() == 'Windows' and image_path.startswith('\\\\'):
+            try:
+                # Read file directly to avoid os.path.realpath issues
+                with open(image_path, 'rb') as f:
+                    image_data = f.read()
+                
+                import io
+                with Image.open(io.BytesIO(image_data)) as img:
+                    result = np.array(img.convert(mode))
+                
+                # Explicitly clean up
+                del image_data
+                gc.collect()
+                return result
+            except Exception as direct_error:
+                logger.error(f"Direct file reading also failed for {original_path}: {direct_error}")
+                raise
+        else:
+            # Standard PIL approach for non-UNC paths
+            try:
+                with Image.open(image_path) as img:
+                    result = np.array(img.convert(mode))
+                return result
+            except Exception as pil_error:
+                logger.error(f"PIL failed to load {original_path}: {pil_error}")
+                raise
+    except Exception as e:
+        # Other errors, try PIL with same UNC handling
+        logger.debug(f"Error loading {original_path} with OpenCV: {e}. Trying PIL.")
+        
+        if platform.system() == 'Windows' and image_path.startswith('\\\\'):
+            try:
+                # Read file directly for UNC paths
+                with open(image_path, 'rb') as f:
+                    image_data = f.read()
+                
+                import io
+                with Image.open(io.BytesIO(image_data)) as img:
+                    result = np.array(img.convert(mode))
+                
+                # Explicitly clean up
+                del image_data
+                gc.collect()
+                return result
+            except Exception as direct_error:
+                logger.error(f"Failed to load image {original_path}: {direct_error}")
+                raise
+        else:
+            try:
+                with Image.open(image_path) as img:
+                    result = np.array(img.convert(mode))
+                return result
+            except Exception as pil_error:
+                logger.error(f"Failed to load image {original_path} with both OpenCV and PIL: {pil_error}")
+                raise
 
 
 def decode_segmentation_masks(mask: np.ndarray, colormap: np.ndarray, n_classes: int) -> np.ndarray:

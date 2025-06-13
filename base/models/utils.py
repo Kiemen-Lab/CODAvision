@@ -71,7 +71,7 @@ def create_initial_model_metadata(
         combined_df: Any = None,
         uncomp_train_pth: str = '',
         uncomp_test_pth: str = '',
-        scale: Any = '',
+        scale: Any = 1.0,
         create_down: bool = False,
         downsamp_annotated: bool = False
 ) -> None:

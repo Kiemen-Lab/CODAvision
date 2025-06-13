@@ -105,7 +105,7 @@ def CODAVision():
         scale_images = not(window.create_down)
         not_downsamp_annotated = window.downsamp_annotated_images
 
-        print(' ')
+        logger.info("Starting image downsampling process...")
         downsamp_time = time.time()
         if resolution == 'Custom':
             # Handle custom resolution image preparation
@@ -133,11 +133,14 @@ def CODAVision():
         determine_optimal_TA(pthim, pthtestim, nTA, redo)
         try:
             os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
-            # The TA file is saved in the parent directory of pthim, not in pthim itself
-            ta_source = os.path.join(os.path.dirname(pthim), 'TA', 'TA_cutoff.pkl')
+            # The TA file is saved in pthim/TA/, not in the parent directory
+            ta_source = os.path.join(pthim, 'TA', 'TA_cutoff.pkl')
             ta_dest = os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')
-            shutil.copy(ta_source, ta_dest)
-            logger.info(f'Copied TA cutoff file from {ta_source} to {ta_dest}')
+            if os.path.exists(ta_source):
+                shutil.copy(ta_source, ta_dest)
+                logger.info(f'Copied TA cutoff file from {ta_source} to {ta_dest}')
+            else:
+                logger.debug(f'TA cutoff file not found at {ta_source}, will be created during processing')
         except Exception as e:
             logger.warning(f'Could not copy TA cutoff file: {e}')
         load_time = time.time()
@@ -157,7 +160,7 @@ def CODAVision():
             round(train_time % 60, 2))
 
         # Prepare and process test data
-        print(' ')
+        logger.info("Starting test data processing...")
         downsamp_time = str(int(downsamp_time // 3600)) + ':' + str(int((downsamp_time % 3600) // 60)) + ':' + str(
             round(downsamp_time % 60, 2))
         times['Downsampling images'] = downsamp_time
