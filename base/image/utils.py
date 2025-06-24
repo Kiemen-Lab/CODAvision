@@ -18,6 +18,7 @@ import numpy as np
 import tensorflow as tf
 import keras
 import cv2
+import tifffile
 from PIL import Image
 
 
@@ -108,8 +109,11 @@ def convert_to_array(image_path: str, prediction_mask: np.ndarray) -> Tuple[np.n
         Tuple of (image array, prediction mask array)
     """
     # Read the image
-    image = cv2.imread(image_path)
-    image = image[:, :, ::-1]  # Convert BGR to RGB
+    try:
+        image = cv2.imread(image_path)
+        image = image[:, :, ::-1]  # Convert BGR to RGB
+    except:
+        image = tifffile.imread(image_path)
 
     # Handle large images by resizing
     if image.shape[0] > 20000 or image.shape[1] > 20000:

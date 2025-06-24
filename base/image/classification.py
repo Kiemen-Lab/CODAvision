@@ -27,9 +27,11 @@ Updated March 2025
 """
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"
 import time
 import numpy as np
 import cv2
+import tifffile
 import matplotlib.pyplot as plt
 import keras
 from glob import glob
@@ -183,9 +185,12 @@ class ImageClassifier:
             tissue_mask = binary_fill_holes(np.array(tissue_mask))
         except:
             # Create a mask if none exists
-            image = cv2.imread(image_path)
-            image = image[:, :, ::-1]  # BGR to RGB
-            tissue_mask = np.array(image[:,:,1]) < 220
+            try:
+                image = cv2.imread(image_path)
+                image = image[:, :, ::-1]  # BGR to RGB
+            except:
+                image = tifffile.imread(image_path)
+            tissue_mask = np.array(image[:,:,1]) < 205
             tissue_mask = binary_fill_holes(tissue_mask.astype(bool))
 
         return tissue_mask
@@ -201,8 +206,11 @@ class ImageClassifier:
             Tuple of (original image, classified image)
         """
         # Load the image
-        image = cv2.imread(image_path)
-        image = image[:, :, ::-1]  # BGR to RGB
+        try:
+            image = cv2.imread(image_path)
+            image = image[:, :, ::-1]  # BGR to RGB
+        except:
+            image = tifffile.imread(image_path)
 
         # Get tissue mask
         tissue_mask = self._get_tissue_mask(image_path)
