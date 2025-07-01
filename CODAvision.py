@@ -7,7 +7,7 @@ from datetime import datetime
 # Set DEBUG_APP_MODE to True to see DEBUG level logs from Python and OpenCV warnings.
 # Set it to False for production/normal use to see only INFO and above from Python,
 # and to suppress OpenCV warnings.
-DEBUG_APP_MODE = True # Toggle this for debugging
+DEBUG_APP_MODE = False # Toggle this for debugging
 
 APP_LOG_LEVEL = logging.DEBUG if DEBUG_APP_MODE else logging.INFO
 

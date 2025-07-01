@@ -125,7 +125,7 @@ class TissueAreaThresholdSelector:
             return False
             
         # Look for actual tissue mask files
-        mask_files = [f for f in os.listdir(ta_dir) if f.endswith('_TA.tif')]
+        mask_files = [f for f in os.listdir(ta_dir) if f.endswith('.tif')]
         
         # If we have thresholds but no mask files, evaluation is incomplete
         if not mask_files:
