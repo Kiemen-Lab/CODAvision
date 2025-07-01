@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 import PyPDF2
+from unittest.mock import patch, MagicMock
 
 from base.evaluation.pdf_report import create_output_pdf
 

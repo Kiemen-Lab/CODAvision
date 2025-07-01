@@ -611,3 +611,79 @@ class ImageSelectionDialog(QtWidgets.QMainWindow):
         """Handle apply all button."""
         self.apply_all = True
         self.close()
+
+
+class TissueMaskExistsDialog(QtWidgets.QMainWindow):
+    """Dialog for asking user about existing tissue mask evaluation."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # Import here to avoid circular imports
+        from ..components.dialogs import Ui_use_current_TA
+        
+        self.ui = Ui_use_current_TA()
+        self.ui.setupUi(self)
+        
+        self.setWindowTitle("Tissue Mask Already Evaluated")
+        self.keep_current = True  # Default to keeping current
+        
+        self._setup_layout()
+        self._connect_signals()
+    
+    def _setup_layout(self):
+        """Setup the dialog layout."""
+        central_widget = self.ui.centralwidget
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
+        central_widget.setLayout(main_layout)
+        self.setCentralWidget(central_widget)
+        
+        # Add text label
+        self.ui.text.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Fixed
+        )
+        main_layout.addWidget(self.ui.text, alignment=Qt.AlignCenter)
+        
+        # Add buttons
+        button_layout = QtWidgets.QHBoxLayout()
+        button_layout.setSpacing(10)
+        
+        button_height = 50
+        for button in [self.ui.keep_ta, self.ui.new_ta]:
+            button.setFixedHeight(button_height)
+            button.setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Fixed
+            )
+        
+        button_layout.addWidget(self.ui.keep_ta)
+        button_layout.addWidget(self.ui.new_ta)
+        main_layout.addLayout(button_layout)
+        
+        main_layout.addStretch()
+        
+        # Center the window
+        self.setFixedSize(600, 200)
+        frame_geom = self.frameGeometry()
+        screen = QtWidgets.QApplication.primaryScreen()
+        center_point = screen.availableGeometry().center()
+        frame_geom.moveCenter(center_point)
+        self.move(frame_geom.topLeft())
+    
+    def _connect_signals(self):
+        """Connect dialog signals."""
+        self.ui.keep_ta.clicked.connect(self.on_keep_current)
+        self.ui.new_ta.clicked.connect(self.on_new_evaluation)
+    
+    def on_keep_current(self):
+        """Handle keep current button click."""
+        self.keep_current = True
+        self.close()
+    
+    def on_new_evaluation(self):
+        """Handle new evaluation button click."""
+        self.keep_current = False
+        self.close()

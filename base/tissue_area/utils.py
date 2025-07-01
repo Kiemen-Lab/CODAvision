@@ -192,7 +192,8 @@ def create_tissue_mask(image: np.ndarray,
     return mask.astype(np.uint8)
 
 
-def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tuple[np.ndarray, np.ndarray, str]:
+def calculate_tissue_mask(path: str, image_name: str, test: bool = False, 
+                         training_path: str = None) -> Tuple[np.ndarray, np.ndarray, str]:
     """
     Reads an image and returns it along with a binary mask of tissue areas.
 
@@ -200,6 +201,7 @@ def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tup
         path: Directory path where the image is located
         image_name: Name of the image file (without extension)
         test: Whether this is for testing (affects averaging behavior)
+        training_path: Optional path to training images directory where tissue masks may exist
 
     Returns:
         Tuple of:
@@ -209,13 +211,31 @@ def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tup
     """
     import cv2
     import pickle
+    import time
     from skimage.morphology import remove_small_objects, disk
     from ..image.utils import load_image_with_fallback
     
-    # Create output directory
+    # Normalize paths to avoid comparison issues
+    path = os.path.normpath(os.path.abspath(path))
+    if training_path:
+        training_path = os.path.normpath(os.path.abspath(training_path))
+    
+    # Log the paths being used for debugging
+    logger.debug(f"calculate_tissue_mask called with:")
+    logger.debug(f"  path (normalized): {path}")
+    logger.debug(f"  image_name: {image_name}")
+    logger.debug(f"  training_path (normalized): {training_path}")
+    logger.debug(f"  paths are equal: {path == training_path if training_path else 'N/A'}")
+    
+    # Create output directory with better handling
     output_path = os.path.join(path.rstrip(os.path.sep), 'TA')
+    directory_just_created = False
     if not os.path.isdir(output_path):
-        os.mkdir(output_path)
+        logger.debug(f"Creating TA directory: {output_path}")
+        os.makedirs(output_path, exist_ok=True)
+        directory_just_created = True
+        # Small delay to ensure filesystem sync
+        time.sleep(0.05)
 
     # Try to load image with different extensions
     image_extensions = ['.tif', '.jpg', '.jp2', '.png']
@@ -231,20 +251,156 @@ def calculate_tissue_mask(path: str, image_name: str, test: bool = False) -> Tup
     if image is None:
         raise FileNotFoundError(f"Could not load image {image_name} with any supported extension")
 
-    # Check if mask already exists
+    # Get the resolution from the path first (e.g., '10x' from '/path/to/10x/')
+    path_parts = path.rstrip(os.path.sep).split(os.path.sep)
+    resolution = None
+    for part in reversed(path_parts):
+        if part.endswith('x') and part[:-1].isdigit():
+            resolution = part
+            break
+    
+    # Check if mask already exists in the current directory with enhanced retry logic
     mask_path = os.path.join(output_path, f'{image_name}.tif')
-    if os.path.isfile(mask_path):
-        tissue_mask = load_image_with_fallback(mask_path, "L")
-        logger.info('  Existing TA loaded')
-        return image, tissue_mask, output_path
+    mask_path = os.path.normpath(os.path.abspath(mask_path))  # Ensure absolute normalized path
+    logger.debug(f"Checking for existing mask at: {mask_path}")
+    logger.debug(f"  Working directory: {os.getcwd()}")
+    logger.debug(f"  Directory just created: {directory_just_created}")
+    logger.debug(f"  Resolution detected: {resolution}")
+    
+    # Create a list of all paths to check for existing masks
+    paths_to_check = []
+    
+    # 1. Primary mask path
+    paths_to_check.append(("primary", mask_path))
+    
+    # 2. Parent directory's TA folder
+    parent_path = os.path.dirname(path.rstrip(os.path.sep))
+    if parent_path:
+        parent_ta_path = os.path.join(parent_path, 'TA', f'{image_name}.tif')
+        parent_ta_path = os.path.normpath(os.path.abspath(parent_ta_path))
+        if parent_ta_path != mask_path:
+            paths_to_check.append(("parent", parent_ta_path))
+    
+    # 3. Alternative path with resolution
+    if resolution and resolution in path:
+        path_without_resolution = path.replace(os.path.sep + resolution, '')
+        alt_ta_path = os.path.join(path_without_resolution, resolution, 'TA', f'{image_name}.tif')
+        alt_ta_path = os.path.normpath(os.path.abspath(alt_ta_path))
+        if alt_ta_path not in [p[1] for p in paths_to_check]:
+            paths_to_check.append(("alternative", alt_ta_path))
+    
+    # 4. Training path if provided and different
+    if training_path:
+        training_path_parts = training_path.rstrip(os.path.sep).split(os.path.sep)
+        last_part = training_path_parts[-1] if training_path_parts else ''
+        
+        if last_part.endswith('x') and last_part[:-1].isdigit():
+            training_ta_path = os.path.join(training_path, 'TA', f'{image_name}.tif')
+        elif resolution:
+            training_ta_path = os.path.join(training_path, resolution, 'TA', f'{image_name}.tif')
+        else:
+            training_ta_path = os.path.join(training_path, 'TA', f'{image_name}.tif')
+        
+        training_ta_path = os.path.normpath(os.path.abspath(training_ta_path))
+        if training_ta_path not in [p[1] for p in paths_to_check]:
+            paths_to_check.append(("training", training_ta_path))
+    
+    logger.debug(f"Will check {len(paths_to_check)} potential mask locations")
+    
+    # Check each potential location for existing masks
+    for location_name, check_path in paths_to_check:
+        logger.debug(f"Checking {location_name} location: {check_path}")
+        
+        
+        # Log directory contents for this location
+        ta_dir = os.path.dirname(check_path)
+        if os.path.exists(ta_dir):
+            ta_contents = os.listdir(ta_dir)
+            mask_filename = os.path.basename(check_path)
+            logger.debug(f"  Directory exists with {len(ta_contents)} files")
+            logger.debug(f"  Looking for: {mask_filename}")
+            logger.debug(f"  File in directory: {mask_filename in ta_contents}")
+            
+        else:
+            logger.debug(f"  Directory does not exist: {ta_dir}")
+            continue
+        
+        # Try to load mask from this location with retry logic
+        for attempt in range(2):  # Reduced retries per location
+            exists = os.path.exists(check_path)
+            is_file = os.path.isfile(check_path) if exists else False
+            
+            # Handle filesystem synchronization issues
+            if mask_filename in ta_contents and not exists:
+                # Sometimes os.path.exists returns False due to filesystem sync issues
+                # Try to open the file directly as a workaround
+                try:
+                    with open(check_path, 'rb') as f:
+                        f.read(1)
+                    exists = True
+                    is_file = True
+                    logger.debug(f"  File {mask_filename} found via direct open despite os.path.exists returning False")
+                except Exception:
+                    # File truly doesn't exist
+                    pass
+            
+            if exists and is_file:
+                try:
+                    # Verify file is readable
+                    with open(check_path, 'rb') as f:
+                        f.read(1)
+                    
+                    # Load the tissue mask
+                    tissue_mask = load_image_with_fallback(check_path, "L")
+                    logger.info(f'  Existing TA loaded from {location_name} location: {check_path}')
+                    return image, tissue_mask, output_path
+                    
+                except Exception as e:
+                    logger.debug(f"  Failed to read from {location_name} on attempt {attempt + 1}: {type(e).__name__}: {e}")
+                    if attempt == 0:
+                        time.sleep(0.5)
+                    continue
+            else:
+                logger.debug(f"  File not found at {location_name} location")
+                break  # No point retrying if file doesn't exist
+    
+    # If no existing mask was found in any location, we need to calculate it
+    logger.debug(f"No existing tissue mask found after checking all {len(paths_to_check)} locations")
 
     # Calculate tissue mask
     logger.info('  Calculating TA image')
     mode = 'H&E'
     cutoff = 205  # Default cutoff value
     
-    # Try to load saved threshold
+    # Try to load saved threshold from current directory first
     cutoff_file = os.path.join(output_path, 'TA_cutoff.pkl')
+    cutoff_loaded = False
+    logger.debug(f"Looking for TA_cutoff.pkl at: {cutoff_file}")
+    
+    # If not found in current directory, check parent directory
+    if not os.path.isfile(cutoff_file) and parent_path:
+        parent_cutoff_file = os.path.join(parent_path, 'TA', 'TA_cutoff.pkl')
+        logger.debug(f"Checking parent directory for TA_cutoff.pkl at: {parent_cutoff_file}")
+        if os.path.isfile(parent_cutoff_file):
+            cutoff_file = parent_cutoff_file
+    
+    # If still not found, check training directory
+    if not os.path.isfile(cutoff_file) and training_path and training_path != path:
+        # Use same logic as for tissue mask path
+        training_path_parts = training_path.rstrip(os.path.sep).split(os.path.sep)
+        last_part = training_path_parts[-1] if training_path_parts else ''
+        
+        if last_part.endswith('x') and last_part[:-1].isdigit():
+            training_cutoff_file = os.path.join(training_path, 'TA', 'TA_cutoff.pkl')
+        elif resolution:
+            training_cutoff_file = os.path.join(training_path, resolution, 'TA', 'TA_cutoff.pkl')
+        else:
+            training_cutoff_file = os.path.join(training_path, 'TA', 'TA_cutoff.pkl')
+            
+        logger.debug(f"Checking training directory for TA_cutoff.pkl at: {training_cutoff_file}")
+        if os.path.isfile(training_cutoff_file):
+            cutoff_file = training_cutoff_file
+    
     if os.path.isfile(cutoff_file):
         with open(cutoff_file, 'rb') as f:
             data = pickle.load(f)

@@ -10,7 +10,7 @@ import sys
 import time
 import pickle
 import shutil
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 
 # Set up logging
 import logging
@@ -26,6 +26,60 @@ from base import (
 # Import GUI components
 from .components.main_window import MainWindow
 from .components.classification_window import MainWindowClassify
+
+
+def check_tissue_mask_before_annotation(training_path, testing_path, redo=False):
+    """
+    Check if tissue masks exist before loading annotations and show dialog if needed.
+    
+    Args:
+        training_path: Path to training images
+        testing_path: Path to testing images
+        redo: Whether redo was already requested
+        
+    Returns:
+        bool: True if should proceed with existing masks, False if should redo
+    """
+    from base.tissue_area.models import ThresholdConfig
+    from base.tissue_area.threshold_core import TissueAreaThresholdSelector
+    from gui.tissue_area.dialogs import TissueMaskExistsDialog
+    
+    # Create config to check for existing evaluation
+    config = ThresholdConfig(
+        training_path=training_path,
+        testing_path=testing_path,
+        redo=redo
+    )
+    
+    selector = TissueAreaThresholdSelector(config)
+    
+    # Check if evaluation exists and not in explicit redo mode
+    if selector.has_existing_evaluation() and not redo:
+        # Show dialog asking if user wants to keep current evaluation
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = QtWidgets.QApplication(sys.argv)
+            
+        dialog = TissueMaskExistsDialog()
+        dialog.show()
+        
+        # Process events until dialog is closed
+        while dialog.isVisible():
+            app.processEvents()
+            QtCore.QThread.msleep(50)
+            
+        keep_current = dialog.keep_current
+        dialog.deleteLater()
+        app.processEvents()
+        
+        if keep_current:
+            logger.info('User chose to keep existing tissue mask evaluation')
+            return True
+        else:
+            logger.info('User chose to redo tissue mask evaluation')
+            return False
+    
+    return not redo  # If no existing evaluation, proceed normally
 
 
 def CODAVision():
@@ -129,7 +183,15 @@ def CODAVision():
             WSI2tif(pthtest, resolution, umpix)
         downsamp_time = time.time()-downsamp_time
 
+        # Check for existing tissue masks and show dialog if needed
+        # This ensures the dialog appears even if determine_optimal_TA might skip it
+        keep_existing = check_tissue_mask_before_annotation(pthim, pthtestim, redo)
+        
         # Execute the model training pipeline
+        # If user chose to redo, update the redo flag
+        if not keep_existing:
+            redo = True
+        
         determine_optimal_TA(pthim, pthtestim, nTA, redo)
         try:
             os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
@@ -138,11 +200,11 @@ def CODAVision():
             ta_dest = os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')
             if os.path.exists(ta_source):
                 shutil.copy(ta_source, ta_dest)
-                logger.info(f'Copied TA cutoff file from {ta_source} to {ta_dest}')
+                logger.debug(f'Copied TA cutoff file from {ta_source} to {ta_dest}')
             else:
                 logger.debug(f'TA cutoff file not found at {ta_source}, will be created during processing')
         except Exception as e:
-            logger.warning(f'Could not copy TA cutoff file: {e}')
+            logger.debug(f'Could not copy TA cutoff file: {e}')
         load_time = time.time()
         [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
         load_time = time.time()-load_time

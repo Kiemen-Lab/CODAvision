@@ -104,6 +104,56 @@ class TissueAreaThresholdSelector:
         
         return len(all_images) > len(processed_images)
     
+    def has_existing_evaluation(self) -> bool:
+        """
+        Check if a tissue mask evaluation already exists.
+        
+        Returns:
+            True if evaluation exists, False otherwise
+        """
+        # First check if threshold file exists
+        if not os.path.isfile(self.config.threshold_file_path):
+            return False
+            
+        # Check if we have threshold data
+        if not self.thresholds.thresholds:
+            return False
+            
+        # Check if at least some tissue mask files exist
+        ta_dir = self.config.output_path
+        if not os.path.exists(ta_dir):
+            return False
+            
+        # Look for actual tissue mask files
+        mask_files = [f for f in os.listdir(ta_dir) if f.endswith('_TA.tif')]
+        
+        # If we have thresholds but no mask files, evaluation is incomplete
+        if not mask_files:
+            logger.debug("Threshold file exists but no tissue mask files found")
+            return False
+            
+        return True
+    
+    def is_evaluation_compatible(self, expected_mode: Optional[ThresholdMode] = None) -> bool:
+        """
+        Check if existing evaluation is compatible with current settings.
+        
+        Args:
+            expected_mode: Expected threshold mode (H&E or Grayscale)
+            
+        Returns:
+            True if compatible, False otherwise
+        """
+        if not self.has_existing_evaluation():
+            return False
+            
+        # If no expected mode specified, assume compatible
+        if expected_mode is None:
+            return True
+            
+        # Check if mode matches
+        return self.thresholds.mode == expected_mode
+    
     def get_images_to_process(self) -> List[str]:
         """
         Get list of images that need processing.
@@ -254,7 +304,7 @@ class TissueAreaThresholdSelector:
             batch_end = min(batch_start + batch_size, total_images)
             batch = threshold_items[batch_start:batch_end]
             
-            logger.info(f"Processing batch {batch_start//batch_size + 1}/{(total_images + batch_size - 1)//batch_size}")
+            logger.debug(f"Processing batch {batch_start//batch_size + 1}/{(total_images + batch_size - 1)//batch_size}")
             
             for image_name, threshold in batch:
                 try:
@@ -282,7 +332,7 @@ class TissueAreaThresholdSelector:
                     # Check if mask already exists
                     mask_path = os.path.join(self.config.output_path, f'{base_name}.tif')
                     if os.path.exists(mask_path) and not self.config.redo:
-                        logger.info(f"Tissue mask already exists: {mask_path}")
+                        logger.info(f"Existing TA loaded: {mask_path}")
                         continue
                     
                     # Load image using fallback method

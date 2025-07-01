@@ -15,7 +15,7 @@ from base.tissue_area.models import ThresholdConfig, ThresholdMode, RegionSelect
 from base.tissue_area.threshold_core import TissueAreaThresholdSelector
 from .dialogs import (
     ImageDisplayDialog, RegionCheckDialog, ThresholdSelectionDialog,
-    ImageSelectionDialog
+    ImageSelectionDialog, TissueMaskExistsDialog
 )
 
 import logging
@@ -73,6 +73,23 @@ class TissueAreaThresholdGUI:
         """
         self._ensure_qt_app()
         logger.info('Opening tissue mask selection dialog - user interaction required')
+        
+        # Check if evaluation already exists and not in explicit redo mode
+        if self.selector.has_existing_evaluation() and not self.config.redo:
+            # Show dialog asking if user wants to keep current evaluation
+            dialog = TissueMaskExistsDialog()
+            self._show_dialog_modal(dialog)
+            
+            keep_current = dialog.keep_current
+            dialog.close()
+            
+            if keep_current:
+                logger.info('User chose to keep current tissue mask evaluation')
+                return True
+            else:
+                # User wants to redo - update the config
+                self.config.redo = True
+                self.test_ta_mode = 'redo'
         
         # Check if we need to process
         if not self.selector.needs_processing():
@@ -149,7 +166,6 @@ class TissueAreaThresholdGUI:
         # Create tissue masks even if some images failed
         logger.info(f"Processed {processed_count} images successfully")
         if processed_count > 0 or len(images_to_process) > 0:
-            logger.info("Creating tissue masks...")
             self.selector.create_tissue_masks()
         
         return True

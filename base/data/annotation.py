@@ -52,7 +52,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
     Returns:
         Tuple of (bounding box file list, annotation counts array, create_new_tiles flag)
     """
-    logger.info('\nImporting annotation data...')
+    logger.info('Importing annotation data...')
 
     # Load model metadata
     with open(os.path.join(model_path, 'net.pkl'), 'rb') as f:
@@ -62,6 +62,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
         cmap = data['cmap']
         nm = data['nm']
         nwhite = data['nwhite']
+        training_path = data.get('pthim', None)  # Get training image path
         scale = None
         if umpix == 'TBD':
             # Handle scale value with proper error handling
@@ -128,7 +129,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
 
         # Skip if already processed and parameters haven't changed
         if str(dm)== str(date_modified) and bb == 1 and reload_xml == 0:
-            logger.info(' annotation data previously loaded')
+            logger.debug(' Annotation data loading...')
             with open(annotations_file, 'rb') as f:
                 data = pickle.load(f)
                 numann, ctlist = data.get('numann', []), data.get('ctlist', [])
@@ -162,7 +163,7 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
                 pickle.dump(data, f)
 
             # Load tissue mask
-            I0, TA, _ = calculate_tissue_mask(image_path, base_name, test)
+            I0, TA, _ = calculate_tissue_mask(image_path, base_name, test, training_path)
 
             # Save annotation mask
             if scale:
@@ -1557,10 +1558,15 @@ def check_if_model_parameters_changed(datafile: str, WS: list, umpix: any, nwhit
                 pkl_modification_time = os.path.getmtime(TA_pkl)
                 tif_modification_time = os.path.getmtime(file)
                 if tif_modification_time < pkl_modification_time:
-                    reload_xml = 1
-                    os.remove(file)
+                    # NOTE: Fixed tissue mask regeneration bug
+                    # Previously, this would delete tissue masks older than TA_cutoff.pkl
+                    # This caused unnecessary regeneration of all tissue masks
+                    # Now we only log a warning but keep the existing mask
+                    logger.debug(f'Tissue mask {file} is older than TA_cutoff.pkl but will be kept')
+                    # Don't set reload_xml = 1 just because of tissue mask age
             else:
-                reload_xml = 1
+                # Tissue mask doesn't exist, which is fine - it will be created if needed
+                pass
         return reload_xml
 
     except Exception as e:
