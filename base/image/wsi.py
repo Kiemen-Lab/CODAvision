@@ -245,7 +245,8 @@ class WSIProcessor:
         source_path: Union[str, Path],
         output_path: Optional[Union[str, Path]] = None,
         image_format: str = '.ndpi',
-        scale: Optional[float] = None
+        scale: Optional[float] = None,
+        image_set_type: Optional[str] = None
     ) -> None:
         """
         Process all images in a directory.
@@ -255,6 +256,7 @@ class WSIProcessor:
             output_path: Output directory for converted images (defaults to resolution subdirectory)
             image_format: Expected image format extension
             scale: Custom scale factor (overrides resolution-based scaling)
+            image_set_type: Type of image set being processed ('training' or 'testing')
         """
         source_path = Path(source_path)
         
@@ -272,7 +274,11 @@ class WSIProcessor:
         # Create output directory
         output_path.mkdir(parents=True, exist_ok=True)
         
-        logger.info('Making down-sampled images...')
+        # Log with image set type if provided
+        if image_set_type:
+            logger.info(f'Making down-sampled images for {image_set_type} set...')
+        else:
+            logger.info('Making down-sampled images...')
         
         # Find images to process
         images_to_process = self._find_images_to_process(source_path, output_path, image_format)
@@ -332,7 +338,8 @@ def WSI2tif(
     umpix: float,
     image_format: str = '.ndpi',
     scale: float = 0,
-    outpth: str = ''
+    outpth: str = '',
+    image_set_type: Optional[str] = None
 ) -> None:
     """
     Convert and downsample Whole Slide Images to TIFF format.
@@ -347,12 +354,13 @@ def WSI2tif(
         image_format: Input image format (default: '.ndpi')
         scale: Custom scale factor (0 for resolution-based scaling)
         outpth: Output directory path (empty string uses default)
+        image_set_type: Type of image set being processed ('training' or 'testing')
     """
     processor = WSIProcessor(resolution, umpix)
     
     # Handle scale and output path logic
     if scale == 0:
-        processor.process_directory(pth, image_format=image_format)
+        processor.process_directory(pth, image_format=image_format, image_set_type=image_set_type)
     else:
         output_path = outpth if outpth else pth
-        processor.process_directory(pth, output_path, image_format=image_format, scale=scale)
+        processor.process_directory(pth, output_path, image_format=image_format, scale=scale, image_set_type=image_set_type)

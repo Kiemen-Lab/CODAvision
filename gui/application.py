@@ -113,8 +113,8 @@ def CODAVision():
             test_img_type = window.test_img_type
             scale = float(window.scale)
             if not(not_downsamp_annotated):
-                WSI2tif(pth, resolution, umpix, train_img_type, scale, pth)
-                WSI2tif(pthtest, resolution, umpix, test_img_type, scale, pthtest)
+                WSI2tif(pth, resolution, umpix, train_img_type, scale, pth, image_set_type='training')
+                WSI2tif(pthtest, resolution, umpix, test_img_type, scale, pthtest, image_set_type='testing')
             else:
                 uncomp_pth = window.uncomp_train_pth
                 uncomp_test_pth = window.uncomp_test_pth
@@ -122,11 +122,11 @@ def CODAVision():
                     pthim = uncomp_pth
                     pthtestim = uncomp_test_pth
                 if scale_images:
-                    WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale, pth)
-                    WSI2tif(uncomp_test_pth, resolution, umpix, train_img_type, scale, pthtest)
+                    WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale, pth, image_set_type='training')
+                    WSI2tif(uncomp_test_pth, resolution, umpix, train_img_type, scale, pthtest, image_set_type='testing')
         else:
-            WSI2tif(pth, resolution, umpix)
-            WSI2tif(pthtest, resolution, umpix)
+            WSI2tif(pth, resolution, umpix, image_set_type='training')
+            WSI2tif(pthtest, resolution, umpix, image_set_type='testing')
         downsamp_time = time.time()-downsamp_time
 
         # Execute the model training pipeline

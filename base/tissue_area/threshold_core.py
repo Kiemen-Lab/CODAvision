@@ -56,9 +56,9 @@ class TissueAreaThresholdSelector:
                 imlist.extend(glob(os.path.join(self.config.training_path, ext)))
                 imtestlist.extend(glob(os.path.join(self.config.testing_path, ext)))
         
-        # Convert training paths to basenames only (matching original behavior)
+        # Convert all paths to basenames for consistent display
         imlist = [os.path.basename(img) for img in imlist]
-        # Keep full paths for test images
+        imtestlist = [os.path.basename(img) for img in imtestlist]
         imlist.extend(imtestlist)
         
         return imlist

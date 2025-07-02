@@ -205,11 +205,10 @@ class TestThresholdCore:
         assert 'train_1.tif' in images
         assert 'train_2.tif' in images
         
-        # Testing images should be full paths
-        test_paths = [img for img in images if 'test_' in img]
-        assert len(test_paths) == 3
-        for path in test_paths:
-            assert os.path.isabs(path)
+        # Testing images should also be basenames (consistent with training)
+        assert 'test_0.tif' in images
+        assert 'test_1.tif' in images
+        assert 'test_2.tif' in images
 
 
 class TestCalculateTissueMask:
