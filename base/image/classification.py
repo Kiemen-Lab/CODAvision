@@ -21,7 +21,7 @@ Example usage:
 """
 
 import os
-os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))
 import time
 import numpy as np
 import cv2

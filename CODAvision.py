@@ -43,14 +43,14 @@ else:
 
 # Ensure OPENCV_IO_MAX_IMAGE_PIXELS is set.
 if 'OPENCV_IO_MAX_IMAGE_PIXELS' not in os.environ:
-    os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"
-    logger.debug("OPENCV_IO_MAX_IMAGE_PIXELS set to '0'.")
-elif os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] != "0":
+    os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))  # Set max image size for OpenCV to 2^40 pixels
+    logger.debug("OPENCV_IO_MAX_IMAGE_PIXELS set to 2^40.")
+elif os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] != str(pow(2,40)):
     logger.warning(
         f"OPENCV_IO_MAX_IMAGE_PIXELS was already set to {os.environ['OPENCV_IO_MAX_IMAGE_PIXELS']}. "
-        "Overriding to '0' per CODAvision standard."
+        "Overriding to str(pow(2,40)) per CODAvision standard."
     )
-    os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"
+    os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))
 
 from PIL import Image # PIL import after os.environ changes
 Image.MAX_IMAGE_PIXELS = None

@@ -6,7 +6,7 @@ It handles the creation of training and validation tiles for deep learning model
 """
 
 import os
-os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Disable pixel limit safeguard
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))  # Disable pixel limit safeguard
 import glob
 import shutil
 import time
