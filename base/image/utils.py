@@ -14,7 +14,6 @@ import numpy as np
 import tensorflow as tf
 import keras
 import cv2
-
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
