@@ -207,7 +207,7 @@ class ConfusionMatrixVisualizer:
 
             # Show figure if requested
             if show_fig:
-                plt.show()
+                plt.show(block=False)
             else:
                 plt.close()
 

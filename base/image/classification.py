@@ -340,8 +340,7 @@ class ImageClassifier:
         for ax in axs:
             ax.axis('off')
         plt.subplots_adjust(wspace=0, hspace=0)
-        plt.show()
-        plt.pause(0.2)
+        plt.show(block=False)
 
     def classify(self, color_overlay: bool = True, color_mask: bool = False, display: bool = True) -> str:
         """

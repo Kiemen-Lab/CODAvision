@@ -147,4 +147,4 @@ create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles)
 train_segmentation_model_cnns(pthDL, retrain_model=True)
 
 # Step 5: Test the trained model on separate test images
-test_segmentation_model(pthDL, pthtest, pthtestim)
+test_segmentation_model(pthDL, pthtest, pthtestim, show_fig=False)

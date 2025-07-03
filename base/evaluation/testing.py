@@ -120,7 +120,8 @@ class SegmentationModelTester:
                 self.model_path,
                 self.model_type,
                 color_overlay_HE=True,
-                color_mask=False
+                color_mask=False,
+                disp=False  # Don't display images during testing
             )
 
             return classified_path
@@ -308,9 +309,12 @@ class SegmentationModelTester:
 
         return confusion_data
 
-    def test(self) -> Dict[str, Any]:
+    def test(self, show_fig: bool = True) -> Dict[str, Any]:
         """
         Test the segmentation model and evaluate its performance.
+
+        Args:
+            show_fig: Whether to display the confusion matrix figure. Defaults to True.
 
         Returns:
             Dictionary containing confusion matrix and performance metrics
@@ -346,7 +350,7 @@ class SegmentationModelTester:
                 model_name=self.model_type
             )
 
-            confusion_with_metrics = visualizer.visualize(confusion_matrix)
+            confusion_with_metrics = visualizer.visualize(confusion_matrix, show_fig=show_fig)
 
             # Return results
             metrics = {
@@ -360,7 +364,7 @@ class SegmentationModelTester:
             raise ValueError(f"Model testing failed: {e}")
 
 
-def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str) -> None:
+def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str, show_fig: bool = True) -> None:
     """
     Test a segmentation model with the provided paths.
 
@@ -371,7 +375,8 @@ def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str) -> None:
         pthDL: Path to the directory containing model data
         pthtest: Path to the directory containing test annotations
         pthtestim: Path to the directory containing test images
+        show_fig: Whether to display the confusion matrix figure. Defaults to True.
     """
     tester = SegmentationModelTester(pthDL, pthtest, pthtestim)
-    tester.test()
+    tester.test(show_fig=show_fig)
     return
