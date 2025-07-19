@@ -7,7 +7,7 @@ semantic segmentation models and their metadata.
 
 import os
 import pickle
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import numpy as np
 import tensorflow as tf
 
@@ -204,6 +204,42 @@ def create_initial_model_metadata(
     logger.info(f"Color map legend saved to {plot_save_path}")
 
 
+def create_distribution_strategy() -> Tuple[Any, int]:
+    """
+    Create a distribution strategy for multi-GPU training.
+    
+    Returns:
+        Tuple of (strategy, number_of_gpus)
+    """
+    physical_devices = tf.config.list_physical_devices('GPU')
+    
+    if len(physical_devices) > 1:
+        logger.info(f"Found {len(physical_devices)} GPUs. Using MirroredStrategy for multi-GPU training.")
+        try:
+            # Set memory growth for all GPUs
+            for device in physical_devices:
+                tf.config.experimental.set_memory_growth(device, True)
+            
+            # Create MirroredStrategy
+            strategy = tf.distribute.MirroredStrategy()
+            num_gpus = strategy.num_replicas_in_sync
+            logger.info(f"Created MirroredStrategy with {num_gpus} GPUs")
+            return strategy, num_gpus
+        except Exception as e:
+            logger.error(f"Failed to create MirroredStrategy: {e}")
+            logger.info("Falling back to single GPU/CPU training")
+    
+    # Fallback to single GPU or CPU
+    if physical_devices:
+        logger.info("Using single GPU training")
+        # Set memory growth for single GPU
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        return None, 1
+    else:
+        logger.info("No GPUs available. Using CPU training")
+        return None, 0
+
+
 def setup_gpu() -> Dict[str, Any]:
     """
     Configure TensorFlow to use GPU and return GPU information.
@@ -220,28 +256,31 @@ def setup_gpu() -> Dict[str, Any]:
             for device in physical_devices:
                 tf.config.experimental.set_memory_growth(device, True)
             
-            # Use only the first GPU
-            tf.config.set_visible_devices(physical_devices[0], 'GPU')
+            # Use all available GPUs (removed single GPU limitation)
             logical_devices = tf.config.list_logical_devices('GPU')
-            logger.info(f"TensorFlow is using the following GPU: {logical_devices[0]}")
+            logger.info(f"TensorFlow is using {len(logical_devices)} GPU(s): {[str(d) for d in logical_devices]}")
             
             # Get GPU memory info if possible
             try:
                 import GPUtil
                 gpus = GPUtil.getGPUs()
                 if gpus:
-                    gpu = gpus[0]  # First GPU
                     gpu_info = {
-                        'device': gpu.id,
-                        'name': gpu.name,
-                        'total_memory': f"{gpu.memoryTotal:.1f} MB",
-                        'free_memory': f"{gpu.memoryFree:.1f} MB",
-                        'used_memory': f"{gpu.memoryUsed:.1f} MB",
-                        'utilization': f"{gpu.load * 100:.1f}%"
+                        'num_gpus': len(gpus),
+                        'gpus': []
                     }
+                    for i, gpu in enumerate(gpus):
+                        gpu_info['gpus'].append({
+                            'device': gpu.id,
+                            'name': gpu.name,
+                            'total_memory': f"{gpu.memoryTotal:.1f} MB",
+                            'free_memory': f"{gpu.memoryFree:.1f} MB",
+                            'used_memory': f"{gpu.memoryUsed:.1f} MB",
+                            'utilization': f"{gpu.load * 100:.1f}%"
+                        })
             except ImportError:
                 logger.error("GPUtil not available - limited GPU information will be displayed")
-                gpu_info = {'device': 'GPU available but detailed info unavailable'}
+                gpu_info = {'num_gpus': len(logical_devices), 'device': 'GPU available but detailed info unavailable'}
                 
         except RuntimeError as e:
             logger.error(f"GPU setup error: {e}")

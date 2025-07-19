@@ -20,7 +20,7 @@ import traceback
 
 from base.models.backbones import model_call, unfreeze_model
 from base.utils.logger import Logger
-from base.models.utils import save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths
+from base.models.utils import save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths, create_distribution_strategy
 from base.data.loaders import create_dataset, load_model_metadata
 
 # Suppress warnings and TensorFlow logs
@@ -412,6 +412,9 @@ class SegmentationModelTrainer:
         # GPU information for logging
         self.gpu_info = self._setup_gpu()
 
+        # Initialize distribution strategy for multi-GPU training
+        self.strategy, self.num_gpus = create_distribution_strategy()
+
         # Initialize model data and parameters
         self._load_model_data()
 
@@ -476,20 +479,35 @@ class SegmentationModelTrainer:
         if not val_images or not val_masks:
             raise ValueError("No validation images or masks found")
 
+        # Calculate effective batch size for multi-GPU
+        # The global batch size is split across GPUs
+        effective_batch_size = self.batch_size
+        if self.strategy and self.num_gpus > 1:
+            # The batch_size from config is the global batch size
+            # Each GPU gets batch_size // num_gpus
+            module_logger.info(f"Multi-GPU training: Global batch size {self.batch_size}, "
+                             f"per-GPU batch size {self.batch_size // self.num_gpus}")
+            effective_batch_size = self.batch_size // self.num_gpus
+
         # Create datasets
         self.train_dataset = create_dataset(
             train_images,
             train_masks,
             self.image_size,
-            self.batch_size
+            effective_batch_size
         )
 
         self.val_dataset = create_dataset(
             val_images,
             val_masks,
             self.image_size,
-            self.batch_size
+            effective_batch_size
         )
+
+        # Distribute datasets across GPUs if using MirroredStrategy
+        if self.strategy and self.num_gpus > 1:
+            self.train_dataset = self.strategy.experimental_distribute_dataset(self.train_dataset)
+            self.val_dataset = self.strategy.experimental_distribute_dataset(self.val_dataset)
 
         # Log the datasets if logger is available
         if self.logger:
@@ -622,14 +640,39 @@ class SegmentationModelTrainer:
         # Create loss function
         self._create_loss_function()
 
-        # Create model
-        model = self._create_model()
-
-        # Create callbacks
-        callbacks = self._create_callbacks(model)
-
-        # Compile model
-        self._compile_model(model)
+        # Create model and compile within strategy scope for multi-GPU
+        if self.strategy and self.num_gpus > 1:
+            with self.strategy.scope():
+                # Create model
+                model = self._create_model()
+                
+                # Create callbacks
+                callbacks = self._create_callbacks(model)
+                
+                # Compile model
+                self._compile_model(model)
+                
+                # Log multi-GPU setup
+                if self.logger:
+                    self.logger.logger.info(f"Multi-GPU training with {self.num_gpus} GPUs using MirroredStrategy")
+                else:
+                    module_logger.info(f"Multi-GPU training with {self.num_gpus} GPUs using MirroredStrategy")
+        else:
+            # Single GPU or CPU training
+            # Create model
+            model = self._create_model()
+            
+            # Create callbacks
+            callbacks = self._create_callbacks(model)
+            
+            # Compile model
+            self._compile_model(model)
+            
+            # Log single GPU/CPU setup
+            if self.logger:
+                self.logger.logger.info(f"Single GPU/CPU training")
+            else:
+                module_logger.info(f"Single GPU/CPU training")
 
         # Train model
         history = self._train_model(model, callbacks)
@@ -651,7 +694,8 @@ class SegmentationModelTrainer:
         metadata_update = {
             'history': history.history,
             'training_completed': True,
-            'training_time': training_time
+            'training_time': training_time,
+            'num_gpus_used': self.num_gpus
         }
         save_model_metadata(self.model_path, metadata_update)
 
@@ -662,7 +706,8 @@ class SegmentationModelTrainer:
         return {
             'model': model,
             'history': history.history,
-            'training_time': training_time
+            'training_time': training_time,
+            'num_gpus_used': self.num_gpus
         }
 
 
@@ -801,6 +846,7 @@ class UNetTrainer(SegmentationModelTrainer):
         model = unfreeze_model(model)
 
         # Recompile with lower learning rate
+        # Note: No need to wrap in strategy scope as model was already created within scope
         self._compile_model(model, learning_rate=0.0001)
 
         # Continue training from where we left off
