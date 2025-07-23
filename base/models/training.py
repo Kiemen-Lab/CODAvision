@@ -32,6 +32,19 @@ os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 module_logger = logging.getLogger(__name__)
 
 
+def is_distributed_dataset(dataset):
+    """
+    Check if a dataset is a distributed dataset.
+    
+    Args:
+        dataset: TensorFlow dataset to check
+        
+    Returns:
+        Boolean indicating if the dataset is distributed
+    """
+    return hasattr(dataset, '_input_dataset') or 'DistributedDataset' in type(dataset).__name__
+
+
 class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
     """
     Custom loss function implementing weighted sparse categorical crossentropy.
@@ -201,7 +214,11 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         # Log validation dataset information
         if self.logger:
             self.logger.logger.debug("\nInitial Validation Dataset Information:")
-            self.logger.log_dataset_info(val_data, "Initial-Validation")
+            # Only log dataset info if it's not distributed (to avoid .take() errors)
+            if not is_distributed_dataset(val_data):
+                self.logger.log_dataset_info(val_data, "Initial-Validation")
+            else:
+                self.logger.logger.debug("Validation dataset is distributed - skipping detailed analysis")
 
     @property
     def model(self):
@@ -408,6 +425,10 @@ class SegmentationModelTrainer:
         self.val_dataset = None
         self.class_weights = None
         self.loss_function = None
+        self.num_train_samples = 0
+        self.num_val_samples = 0
+        self.train_steps_per_epoch = 0
+        self.val_steps_per_epoch = 0
 
         # GPU information for logging
         self.gpu_info = self._setup_gpu()
@@ -504,6 +525,20 @@ class SegmentationModelTrainer:
             effective_batch_size
         )
 
+        # Store the number of samples for steps_per_epoch calculation
+        self.num_train_samples = len(train_images)
+        self.num_val_samples = len(val_images)
+        
+        # Calculate steps per epoch (important for distributed training)
+        self.train_steps_per_epoch = self.num_train_samples // self.batch_size
+        self.val_steps_per_epoch = self.num_val_samples // self.batch_size
+        
+        # Log dataset information
+        module_logger.info(f"Training samples: {self.num_train_samples}, "
+                         f"steps per epoch: {self.train_steps_per_epoch}")
+        module_logger.info(f"Validation samples: {self.num_val_samples}, "
+                         f"steps per epoch: {self.val_steps_per_epoch}")
+
         # Distribute datasets across GPUs if using MirroredStrategy
         if self.strategy and self.num_gpus > 1:
             self.train_dataset = self.strategy.experimental_distribute_dataset(self.train_dataset)
@@ -511,6 +546,7 @@ class SegmentationModelTrainer:
 
         # Log the datasets if logger is available
         if self.logger:
+            # For distributed datasets, the logger will skip detailed analysis
             self.logger.log_dataset_info(self.train_dataset, "Training")
             self.logger.log_dataset_info(self.val_dataset, "Validation")
 
@@ -763,6 +799,8 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
         history = model.fit(
             self.train_dataset,
             validation_data=self.val_dataset,
+            steps_per_epoch=self.train_steps_per_epoch,
+            validation_steps=self.val_steps_per_epoch,
             callbacks=callbacks,
             verbose=1,
             epochs=8  # Train for 8 epochs
@@ -834,6 +872,8 @@ class UNetTrainer(SegmentationModelTrainer):
             self.train_dataset,
             validation_data=self.val_dataset,
             epochs=initial_epochs,
+            steps_per_epoch=self.train_steps_per_epoch,
+            validation_steps=self.val_steps_per_epoch,
             callbacks=callbacks,
             verbose=1
         )
@@ -855,6 +895,8 @@ class UNetTrainer(SegmentationModelTrainer):
             validation_data=self.val_dataset,
             epochs=10,  # Train for additional epochs
             initial_epoch=initial_epochs,
+            steps_per_epoch=self.train_steps_per_epoch,
+            validation_steps=self.val_steps_per_epoch,
             callbacks=callbacks,
             verbose=1
         )

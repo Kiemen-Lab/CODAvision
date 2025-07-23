@@ -297,6 +297,16 @@ class Logger:
             dataset_name: Name of the dataset (e.g., 'training', 'validation')
         """
         try:
+            # Check if this is a distributed dataset
+            is_distributed = hasattr(dataset, '_input_dataset') or 'DistributedDataset' in type(dataset).__name__
+            
+            if is_distributed:
+                # For distributed datasets, we need to extract the underlying dataset
+                self.logger.debug(f"{dataset_name} dataset is distributed across multiple devices")
+                # Skip detailed analysis for distributed datasets as they don't support .take()
+                self.logger.debug(f"Detailed analysis skipped for distributed {dataset_name} dataset")
+                return
+            
             # Examine first batch to get dataset structure
             for batch in dataset.take(1):
                 if isinstance(batch, tuple) and len(batch) == 2:

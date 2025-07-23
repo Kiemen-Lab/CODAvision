@@ -208,9 +208,16 @@ def create_distribution_strategy() -> Tuple[Any, int]:
     """
     Create a distribution strategy for multi-GPU training.
     
+    Automatically detects the operating system and uses the appropriate
+    cross-device communication backend:
+    - Linux/Mac: Uses NCCL (default, optimal performance)
+    - Windows: Uses HierarchicalCopyAllReduce (NCCL not supported on Windows)
+    
     Returns:
         Tuple of (strategy, number_of_gpus)
     """
+    import platform
+    
     physical_devices = tf.config.list_physical_devices('GPU')
     
     if len(physical_devices) > 1:
@@ -220,8 +227,19 @@ def create_distribution_strategy() -> Tuple[Any, int]:
             for device in physical_devices:
                 tf.config.experimental.set_memory_growth(device, True)
             
-            # Create MirroredStrategy
-            strategy = tf.distribute.MirroredStrategy()
+            # Create MirroredStrategy with appropriate cross-device ops
+            if platform.system() == 'Windows':
+                # NCCL is not supported on Windows, use HierarchicalCopyAllReduce instead
+                logger.info("Windows detected: Using HierarchicalCopyAllReduce for multi-GPU communication")
+                logger.info("Note: NCCL is not supported on Windows. Using HierarchicalCopyAllReduce which may have different performance characteristics.")
+                strategy = tf.distribute.MirroredStrategy(
+                    cross_device_ops=tf.distribute.HierarchicalCopyAllReduce()
+                )
+            else:
+                # Linux/Mac can use default NCCL
+                logger.info("Using default NCCL for multi-GPU communication")
+                strategy = tf.distribute.MirroredStrategy()
+            
             num_gpus = strategy.num_replicas_in_sync
             logger.info(f"Created MirroredStrategy with {num_gpus} GPUs")
             return strategy, num_gpus
