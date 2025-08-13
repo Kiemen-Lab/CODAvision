@@ -17,13 +17,48 @@ Features:
 
 import time
 import os
+import json
+import uuid
 import numpy as np
 import tensorflow as tf
 import logging
+from logging.handlers import RotatingFileHandler
 import psutil
 import GPUtil
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union, Any
+
+
+class StructuredJSONFormatter(logging.Formatter):
+    """Custom JSON formatter for structured logging."""
+    
+    def __init__(self, correlation_id: Optional[str] = None):
+        super().__init__()
+        self.correlation_id = correlation_id or str(uuid.uuid4())
+    
+    def format(self, record: logging.LogRecord) -> str:
+        """Format log record as JSON."""
+        log_obj = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'level': record.levelname,
+            'logger': record.name,
+            'message': record.getMessage(),
+            'correlation_id': self.correlation_id,
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno
+        }
+        
+        # Add extra fields if present
+        if hasattr(record, 'extra_data'):
+            log_obj['extra'] = record.extra_data
+            
+        # Add exception info if present
+        if record.exc_info:
+            log_obj['exception'] = self.formatException(record.exc_info)
+            
+        return json.dumps(log_obj)
 
 
 class Logger:
@@ -32,34 +67,47 @@ class Logger:
 
     This logger offers detailed tracking of training metrics, system resources, and
     model behavior during training, with support for both CPU and GPU environments.
+    Now includes structured logging and log rotation capabilities.
 
     Attributes:
-        log_dir (str): Directory where log files will be stored
+        log_dir (Path): Directory where log files will be stored
         model_name (str): Name of the model being trained
-        debug_dir (str): Directory for debug-level logs
+        debug_dir (Path): Directory for debug-level logs
         logger (logging.Logger): Underlying logger instance
         validation_runs (int): Counter for validation runs
         memory_logs (List[Dict]): History of memory usage
         validation_history (List[Dict]): History of validation metrics
         batch_history (List[Dict]): History of batch metrics
         gradient_history (List[Dict]): History of gradient metrics
+        correlation_id (str): Unique ID for tracking related log entries
+        use_json_format (bool): Whether to use JSON structured logging
     """
 
-    def __init__(self, log_dir: str, model_name: str):
+    def __init__(self, log_dir: str, model_name: str, use_json_format: bool = False,
+                 max_log_size_mb: int = 10, backup_count: int = 5):
         """
         Initialize the logger with specified log directory and model name.
 
         Args:
             log_dir: Path to directory where logs will be stored
             model_name: Name of the model being trained
+            use_json_format: Whether to use JSON structured logging
+            max_log_size_mb: Maximum size of each log file in MB before rotation
+            backup_count: Number of backup log files to keep
         """
-        self.log_dir = log_dir
+        self.log_dir = Path(log_dir)
         self.model_name = model_name
+        self.use_json_format = use_json_format
+        self.max_log_size_bytes = max_log_size_mb * 1024 * 1024
+        self.backup_count = backup_count
+        
+        # Generate correlation ID for tracking related logs
+        self.correlation_id = str(uuid.uuid4())
 
         # Create log directories
-        os.makedirs(log_dir, exist_ok=True)
-        self.debug_dir = os.path.join(log_dir, 'debug')
-        os.makedirs(self.debug_dir, exist_ok=True)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.debug_dir = self.log_dir / 'debug'
+        self.debug_dir.mkdir(parents=True, exist_ok=True)
 
         # Setup logging configuration
         self.logger = self._setup_logger()
@@ -97,30 +145,41 @@ class Logger:
         # Generate timestamp for log files
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-        # Main log file handler (INFO and above)
+        # Main log file handler with rotation (INFO and above)
         main_log_file = os.path.join(self.log_dir, f'training_log_{timestamp}.log')
-        main_handler = logging.FileHandler(main_log_file)
+        main_handler = RotatingFileHandler(
+            main_log_file,
+            maxBytes=self.max_log_size_bytes,
+            backupCount=self.backup_count
+        )
         main_handler.setLevel(logging.INFO)
 
-        # Debug log file handler (DEBUG and above)
+        # Debug log file handler with rotation (DEBUG and above)
         debug_log_file = os.path.join(self.debug_dir, f'debug_log_{timestamp}.log')
-        debug_handler = logging.FileHandler(debug_log_file)
+        debug_handler = RotatingFileHandler(
+            debug_log_file,
+            maxBytes=self.max_log_size_bytes,
+            backupCount=self.backup_count
+        )
         debug_handler.setLevel(logging.DEBUG)
 
         # Console handler (INFO and above only)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
 
-        # Create formatters
-        main_formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-
-        debug_formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
+        # Create formatters based on configuration
+        if self.use_json_format:
+            main_formatter = StructuredJSONFormatter(self.correlation_id)
+            debug_formatter = StructuredJSONFormatter(self.correlation_id)
+        else:
+            main_formatter = logging.Formatter(
+                '%(asctime)s - %(levelname)s - %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
+            debug_formatter = logging.Formatter(
+                '%(asctime)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S'
+            )
 
         # Apply formatters
         main_handler.setFormatter(main_formatter)
@@ -133,6 +192,30 @@ class Logger:
         logger.addHandler(debug_handler)
 
         return logger
+    
+    def log_structured(self, level: str, message: str, extra_data: Optional[Dict[str, Any]] = None):
+        """
+        Log a message with structured extra data.
+        
+        Args:
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            message: The log message
+            extra_data: Additional structured data to include in the log
+        """
+        log_record = logging.LogRecord(
+            name=self.logger.name,
+            level=getattr(logging, level.upper()),
+            pathname='',
+            lineno=0,
+            msg=message,
+            args=(),
+            exc_info=None
+        )
+        
+        if extra_data:
+            log_record.extra_data = extra_data
+            
+        self.logger.handle(log_record)
 
     def get_gpu_info(self) -> Union[List[Dict[str, Any]], str]:
         """

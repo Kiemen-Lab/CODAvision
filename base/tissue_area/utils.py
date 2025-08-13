@@ -183,11 +183,13 @@ def create_tissue_mask(image: np.ndarray,
     green_channel = image[:, :, 1]
     
     if mode == ThresholdMode.HE:
-        # In H&E mode, tissue is where green > threshold
-        mask = (green_channel > threshold) * 255
-    else:
-        # In grayscale mode, tissue is where green < threshold
+        # In H&E mode, tissue is where green < threshold
+        # (H&E stained tissue appears darker/less green than background)
         mask = (green_channel < threshold) * 255
+    else:
+        # In grayscale mode, tissue is where green > threshold
+        # (tissue appears brighter than background)
+        mask = (green_channel > threshold) * 255
     
     return mask.astype(np.uint8)
 

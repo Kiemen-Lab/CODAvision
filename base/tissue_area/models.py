@@ -21,10 +21,6 @@ class ThresholdMode(Enum):
         """Get the default threshold value for this mode."""
         return 205 if self == ThresholdMode.HE else 50
     
-    @property
-    def comparison_operator(self) -> str:
-        """Get the comparison operator for tissue detection."""
-        return ">" if self == ThresholdMode.HE else "<"
 
 
 @dataclass

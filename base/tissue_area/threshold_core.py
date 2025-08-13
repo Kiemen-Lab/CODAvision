@@ -8,9 +8,15 @@ thresholds in histological images without any GUI dependencies.
 import os
 import pickle
 import numpy as np
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Union
+from pathlib import Path
+from contextlib import contextmanager
 
 from base.image.utils import load_image_with_fallback
+from base.config import (
+    ThresholdDefaults, DisplayDefaults, FileExtensions,
+    get_threshold_config
+)
 from .models import (
     ThresholdConfig, ThresholdMode, ImageThresholds, RegionSelection
 )
@@ -21,6 +27,31 @@ from .utils import (
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def safe_image_processing(image_path: str):
+    """Context manager for safe image processing with automatic cleanup.
+    
+    Args:
+        image_path: Path to the image file
+        
+    Yields:
+        Loaded image array or None if loading fails
+    """
+    image = None
+    try:
+        image = load_image_with_fallback(image_path)
+        yield image
+    except Exception as e:
+        logger.error(f"Error processing image {image_path}: {e}")
+        yield None
+    finally:
+        # Ensure image memory is freed
+        if image is not None:
+            del image
+            import gc
+            gc.collect()
 
 
 class TissueAreaThresholdSelector:
@@ -97,12 +128,29 @@ class TissueAreaThresholdSelector:
         if self.config.redo:
             return True
         
-        # Check if all images have thresholds
-        # For threshold selection, we only need training images
+        # Check if all images have thresholds AND corresponding masks
         all_images = self._get_local_images()
         processed_images = set(self.thresholds.thresholds.keys())
         
-        return len(all_images) > len(processed_images)
+        # If not all images have thresholds, need processing
+        if len(all_images) > len(processed_images):
+            return True
+        
+        # Check if mask files exist for all threshold entries
+        ta_dir = self.config.output_path
+        if not os.path.exists(ta_dir):
+            # No TA directory means masks need to be created
+            return True
+        
+        # Check if masks exist for all images with thresholds
+        for image_name in self.thresholds.thresholds.keys():
+            base_name = os.path.splitext(image_name)[0]
+            mask_path = os.path.join(ta_dir, f'{base_name}.tif')
+            if not os.path.exists(mask_path):
+                logger.debug(f"Missing tissue mask for {image_name}, processing needed")
+                return True
+        
+        return False
     
     def has_existing_evaluation(self) -> bool:
         """
@@ -263,7 +311,7 @@ class TissueAreaThresholdSelector:
         """
         return extract_cropped_region(image, region, resize_factor)
     
-    def save_image_threshold(self, image_name: str, threshold: int, mode: ThresholdMode = None):
+    def save_image_threshold(self, image_name: str, threshold: int, mode: Optional[ThresholdMode] = None) -> None:
         """
         Save threshold value for an image.
         
@@ -271,7 +319,16 @@ class TissueAreaThresholdSelector:
             image_name: Name of the image
             threshold: Threshold value
             mode: Threshold mode (optional, will use current mode if not specified)
+            
+        Raises:
+            ValueError: If image_name is empty or threshold is out of valid range
         """
+        if not image_name or not image_name.strip():
+            raise ValueError("Image name cannot be empty")
+        
+        if not 0 <= threshold <= 255:
+            raise ValueError(f"Threshold must be between 0 and 255, got {threshold}")
+        
         self.thresholds.thresholds[image_name] = threshold
         if mode is not None:
             self.thresholds.mode = mode
@@ -444,10 +501,11 @@ def determine_optimal_TA_core(
         # Apply default thresholds to all images
         # Get images from training path
         from glob import glob
-        all_images = sorted(glob(os.path.join(training_path, '*.tif')))
-        if not all_images:
-            for ext in ['*.jpg', '*.png']:
-                all_images.extend(glob(os.path.join(training_path, ext)))
+        all_images = []
+        # Search for all supported image formats
+        for ext in ['*.tif', '*.jpg', '*.png']:
+            all_images.extend(glob(os.path.join(training_path, ext)))
+        all_images = sorted(all_images)
         default_threshold = 205  # Default H&E threshold
         
         for image_path in all_images:

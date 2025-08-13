@@ -36,6 +36,21 @@ def qt_app():
     app.quit()
 
 
+@pytest.fixture
+def temp_dirs():
+    """Create temporary directories for testing."""
+    temp_dir = tempfile.mkdtemp()
+    training_path = os.path.join(temp_dir, 'training')
+    testing_path = os.path.join(temp_dir, 'testing')
+    os.makedirs(training_path)
+    os.makedirs(testing_path)
+    
+    yield training_path, testing_path
+    
+    # Cleanup
+    shutil.rmtree(temp_dir)
+
+
 class TestImageDisplayDialog:
     """Test the image display dialog."""
     
@@ -67,7 +82,7 @@ class TestImageDisplayDialog:
         dialog = ImageDisplayDialog((100, 100), 1.0)
         
         # Simulate mouse click
-        test_pos = QtCore.QPoint(50, 50)
+        test_pos = QtCore.QPointF(50.0, 50.0)
         event = Mock()
         event.position.return_value = test_pos
         
@@ -225,20 +240,6 @@ class TestTissueAreaThresholdGUI:
     """Test the main GUI wrapper class."""
     
     @pytest.fixture
-    def temp_dirs(self):
-        """Create temporary directories for testing."""
-        temp_dir = tempfile.mkdtemp()
-        training_path = os.path.join(temp_dir, 'training')
-        testing_path = os.path.join(temp_dir, 'testing')
-        os.makedirs(training_path)
-        os.makedirs(testing_path)
-        
-        yield training_path, testing_path
-        
-        # Cleanup
-        shutil.rmtree(temp_dir)
-    
-    @pytest.fixture
     def config(self, temp_dirs):
         """Create test configuration."""
         training_path, testing_path = temp_dirs
@@ -286,16 +287,28 @@ class TestTissueAreaThresholdGUI:
         # Mock dialog returns
         mock_display_instance = Mock()
         mock_display_instance.get_clicked_region.return_value = RegionSelection(50, 50, 600)
+        mock_display_instance.isVisible.return_value = False  # Dialog is not visible (closes immediately)
+        mock_display_instance.show = Mock()
+        mock_display_instance.close = Mock()
+        mock_display_instance.deleteLater = Mock()
         mock_display.return_value = mock_display_instance
         
         mock_check_instance = Mock()
         mock_check_instance.do_again = False
+        mock_check_instance.isVisible.return_value = False
+        mock_check_instance.show = Mock()
+        mock_check_instance.close = Mock()
+        mock_check_instance.deleteLater = Mock()
         mock_check.return_value = mock_check_instance
         
         mock_threshold_instance = Mock()
         mock_threshold_instance.stop = False
         mock_threshold_instance.threshold = 210
         mock_threshold_instance.mode = ThresholdMode.HE
+        mock_threshold_instance.isVisible.return_value = False
+        mock_threshold_instance.show = Mock()
+        mock_threshold_instance.close = Mock()
+        mock_threshold_instance.deleteLater = Mock()
         mock_threshold.return_value = mock_threshold_instance
         
         # Test threshold selection

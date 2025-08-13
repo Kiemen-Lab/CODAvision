@@ -115,15 +115,15 @@ class TestThresholdBackwardCompatibility:
         test_img = np.ones((100, 100, 3), dtype=np.uint8) * 128
         test_img[:50, :, 1] = 250  # Make top half bright in green channel
         
-        # Test H&E mode (tissue is where green > threshold)
+        # Test H&E mode (tissue is where green < threshold)
         mask_he = create_tissue_mask(test_img, 200, ThresholdMode.HE)
-        assert mask_he[0, 0] == 255  # Top half is bright (> 200), is tissue/whitespace
-        assert mask_he[75, 50] == 0  # Bottom half is dark (< 200), not tissue/whitespace
+        assert mask_he[0, 0] == 0  # Top half is bright (250 > 200), not tissue
+        assert mask_he[75, 50] == 255  # Bottom half is darker (128 < 200), is tissue
         
-        # Test Grayscale mode (tissue is where green < threshold)  
+        # Test Grayscale mode (tissue is where green > threshold)  
         mask_gray = create_tissue_mask(test_img, 200, ThresholdMode.GRAYSCALE)
-        assert mask_gray[0, 0] == 0  # Top half is bright (250 > 200), not tissue
-        assert mask_gray[75, 50] == 255  # Bottom half is darker (128 < 200), is tissue
+        assert mask_gray[0, 0] == 255  # Top half is bright (250 > 200), is tissue
+        assert mask_gray[75, 50] == 0  # Bottom half is darker (128 < 200), not tissue
 
 
 class TestThresholdCore:

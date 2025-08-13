@@ -78,7 +78,7 @@ class DeepLabV3Plus(BaseSegmentationModel):
         num_classes (int): Number of segmentation classes
     """
 
-    def resnet50_preprocess(self, x):
+    def resnet50_preprocess(self, x: tf.Tensor) -> tf.Tensor:
         """
         Custom preprocessing for ResNet50 that avoids serialization issues.
         

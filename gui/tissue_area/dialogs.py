@@ -412,10 +412,16 @@ class ThresholdSelectionDialog(QtWidgets.QMainWindow):
         # Create tissue mask
         mask = create_tissue_mask(self.cropped_image, self.threshold, self.mode)
         
+        # Invert mask display for H&E mode so tissue appears black
+        if self.mode == ThresholdMode.HE:
+            display_mask = 255 - mask
+        else:
+            display_mask = mask
+        
         # Display mask
-        height, width = mask.shape[:2]
+        height, width = display_mask.shape[:2]
         qimage = QtGui.QImage(
-            mask.data, width, height, mask.strides[0],
+            display_mask.data, width, height, display_mask.strides[0],
             QtGui.QImage.Format_Grayscale8
         )
         pixmap = QtGui.QPixmap.fromImage(qimage)

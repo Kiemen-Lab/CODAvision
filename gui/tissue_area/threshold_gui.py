@@ -46,6 +46,9 @@ class TissueAreaThresholdGUI:
         self.test_ta_mode = 'redo' if config.redo else ''
         self.display_size = config.region_size
         
+        # Initialize mode from existing thresholds if available
+        self._last_mode = self.selector.thresholds.mode if self.selector.thresholds else ThresholdMode.HE
+        
     def _ensure_qt_app(self):
         """Ensure Qt application is available."""
         self.app = QtWidgets.QApplication.instance()
@@ -54,11 +57,27 @@ class TissueAreaThresholdGUI:
     
     def _show_dialog_modal(self, dialog):
         """Show a dialog window and wait for it to close."""
-        dialog.show()
-        # Process events until the dialog is closed
-        while dialog.isVisible():
-            self.app.processEvents()
-            QtCore.QThread.msleep(50)  # Small delay to prevent CPU spinning
+        # Check if dialog has finished signal (QDialog)
+        if hasattr(dialog, 'finished'):
+            # Create an event loop for proper modal dialog handling
+            event_loop = QtCore.QEventLoop()
+            
+            # Connect dialog close event to event loop quit
+            dialog.finished.connect(event_loop.quit)
+            
+            # Show dialog as modal
+            dialog.setWindowModality(QtCore.Qt.ApplicationModal)
+            dialog.show()
+            
+            # Execute event loop - blocks until dialog is closed
+            event_loop.exec_()
+        else:
+            # Fall back to original implementation for custom dialogs
+            dialog.show()
+            # Process events until the dialog is closed
+            while dialog.isVisible():
+                self.app.processEvents()
+                QtCore.QThread.msleep(50)  # Small delay to prevent CPU spinning
         
         # Ensure the dialog is properly deleted
         dialog.deleteLater()
@@ -76,20 +95,28 @@ class TissueAreaThresholdGUI:
         
         # Check if evaluation already exists and not in explicit redo mode
         if self.selector.has_existing_evaluation() and not self.config.redo:
-            # Show dialog asking if user wants to keep current evaluation
-            dialog = TissueMaskExistsDialog()
-            self._show_dialog_modal(dialog)
-            
-            keep_current = dialog.keep_current
-            dialog.close()
-            
-            if keep_current:
-                logger.info('User chose to keep current tissue mask evaluation')
-                return True
-            else:
-                # User wants to redo - update the config
+            # Check if existing evaluation is compatible with current mode
+            if not self.selector.is_evaluation_compatible(self._last_mode):
+                logger.warning(f"Existing evaluation mode ({self.selector.thresholds.mode.value}) "
+                             f"doesn't match expected mode ({self._last_mode.value})")
+                # Force redo if modes don't match
                 self.config.redo = True
                 self.test_ta_mode = 'redo'
+            else:
+                # Show dialog asking if user wants to keep current evaluation
+                dialog = TissueMaskExistsDialog()
+                self._show_dialog_modal(dialog)
+                
+                keep_current = dialog.keep_current
+                dialog.close()
+                
+                if keep_current:
+                    logger.info('User chose to keep current tissue mask evaluation')
+                    return True
+                else:
+                    # User wants to redo - update the config
+                    self.config.redo = True
+                    self.test_ta_mode = 'redo'
         
         # Check if we need to process
         if not self.selector.needs_processing():
@@ -187,9 +214,12 @@ class TissueAreaThresholdGUI:
         Returns:
             Selected threshold value or None if cancelled
         """
+        # Ensure Qt application is available
+        self._ensure_qt_app()
+        
         # Get initial threshold
         threshold = self.selector.get_initial_threshold(image_name)
-        mode = ThresholdMode.HE
+        mode = self._last_mode  # Use the current mode instead of always defaulting to H&E
         
         # Interactive region selection loop
         while True:
