@@ -13,10 +13,10 @@ from pathlib import Path
 from contextlib import contextmanager
 
 from base.image.utils import load_image_with_fallback
-# from base.config import (
-#     ThresholdDefaults, DisplayDefaults, FileExtensions,
-#     get_threshold_config
-# )
+from base.config import (
+    ThresholdDefaults, DisplayDefaults, FileExtensions,
+    get_threshold_config
+)
 from .models import (
     ThresholdConfig, ThresholdMode, ImageThresholds, RegionSelection
 )
