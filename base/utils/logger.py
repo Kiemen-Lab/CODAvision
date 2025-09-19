@@ -581,3 +581,26 @@ class Logger:
                 avg_time_per_batch = total_time / total_batches
                 f.write(f"Total batches processed: {total_batches}\n")
                 f.write(f"Average time per batch: {avg_time_per_batch:.3f}s\n")
+
+    def close(self) -> None:
+        """
+        Close and remove all file handlers to release file locks.
+
+        This method should be called before attempting to delete log directories,
+        especially on Windows where file locks prevent deletion of open files.
+        """
+        try:
+            # Close and remove all handlers
+            for handler in self.logger.handlers[:]:  # Use slice to avoid modifying list during iteration
+                try:
+                    handler.close()
+                    self.logger.removeHandler(handler)
+                except Exception as e:
+                    # Log to console if we can't use the logger
+                    print(f"Warning: Failed to close handler {handler}: {str(e)}")
+
+            # Clear the handlers list
+            self.logger.handlers.clear()
+
+        except Exception as e:
+            print(f"Warning: Error closing logger: {str(e)}")
