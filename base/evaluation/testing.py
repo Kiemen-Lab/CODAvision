@@ -364,7 +364,7 @@ class SegmentationModelTester:
             raise ValueError(f"Model testing failed: {e}")
 
 
-def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str, show_fig: bool = True) -> None:
+def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str, show_fig: bool = True) -> Dict[str, Any]:
     """
     Test a segmentation model with the provided paths.
 
@@ -376,7 +376,9 @@ def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str, show_fig: 
         pthtest: Path to the directory containing test annotations
         pthtestim: Path to the directory containing test images
         show_fig: Whether to display the confusion matrix figure. Defaults to True.
+    
+    Returns:
+        Dictionary containing confusion matrix and performance metrics
     """
     tester = SegmentationModelTester(pthDL, pthtest, pthtestim)
-    tester.test(show_fig=show_fig)
-    return
+    return tester.test(show_fig=show_fig)
