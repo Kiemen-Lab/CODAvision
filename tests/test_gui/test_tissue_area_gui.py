@@ -9,11 +9,8 @@ import os
 import sys
 import pytest
 import numpy as np
-import tempfile
-import shutil
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, PropertyMock
 from PySide6 import QtWidgets, QtCore
-from PySide6.QtTest import QTest
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -25,215 +22,187 @@ from gui.tissue_area.dialogs import (
     ImageSelectionDialog
 )
 
-
-@pytest.fixture
-def qt_app():
-    """Create a Qt application for testing."""
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    yield app
-    app.quit()
+# Mark all tests in this module as GUI tests
+pytestmark = pytest.mark.gui
 
 
-@pytest.fixture
-def temp_dirs():
-    """Create temporary directories for testing."""
-    temp_dir = tempfile.mkdtemp()
-    training_path = os.path.join(temp_dir, 'training')
-    testing_path = os.path.join(temp_dir, 'testing')
-    os.makedirs(training_path)
-    os.makedirs(testing_path)
-    
-    yield training_path, testing_path
-    
-    # Cleanup
-    shutil.rmtree(temp_dir)
+# Note: temp_dirs fixture is now provided by conftest.py
+# Note: qtbot fixture is provided by conftest.py for Qt testing
 
 
 class TestImageDisplayDialog:
     """Test the image display dialog."""
-    
-    def test_dialog_initialization(self, qt_app):
+
+    def test_dialog_initialization(self, qtbot):
         """Test dialog initializes correctly."""
         dialog = ImageDisplayDialog((800, 600), 0.5)
-        
+        qtbot.addWidget(dialog)
+
         assert dialog.windowTitle() == "Click on a location at the edge of tissue and whitespace"
         assert dialog.clicked_position is None
         assert dialog.resize_factor == 0.5
-        
-        dialog.close()
     
-    def test_image_update(self, qt_app):
+    def test_image_update(self, qtbot):
         """Test image can be updated in dialog."""
         dialog = ImageDisplayDialog((100, 100), 1.0)
-        
+        qtbot.addWidget(dialog)
+
         # Create test image
         test_image = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
         dialog.update_image(test_image)
-        
+
         # Check that pixmap was set
         assert dialog.ui.whole_im.pixmap() is not None
-        
-        dialog.close()
     
-    def test_mouse_click_capture(self, qt_app):
+    def test_mouse_click_capture(self, qtbot):
         """Test mouse click position is captured."""
         dialog = ImageDisplayDialog((100, 100), 1.0)
-        
+        qtbot.addWidget(dialog)
+
         # Simulate mouse click
         test_pos = QtCore.QPointF(50.0, 50.0)
         event = Mock()
         event.position.return_value = test_pos
-        
+
         # Mock the geometry check
         dialog.ui.whole_im.geometry = Mock(return_value=QtCore.QRect(0, 0, 100, 100))
         dialog.ui.whole_im.geometry().contains = Mock(return_value=True)
-        
+
         dialog.mousePressEvent(event)
-        
+
         assert dialog.clicked_position is not None
-        dialog.close()
 
 
 class TestRegionCheckDialog:
     """Test the region check dialog."""
-    
-    def test_dialog_buttons(self, qt_app):
+
+    def test_dialog_buttons(self, qtbot):
         """Test dialog button functionality."""
         dialog = RegionCheckDialog(600)
-        
+        qtbot.addWidget(dialog)
+
         # Test "looks good" button
         dialog.on_good()
         assert dialog.do_again == False
-        
+
         # Reset and test "new location" button
         dialog.do_again = True
         dialog.on_new()
         assert dialog.do_again == True  # Should remain True
-        
-        dialog.close()
     
-    def test_image_display(self, qt_app):
+    def test_image_display(self, qtbot):
         """Test cropped image display."""
         dialog = RegionCheckDialog(100)
-        
+        qtbot.addWidget(dialog)
+
         # Create test cropped image
         cropped = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
         dialog.update_image(cropped)
-        
+
         # Check that pixmap was set
         assert dialog.ui.cropped.pixmap() is not None
-        
-        dialog.close()
 
 
 class TestThresholdSelectionDialog:
     """Test the threshold selection dialog."""
-    
-    def test_initialization(self, qt_app):
+
+    def test_initialization(self, qtbot):
         """Test dialog initialization with different modes."""
         # Test H&E mode
         dialog = ThresholdSelectionDialog(205, ThresholdMode.HE, 600)
+        qtbot.addWidget(dialog)
         assert dialog.threshold == 205
         assert dialog.mode == ThresholdMode.HE
         assert dialog.ui.TA_selection.value() == 205
-        dialog.close()
-        
+
         # Test Grayscale mode
-        dialog = ThresholdSelectionDialog(50, ThresholdMode.GRAYSCALE, 600)
-        assert dialog.threshold == 50
-        assert dialog.mode == ThresholdMode.GRAYSCALE
-        assert dialog.ui.TA_selection.value() == 50
-        dialog.close()
+        dialog2 = ThresholdSelectionDialog(50, ThresholdMode.GRAYSCALE, 600)
+        qtbot.addWidget(dialog2)
+        assert dialog2.threshold == 50
+        assert dialog2.mode == ThresholdMode.GRAYSCALE
+        assert dialog2.ui.TA_selection.value() == 50
     
-    def test_threshold_adjustment(self, qt_app):
+    def test_threshold_adjustment(self, qtbot):
         """Test threshold value adjustment."""
         dialog = ThresholdSelectionDialog(205, ThresholdMode.HE, 600)
-        
+        qtbot.addWidget(dialog)
+
         # Test raise button
         initial_value = dialog.threshold
         dialog.on_raise()
         assert dialog.threshold == initial_value + 1
-        
+
         # Test decrease button
         dialog.on_decrease()
         assert dialog.threshold == initial_value
-        
+
         # Test slider
         dialog.ui.TA_selection.setValue(220)
         dialog.update_slider()
         assert dialog.threshold == 220
-        
-        dialog.close()
     
-    def test_mode_switching(self, qt_app):
+    def test_mode_switching(self, qtbot):
         """Test switching between H&E and Grayscale modes."""
         dialog = ThresholdSelectionDialog(205, ThresholdMode.HE, 600)
-        
+        qtbot.addWidget(dialog)
+
         # Switch to Grayscale
         dialog.on_mode()
         assert dialog.mode == ThresholdMode.GRAYSCALE
         assert dialog.threshold == 50  # Default for grayscale
-        
+
         # Switch back to H&E
         dialog.on_mode()
         assert dialog.mode == ThresholdMode.HE
         assert dialog.threshold == 205  # Default for H&E
-        
-        dialog.close()
     
-    def test_apply_button(self, qt_app):
+    def test_apply_button(self, qtbot):
         """Test apply button functionality."""
         dialog = ThresholdSelectionDialog(205, ThresholdMode.HE, 600)
-        
+        qtbot.addWidget(dialog)
+
         assert dialog.stop == True
         dialog.on_apply()
         assert dialog.stop == False
-        
-        dialog.close()
 
 
 class TestImageSelectionDialog:
     """Test the image selection dialog for redo mode."""
-    
-    def test_initialization(self, qt_app):
+
+    def test_initialization(self, qtbot):
         """Test dialog initialization."""
         dialog = ImageSelectionDialog('/test/path')
-        
+        qtbot.addWidget(dialog)
+
         assert dialog.windowTitle() == "Confirm tissue mask evaluation"
         assert dialog.base_path == '/test/path'
         assert dialog.images == []
         assert dialog.apply_all == False
-        
-        dialog.close()
     
-    def test_apply_all_button(self, qt_app):
+    def test_apply_all_button(self, qtbot):
         """Test apply all button."""
         dialog = ImageSelectionDialog('/test/path')
-        
+        qtbot.addWidget(dialog)
+
         dialog.on_apply_all()
         assert dialog.apply_all == True
-        
-        dialog.close()
     
-    def test_image_list_management(self, qt_app):
+    def test_image_list_management(self, qtbot):
         """Test adding and removing images from list."""
         dialog = ImageSelectionDialog('/test/path')
-        
+        qtbot.addWidget(dialog)
+
         # Add some images directly
         dialog.images = ['image1.tif', 'image2.tif']
         dialog.ui.image_LW.addItem('image1.tif')
         dialog.ui.image_LW.addItem('image2.tif')
-        
+
         # Test delete functionality
         dialog.ui.image_LW.setCurrentRow(0)
         dialog.on_delete_image()
-        
+
         assert len(dialog.images) == 1
         assert dialog.images[0] == 'image2.tif'
-        
-        dialog.close()
 
 
 class TestTissueAreaThresholdGUI:
@@ -273,12 +242,16 @@ class TestTissueAreaThresholdGUI:
         gui = TissueAreaThresholdGUI(config)
         assert gui.test_ta_mode == 'redo'
     
+    @patch('gui.tissue_area.threshold_gui.TissueAreaThresholdGUI._show_dialog_modal')
     @patch('gui.tissue_area.threshold_gui.ImageDisplayDialog')
     @patch('gui.tissue_area.threshold_gui.RegionCheckDialog')
     @patch('gui.tissue_area.threshold_gui.ThresholdSelectionDialog')
-    def test_threshold_selection_flow(self, mock_threshold, mock_check, mock_display, 
-                                     config, qt_app):
+    def test_threshold_selection_flow(self, mock_threshold, mock_check, mock_display,
+                                     mock_show_modal, config, qtbot):
         """Test the threshold selection flow with mocked dialogs."""
+        # Mock _show_dialog_modal to avoid blocking event loop
+        mock_show_modal.side_effect = lambda dialog: None
+
         gui = TissueAreaThresholdGUI(config)
         
         # Create test image
