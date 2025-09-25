@@ -159,41 +159,81 @@ class ExperimentTracker:
 
             json.dump(metrics_copy, f, indent=2, default=str)
     
-    def add_result(self, experiment_id: str, params: Dict[str, Any], 
+    def add_result(self, experiment_id: str, params: Dict[str, Any],
                    metrics: Dict[str, Any]) -> None:
         """
         Add an experiment result to the tracker.
-        
+
         Args:
             experiment_id: Unique identifier for the experiment
             params: Hyperparameter configuration
             metrics: Dictionary of metric names and values
         """
+        # Create a clean copy of metrics for CSV, excluding complex nested structures
+        csv_metrics = {}
+        for key, value in metrics.items():
+            # Skip complex nested structures that don't serialize well to CSV
+            if key in ['training_history', 'training_summary', 'test_metrics']:
+                continue
+            # Convert boolean values to string for better CSV compatibility
+            if isinstance(value, bool):
+                csv_metrics[key] = str(value)
+            # Ensure numeric values are properly formatted
+            elif isinstance(value, (int, float, np.integer, np.floating)):
+                csv_metrics[key] = float(value) if not np.isnan(float(value)) else None
+            # Keep string values as-is
+            elif isinstance(value, str):
+                csv_metrics[key] = value
+            # Skip other complex types
+            elif not isinstance(value, (dict, list, tuple)):
+                csv_metrics[key] = value
+
         result = {
             'experiment_id': experiment_id,
             'timestamp': datetime.now().isoformat(),
             **params,
-            **metrics
+            **csv_metrics
         }
         self.experiments.append(result)
-        
+
         # Save to CSV
         self._save_to_csv(result)
     
     def _save_to_csv(self, result: Dict[str, Any]) -> None:
         """
         Append a result to the CSV file.
-        
+
         Args:
             result: Dictionary containing experiment results
         """
-        file_exists = os.path.exists(self.results_file)
-        
-        with open(self.results_file, 'a', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=result.keys())
-            if not file_exists:
-                writer.writeheader()
-            writer.writerow(result)
+        import pandas as pd
+
+        # If file exists, load it to get all columns
+        if os.path.exists(self.results_file):
+            existing_df = pd.read_csv(self.results_file)
+            existing_columns = list(existing_df.columns)
+
+            # Get all unique columns (existing + new)
+            all_columns = existing_columns.copy()
+            for key in result.keys():
+                if key not in all_columns:
+                    all_columns.append(key)
+
+            # Ensure result has values for all columns (use None for missing)
+            for col in all_columns:
+                if col not in result:
+                    result[col] = None
+
+            # Append new row
+            new_row_df = pd.DataFrame([result])
+            combined_df = pd.concat([existing_df, new_row_df], ignore_index=True)
+
+            # Save back to CSV
+            combined_df.to_csv(self.results_file, index=False)
+        else:
+            # First row - create new CSV
+            df = pd.DataFrame([result])
+            df.to_csv(self.results_file, index=False)
     
     def get_best_experiment(self, metric: str = 'val_accuracy',
                            maximize: bool = True) -> Tuple[str, Dict[str, Any]]:
@@ -552,20 +592,76 @@ def create_summary_report(tracker: ExperimentTracker,
                 for val, acc in grouped.items():
                     report.append(f"  {val}: {acc:.4f}")
     
+    # Distribution Mismatch Analysis
+    report.append("\n" + "-" * 40)
+    report.append("DISTRIBUTION MISMATCH ANALYSIS")
+    report.append("-" * 40)
+
+    # Check for distribution mismatch metrics
+    if 'val_test_gap' in df.columns:
+        val_test_gaps = df['val_test_gap'].dropna()
+        if len(val_test_gaps) > 0:
+            report.append(f"\nValidation-Test Gap:")
+            report.append(f"  Average: {val_test_gaps.mean():.4f}")
+            report.append(f"  Max:     {val_test_gaps.max():.4f}")
+            report.append(f"  Min:     {val_test_gaps.min():.4f}")
+
+            # Count problematic experiments
+            high_gap_count = (val_test_gaps > 0.1).sum()
+            critical_gap_count = (val_test_gaps > 0.2).sum()
+            report.append(f"\n  Experiments with >10% gap: {high_gap_count}/{len(val_test_gaps)} ({100*high_gap_count/len(val_test_gaps):.1f}%)")
+            report.append(f"  Experiments with >20% gap: {critical_gap_count}/{len(val_test_gaps)} ({100*critical_gap_count/len(val_test_gaps):.1f}%)")
+
+    if 'train_val_gap' in df.columns:
+        train_val_gaps = df['train_val_gap'].dropna()
+        if len(train_val_gaps) > 0:
+            report.append(f"\nTraining-Validation Gap (Overfitting):")
+            report.append(f"  Average: {train_val_gaps.mean():.4f}")
+            report.append(f"  Max:     {train_val_gaps.max():.4f}")
+
+            overfit_count = (train_val_gaps > 0.1).sum()
+            report.append(f"  Experiments with >10% gap: {overfit_count}/{len(train_val_gaps)} ({100*overfit_count/len(train_val_gaps):.1f}%)")
+
+    if 'generalization_score' in df.columns:
+        gen_scores = df['generalization_score'].dropna()
+        if len(gen_scores) > 0:
+            report.append(f"\nGeneralization Score (test_acc/val_acc):")
+            report.append(f"  Average: {gen_scores.mean():.4f}")
+            report.append(f"  Best:    {gen_scores.max():.4f}")
+            report.append(f"  Worst:   {gen_scores.min():.4f}")
+
+    # Interpretability Guide
+    report.append("\n" + "-" * 40)
+    report.append("INTERPRETABILITY GUIDE")
+    report.append("-" * 40)
+    report.append("\n• Validation-Test Gap: Measures how well validation metrics predict test performance")
+    report.append("  - <5%: Good generalization, validation metrics are reliable")
+    report.append("  - 5-10%: Acceptable, minor distribution differences")
+    report.append("  - 10-20%: Concerning, synthetic training data may not represent real data well")
+    report.append("  - >20%: Critical, consider using real tiles instead of composite images")
+    report.append("\n• Training-Validation Gap: Indicates overfitting level")
+    report.append("  - <5%: Good fit, model generalizes well to validation data")
+    report.append("  - 5-10%: Minor overfitting, acceptable")
+    report.append("  - >10%: Significant overfitting, consider regularization")
+    report.append("\n• Generalization Score: Ratio of test to validation accuracy")
+    report.append("  - ~1.0: Ideal, validation accurately predicts test performance")
+    report.append("  - <0.8: Poor generalization, distribution mismatch")
+    report.append("  - >1.1: Unusual, validation may be harder than test")
+
     # Summary statistics
     report.append("\n" + "-" * 40)
     report.append("SUMMARY STATISTICS")
     report.append("-" * 40)
-    
+
     for col in df.columns:
-        if any(m in col.lower() for m in ['loss', 'accuracy']):
+        if any(m in col.lower() for m in ['loss', 'accuracy', 'precision', 'recall']):
             if pd.api.types.is_numeric_dtype(df[col]):
                 report.append(f"\n{col}:")
                 report.append(f"  Mean: {df[col].mean():.4f}")
                 report.append(f"  Std:  {df[col].std():.4f}")
                 report.append(f"  Min:  {df[col].min():.4f}")
                 report.append(f"  Max:  {df[col].max():.4f}")
-    
+
     report_str = "\n".join(report)
     
     if output_file:
@@ -603,6 +699,109 @@ def save_checkpoint(checkpoint_file: str, data: Dict[str, Any]) -> None:
     """
     with open(checkpoint_file, 'wb') as f:
         pickle.dump(data, f)
+
+
+def plot_metric_comparison(tracker: ExperimentTracker,
+                          output_file: Optional[str] = None) -> None:
+    """
+    Create visualization comparing training, validation, and test metrics.
+
+    Args:
+        tracker: ExperimentTracker instance with results
+        output_file: Optional path to save the plot
+    """
+    # Load data
+    if not tracker.experiments and os.path.exists(tracker.results_file):
+        df = pd.read_csv(tracker.results_file)
+    else:
+        df = pd.DataFrame(tracker.experiments)
+
+    if df.empty:
+        logger.warning("No results for metric comparison plot")
+        return
+
+    # Create subplots
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+
+    # 1. Train vs Validation vs Test Accuracy Comparison
+    ax = axes[0, 0]
+    if 'best_accuracy' in df.columns and 'best_val_accuracy' in df.columns and 'test_accuracy' in df.columns:
+        x = np.arange(len(df))
+        width = 0.25
+
+        train_acc = df['best_accuracy'].fillna(0)
+        val_acc = df['best_val_accuracy'].fillna(0)
+        test_acc = df['test_accuracy'].fillna(0)
+
+        ax.bar(x - width, train_acc, width, label='Train', color='blue', alpha=0.7)
+        ax.bar(x, val_acc, width, label='Validation', color='green', alpha=0.7)
+        ax.bar(x + width, test_acc, width, label='Test', color='red', alpha=0.7)
+
+        ax.set_xlabel('Experiment ID')
+        ax.set_ylabel('Accuracy')
+        ax.set_title('Train vs Validation vs Test Accuracy')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+
+    # 2. Distribution Gap Analysis
+    ax = axes[0, 1]
+    if 'val_test_gap' in df.columns and 'train_val_gap' in df.columns:
+        gaps_df = df[['val_test_gap', 'train_val_gap']].dropna()
+        if not gaps_df.empty:
+            gaps_df.plot(kind='box', ax=ax)
+            ax.axhline(y=0.1, color='orange', linestyle='--', label='10% threshold')
+            ax.axhline(y=0.2, color='red', linestyle='--', label='20% critical')
+            ax.set_ylabel('Gap (fraction)')
+            ax.set_title('Distribution Gap Analysis')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+
+    # 3. Generalization Score Distribution
+    ax = axes[1, 0]
+    if 'generalization_score' in df.columns:
+        gen_scores = df['generalization_score'].dropna()
+        if len(gen_scores) > 0:
+            ax.hist(gen_scores, bins=20, color='purple', alpha=0.7, edgecolor='black')
+            ax.axvline(x=1.0, color='green', linestyle='--', label='Ideal (1.0)')
+            ax.axvline(x=0.8, color='orange', linestyle='--', label='Poor (<0.8)')
+            ax.set_xlabel('Generalization Score (test/val)')
+            ax.set_ylabel('Count')
+            ax.set_title('Generalization Score Distribution')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+
+    # 4. Metric Correlation with Test Performance
+    ax = axes[1, 1]
+    if 'test_accuracy' in df.columns and 'best_val_accuracy' in df.columns:
+        valid_data = df[['best_val_accuracy', 'test_accuracy']].dropna()
+        if not valid_data.empty:
+            ax.scatter(valid_data['best_val_accuracy'], valid_data['test_accuracy'],
+                      alpha=0.6, s=50, c='blue')
+
+            # Add diagonal line for perfect correlation
+            min_val = min(valid_data.min())
+            max_val = max(valid_data.max())
+            ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, label='Perfect correlation')
+
+            # Calculate and display correlation
+            correlation = valid_data['best_val_accuracy'].corr(valid_data['test_accuracy'])
+            ax.text(0.05, 0.95, f'Correlation: {correlation:.3f}',
+                   transform=ax.transAxes, fontsize=10, verticalalignment='top')
+
+            ax.set_xlabel('Validation Accuracy')
+            ax.set_ylabel('Test Accuracy')
+            ax.set_title('Validation vs Test Performance')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+
+    plt.suptitle('Model Performance and Distribution Mismatch Analysis', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+
+    if output_file:
+        plt.savefig(output_file, dpi=300, bbox_inches='tight')
+        logger.info(f"Metric comparison plot saved to {output_file}")
+    else:
+        plt.show()
 
 
 def plot_correlation_heatmap(tracker: ExperimentTracker,
@@ -1444,46 +1643,163 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
             plt.close(fig)
         return
 
+    # Calculate F1 scores from existing precision and recall metrics
+    if 'avg_precision' in df.columns and 'avg_recall' in df.columns:
+        # Calculate F1 score with proper handling of edge cases
+        precision = pd.to_numeric(df['avg_precision'], errors='coerce')
+        recall = pd.to_numeric(df['avg_recall'], errors='coerce')
+
+        # F1 = 2 * (precision * recall) / (precision + recall)
+        # Handle division by zero when precision + recall = 0
+        denominator = precision + recall
+        df['f1_score'] = np.where(
+            denominator > 0,
+            2 * (precision * recall) / denominator,
+            0.0
+        )
+        logger.info(f"Calculated F1 scores from avg_precision and avg_recall. Mean F1: {df['f1_score'].mean():.4f}")
+    elif 'val_precision' in df.columns and 'val_recall' in df.columns:
+        # Fallback to validation precision/recall if available
+        precision = pd.to_numeric(df['val_precision'], errors='coerce')
+        recall = pd.to_numeric(df['val_recall'], errors='coerce')
+
+        denominator = precision + recall
+        df['f1_score'] = np.where(
+            denominator > 0,
+            2 * (precision * recall) / denominator,
+            0.0
+        )
+        logger.info(f"Calculated F1 scores from val_precision and val_recall. Mean F1: {df['f1_score'].mean():.4f}")
+    elif 'test_precision' in df.columns and 'test_recall' in df.columns:
+        # Fallback to test precision/recall if available
+        precision = pd.to_numeric(df['test_precision'], errors='coerce')
+        recall = pd.to_numeric(df['test_recall'], errors='coerce')
+
+        denominator = precision + recall
+        df['f1_score'] = np.where(
+            denominator > 0,
+            2 * (precision * recall) / denominator,
+            0.0
+        )
+        logger.info(f"Calculated F1 scores from test_precision and test_recall. Mean F1: {df['f1_score'].mean():.4f}")
+
     # Identify columns
     param_cols = []
     metric_cols = []
 
     for col in df.columns:
-        if col in ['experiment_id', 'timestamp', 'error', 'status', 'training_history', 'training_summary']:
+        if col in ['experiment_id', 'timestamp', 'error', 'status', 'training_history', 'training_summary', 'test_metrics_available']:
             continue
-        # Check if it's a metric
-        if any(metric in col.lower() for metric in ['loss', 'accuracy', 'precision', 'recall', 'f1', 'test', 'epochs_trained', 'final_lr', 'actual_epochs']):
+        # Check if it's a metric - only true performance metrics
+        if any(metric in col.lower() for metric in ['loss', 'accuracy', 'precision', 'recall', 'f1', 'test',
+                                                      'avg_precision', 'avg_recall', 'avg_f1']):
             # Only include numeric columns
             try:
-                if pd.api.types.is_numeric_dtype(df[col]) or df[col].apply(lambda x: isinstance(x, (int, float))).all():
+                # Try to convert to numeric if not already
+                if not pd.api.types.is_numeric_dtype(df[col]):
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                if pd.api.types.is_numeric_dtype(df[col]) and df[col].notna().sum() > 0:
                     metric_cols.append(col)
             except:
                 continue
         else:
             # Check if values vary (likely a hyperparameter)
             try:
-                if df[col].nunique() > 1:
+                # Skip actual_epochs and final_lr - we don't want them in the plot
+                if col in ['actual_epochs', 'final_lr']:
+                    continue  # Skip these columns entirely
+                elif df[col].nunique() > 1:
                     param_cols.append(col)
             except:
                 continue
     
     # Select columns to display (hyperparameters + key metrics)
     display_metrics = []
-    # Try both 'val_accuracy' and 'best_val_accuracy' variants
-    for metric in ['val_accuracy', 'best_val_accuracy', 'final_val_accuracy', 'test_accuracy', 'val_loss', 'best_val_loss', 'epochs_trained']:
-        if metric in metric_cols:
-            display_metrics.append(metric)
-            # Only include one variant of each metric type
-            if 'val_accuracy' in metric and len([m for m in display_metrics if 'val_accuracy' in m]) > 1:
-                display_metrics = display_metrics[:-1]
-            if 'val_loss' in metric and len([m for m in display_metrics if 'val_loss' in m]) > 1:
-                display_metrics = display_metrics[:-1]
+    f1_score_col = None  # Track F1 score column separately
+    generalization_col = None  # Track generalization score separately
+
+    # Comprehensive list of metrics to display in order of priority
+    # Group 1: Basic performance metrics
+    basic_metrics = [
+        'test_accuracy', 'best_val_accuracy', 'final_val_accuracy',
+        'avg_precision', 'avg_recall'
+    ]
+
+    # Group 2: Distribution mismatch and generalization metrics (NEW)
+    distribution_metrics = [
+        'val_test_gap',           # Validation-test accuracy gap
+        'generalization_score',    # Test/validation ratio (closer to 1.0 is better)
+        'distribution_mismatch_warning',  # Boolean flag
+        'mismatch_severity'       # 'high' or 'medium'
+    ]
+
+    # Group 3: Overfitting indicators (NEW)
+    overfitting_metrics = [
+        'train_val_gap',          # Training-validation gap
+        'overfitting_ratio'       # Training/validation ratio
+    ]
+
+    # Group 4: Convergence and efficiency metrics (NEW)
+    convergence_metrics = [
+        'loss_convergence_rate',  # Rate of loss change
+        'val_loss_stability',     # Stability of validation loss
+        'early_stopping_efficiency',  # How well early stopping worked
+        'best_epoch',             # When best performance occurred
+        'epochs_after_best'       # Epochs trained past optimal point
+    ]
+
+    # Group 5: Loss metrics
+    loss_metrics = [
+        'best_val_loss', 'final_val_loss', 'best_loss', 'final_loss'
+    ]
+
+    # Special metrics to be placed at the end
+    special_end_metrics = ['f1_score', 'generalization_score']
+
+    # Process metrics in priority order
+    all_metric_groups = [
+        ('basic', basic_metrics),
+        ('distribution', distribution_metrics),
+        ('overfitting', overfitting_metrics),
+        ('convergence', convergence_metrics),
+        ('loss', loss_metrics)
+    ]
+
+    for group_name, metrics_list in all_metric_groups:
+        for metric in metrics_list:
+            if metric in metric_cols:
+                # Special handling for metrics we want at the end
+                if metric == 'f1_score':
+                    f1_score_col = metric
+                    continue
+                elif metric == 'generalization_score':
+                    generalization_col = metric
+                    continue
+
+                # Skip boolean/string metrics for parallel coordinates
+                if metric in ['distribution_mismatch_warning', 'mismatch_severity']:
+                    continue
+
+                # Add to display if not already present
+                if metric not in display_metrics:
+                    display_metrics.append(metric)
+
+    # Add F1 score if it exists but not generalization score
+    if f1_score_col and not generalization_col:
+        display_metrics.append(f1_score_col)
+
+    # Add generalization score to the end if it exists (highest priority)
+    if generalization_col:
+        display_metrics.append(generalization_col)
+        # Also add F1 score before it if available
+        if f1_score_col and f1_score_col not in display_metrics:
+            display_metrics.insert(-1, f1_score_col)
 
     if not param_cols:
         logger.warning("No varying hyperparameters found")
         return
 
-    # Combine columns for display
+    # Combine columns for display (F1 score is now at the rightmost position)
     display_cols = param_cols + display_metrics
 
     if not display_cols:
@@ -1502,11 +1818,34 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
     # Prepare data for plotting - only use numeric columns
     plot_df = df[display_cols].copy()
 
-    # Convert to numeric, handle infinite values, and drop rows with all NaN
+    # Convert to numeric, handle infinite values and drop non-numeric columns
+    columns_to_keep = []
     for col in display_cols:
-        plot_df[col] = pd.to_numeric(plot_df[col], errors='coerce')
-        plot_df[col] = plot_df[col].replace([np.inf, -np.inf], np.nan)
-    plot_df = plot_df.dropna(how='all')
+        # Skip boolean columns completely
+        if df[col].dtype == bool or df[col].dtype == 'bool':
+            continue
+        try:
+            plot_df[col] = pd.to_numeric(plot_df[col], errors='coerce')
+            plot_df[col] = plot_df[col].replace([np.inf, -np.inf], np.nan)
+            # Only keep if we have at least some numeric values
+            if plot_df[col].notna().sum() > 0:
+                columns_to_keep.append(col)
+        except:
+            continue
+
+    # Filter to only numeric columns
+    if columns_to_keep:
+        plot_df = plot_df[columns_to_keep]
+        display_cols = columns_to_keep
+    else:
+        logger.warning("No numeric columns to display in parallel coordinates plot")
+        return
+
+    # Modified filtering: Keep rows that have at least some valid data
+    # This ensures experiments with F1=0 are preserved even if they have some NaN values
+    # Count non-NaN values per row - require at least 30% valid data
+    valid_data_mask = plot_df.notna().sum(axis=1) >= max(1, len(display_cols) * 0.3)
+    plot_df = plot_df[valid_data_mask]
 
     if plot_df.empty:
         logger.warning("No valid numeric data to plot")
@@ -1527,20 +1866,79 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
     # Store original min/max values for each column (for scaling and labeling)
     col_ranges = {}
     normalized_df = plot_df.copy()
+    f1_binned_zero = False  # Track if we binned F1 zeros
 
     for col in display_cols:
         col_data = plot_df[col].dropna()
         if len(col_data) > 0:
             col_min = col_data.min()
             col_max = col_data.max()
-            col_ranges[col] = {'min': col_min, 'max': col_max}
 
-            # Normalize for internal plotting (but keep originals for display)
-            if col_max > col_min:
-                normalized_df[col] = (plot_df[col] - col_min) / (col_max - col_min)
+            # Special handling for F1 score with dual-scale normalization
+            if col == 'f1_score':
+                # Get non-zero values
+                non_zero_data = col_data[col_data > 0]
+                if len(non_zero_data) > 0:
+                    # Find the minimum and maximum non-zero values
+                    min_non_zero = non_zero_data.min()
+                    max_non_zero = non_zero_data.max()
+
+                    # If we have zeros and non-zeros, create dual-scale visualization
+                    if col_min == 0 and min_non_zero > 0:
+                        f1_binned_zero = True
+
+                        # Store metadata for axis labeling
+                        col_ranges[col] = {
+                            'min': 0,  # Keep original min for display
+                            'max': col_max,
+                            'binned_zero': True,
+                            'dual_scale': True,
+                            'min_non_zero': min_non_zero,
+                            'max_non_zero': max_non_zero,
+                            'zero_region_max': 0.15,  # Top of zero region
+                            'gap_start': 0.15,  # Start of visual gap
+                            'gap_end': 0.20,  # End of visual gap
+                            'success_region_min': 0.20  # Bottom of success region
+                        }
+
+                        # Apply dual-scale normalization
+                        temp_normalized = plot_df[col].copy()
+
+                        # Zero values go to the true zero position (0.0)
+                        zero_mask = (plot_df[col] == 0).to_numpy()
+                        temp_normalized[zero_mask] = 0.0
+
+                        # Non-zero values are scaled to 0.20-1.0 range (80% of vertical space)
+                        non_zero_mask = (plot_df[col] > 0).to_numpy()
+                        if max_non_zero > min_non_zero:
+                            # Scale non-zero values to expanded range
+                            scaled_values = 0.20 + 0.80 * ((plot_df[col][non_zero_mask] - min_non_zero) / (max_non_zero - min_non_zero))
+                            temp_normalized[non_zero_mask] = scaled_values
+                        else:
+                            # All non-zero values are the same
+                            temp_normalized[non_zero_mask] = 0.60  # Middle of success region
+
+                        normalized_df[col] = temp_normalized
+                    else:
+                        # Normal case - no zeros or all zeros
+                        col_ranges[col] = {'min': col_min, 'max': col_max}
+                        if col_max > col_min:
+                            normalized_df[col] = (plot_df[col] - col_min) / (col_max - col_min)
+                        else:
+                            normalized_df[col] = 0.5
+                else:
+                    # All values are zero or same
+                    col_ranges[col] = {'min': col_min, 'max': col_max}
+                    normalized_df[col] = 0.5
             else:
-                # If all values are the same, set to 0.5
-                normalized_df[col] = 0.5
+                # Normal handling for other columns
+                col_ranges[col] = {'min': col_min, 'max': col_max}
+                # Normalize for internal plotting (but keep originals for display)
+                if col_max > col_min:
+                    normalized_df[col] = (plot_df[col] - col_min) / (col_max - col_min)
+                else:
+                    # If all values are the same, set to 0.5
+                    normalized_df[col] = 0.5
         else:
             col_ranges[col] = {'min': 0, 'max': 1}
 
@@ -1568,19 +1966,63 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
             logger.warning(f"All values for color metric '{metric_to_color}' are NaN, using index")
             color_values = np.arange(len(df))
 
-    # Normalize colors with better handling
-    unique_colors = np.unique(color_values[~np.isnan(color_values)])
-    if len(unique_colors) > 1:
-        norm = Normalize(vmin=np.nanmin(color_values), vmax=np.nanmax(color_values))
-    elif len(unique_colors) == 1:
-        # All values are the same, create a small range around the value
-        val = unique_colors[0]
-        norm = Normalize(vmin=val - 0.1, vmax=val + 0.1)
+    # Special handling for F1 score to create meaningful colorbar
+    f1_custom_colorbar = False
+    if metric_to_color == 'f1_score':
+        # Check if we have both zeros and non-zeros
+        non_zero_mask = (color_values > 0).to_numpy() if hasattr(color_values > 0, 'to_numpy') else color_values > 0
+        zero_mask = (color_values == 0).to_numpy() if hasattr(color_values == 0, 'to_numpy') else color_values == 0
+
+        if zero_mask.any() and non_zero_mask.any():
+            f1_custom_colorbar = True
+            # Store original values for colorbar
+            original_color_values = color_values.copy()
+
+            # Get the range of non-zero values
+            min_non_zero = color_values[non_zero_mask].min()
+            max_non_zero = color_values[non_zero_mask].max()
+
+            # Create adjusted color values
+            # Map zeros to -1 (will get dark red color)
+            # Map non-zeros to 0-1 range for full gradient
+            adjusted_color_values = color_values.copy()
+            adjusted_color_values[zero_mask] = -1
+            if max_non_zero > min_non_zero:
+                adjusted_color_values[non_zero_mask] = (color_values[non_zero_mask] - min_non_zero) / (max_non_zero - min_non_zero)
+            else:
+                adjusted_color_values[non_zero_mask] = 0.5
+
+            # Use adjusted values for coloring
+            color_values = adjusted_color_values
+
+            # Create custom normalization for the adjusted range
+            norm = Normalize(vmin=-1.2, vmax=1.0)  # Extend below -1 for better red
+
+            # Store metadata for colorbar
+            f1_colorbar_info = {
+                'min_non_zero': min_non_zero,
+                'max_non_zero': max_non_zero,
+                'has_zeros': True
+            }
+        else:
+            # Normal handling if no zeros or all zeros
+            f1_custom_colorbar = False
+            norm = Normalize(vmin=np.nanmin(color_values), vmax=np.nanmax(color_values))
     else:
-        # No valid values, use default range
-        norm = Normalize(vmin=0, vmax=1)
+        # Normal color normalization for other metrics
+        unique_colors = np.unique(color_values[~np.isnan(color_values)])
+        if len(unique_colors) > 1:
+            norm = Normalize(vmin=np.nanmin(color_values), vmax=np.nanmax(color_values))
+        elif len(unique_colors) == 1:
+            # All values are the same, create a small range around the value
+            val = unique_colors[0]
+            norm = Normalize(vmin=val - 0.1, vmax=val + 0.1)
+        else:
+            # No valid values, use default range
+            norm = Normalize(vmin=0, vmax=1)
+
     # Use a diverging colormap for better performance visualization
-    if 'accuracy' in metric_to_color.lower() or 'precision' in metric_to_color.lower():
+    if 'accuracy' in metric_to_color.lower() or 'precision' in metric_to_color.lower() or metric_to_color == 'f1_score':
         # Higher is better - use green for good, red for bad
         cmap = cm.get_cmap('RdYlGn')
     elif 'loss' in metric_to_color.lower():
@@ -1649,12 +2091,29 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
             zorder = sort_idx
             color = cmap(norm(color_values[idx]))
 
-            # Plot curved line segments
-            for i in range(len(positions) - 1):
-                if np.isnan(values[i]) or np.isnan(values[i+1]):
-                    continue
-                _plot_curved_segment(ax, positions[i], values[i], positions[i+1], values[i+1],
-                                   color, alpha, linewidth, zorder)
+            # Plot curved line segments with better NaN handling
+            # Find continuous segments and plot them separately
+            segments = []
+            current_segment = []
+
+            for i in range(len(positions)):
+                if not np.isnan(values[i]):
+                    current_segment.append(i)
+                else:
+                    if len(current_segment) >= 2:
+                        segments.append(current_segment)
+                    current_segment = []
+
+            if len(current_segment) >= 2:
+                segments.append(current_segment)
+
+            # Plot each continuous segment
+            for segment in segments:
+                for i in range(len(segment) - 1):
+                    idx1, idx2 = segment[i], segment[i+1]
+                    _plot_curved_segment(ax, positions[idx1], values[idx1],
+                                       positions[idx2], values[idx2],
+                                       color, alpha, linewidth, zorder)
     else:
         # Original behavior: highlight top experiments
         # First pass: plot non-top experiments with low alpha
@@ -1671,12 +2130,29 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
             zorder = 1
             color = cmap(norm(color_values[idx]))
 
-            # Plot curved line segments
-            for i in range(len(positions) - 1):
-                if np.isnan(values[i]) or np.isnan(values[i+1]):
-                    continue
-                _plot_curved_segment(ax, positions[i], values[i], positions[i+1], values[i+1],
-                                   color, alpha, linewidth, zorder)
+            # Plot curved line segments with better NaN handling
+            # Find continuous segments and plot them separately
+            segments = []
+            current_segment = []
+
+            for i in range(len(positions)):
+                if not np.isnan(values[i]):
+                    current_segment.append(i)
+                else:
+                    if len(current_segment) >= 2:
+                        segments.append(current_segment)
+                    current_segment = []
+
+            if len(current_segment) >= 2:
+                segments.append(current_segment)
+
+            # Plot each continuous segment
+            for segment in segments:
+                for i in range(len(segment) - 1):
+                    idx1, idx2 = segment[i], segment[i+1]
+                    _plot_curved_segment(ax, positions[idx1], values[idx1],
+                                       positions[idx2], values[idx2],
+                                       color, alpha, linewidth, zorder)
 
         # Second pass: plot top experiments with high visibility
         if top_indices:
@@ -1694,11 +2170,28 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
                 color = cmap(norm(color_values[idx]))
 
                 # Plot with curved line segments for smoother appearance
-                for i in range(len(positions) - 1):
-                    if np.isnan(values[i]) or np.isnan(values[i+1]):
-                        continue
-                    _plot_curved_segment(ax, positions[i], values[i], positions[i+1], values[i+1],
-                                       color, alpha, linewidth, zorder)
+                # Find continuous segments and plot them separately
+                segments = []
+                current_segment = []
+
+                for i in range(len(positions)):
+                    if not np.isnan(values[i]):
+                        current_segment.append(i)
+                    else:
+                        if len(current_segment) >= 2:
+                            segments.append(current_segment)
+                        current_segment = []
+
+                if len(current_segment) >= 2:
+                    segments.append(current_segment)
+
+                # Plot each continuous segment
+                for segment in segments:
+                    for i in range(len(segment) - 1):
+                        idx1, idx2 = segment[i], segment[i+1]
+                        _plot_curved_segment(ax, positions[idx1], values[idx1],
+                                           positions[idx2], values[idx2],
+                                           color, alpha, linewidth, zorder)
 
                 # Add small markers at data points for top experiments
                 valid_mask = ~np.isnan(values)
@@ -1724,6 +2217,8 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
             short_name = 'Early Stop\nPatience'
         elif col == 'lr_factor':
             short_name = 'LR\nFactor'
+        elif col == 'f1_score':
+            short_name = 'F1\nScore'
         elif 'val_accuracy' in col or 'best_val_accuracy' in col:
             short_name = 'Val\nAccuracy'
         elif 'test_accuracy' in col:
@@ -1766,6 +2261,28 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
         # Draw main axis line
         ax.plot([pos, pos], [0, 1], 'k-', linewidth=1.5, alpha=0.7, zorder=998)
 
+        # Add visual separator for F1 score dual-scale
+        if col == 'f1_score' and isinstance(col_ranges[col], dict) and 'dual_scale' in col_ranges[col]:
+            # Draw separator line between failed and successful regions
+            gap_start = col_ranges[col]['gap_start']
+            gap_end = col_ranges[col]['gap_end']
+
+            # Draw a dashed line to show the separation
+            ax.plot([pos - 0.05, pos + 0.05], [gap_end, gap_end],
+                   'r--', linewidth=2, alpha=0.6, zorder=999)
+
+            # Add subtle shading for the failed region
+            ax.add_patch(plt.Rectangle((pos - 0.04, 0), 0.08, gap_start,
+                                      facecolor='red', alpha=0.05, zorder=1))
+
+            # Add labels for the regions
+            ax.text(pos - 0.08, 0.07, 'Failed',
+                   rotation=90, va='center', ha='right',
+                   fontsize=8, color='red', alpha=0.7, weight='bold')
+            ax.text(pos - 0.08, 0.6, 'Successful',
+                   rotation=90, va='center', ha='right',
+                   fontsize=8, color='green', alpha=0.7, weight='bold')
+
         # Add tick marks and value labels for each axis
         if col in col_ranges:
             col_min = col_ranges[col]['min']
@@ -1805,10 +2322,75 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
                     values_to_show.extend([unique_values[q1_idx], unique_values[q3_idx]])
                 values_to_show = sorted(set(values_to_show))
 
+            # Special handling for F1 score with dual-scale
+            if col == 'f1_score' and isinstance(col_ranges[col], dict) and 'dual_scale' in col_ranges[col]:
+                # Custom labels for dual-scale F1 score
+                # Label for failed experiments (zeros)
+                if 0 in unique_values:
+                    # Draw tick at the true zero position
+                    ax.plot([pos-0.03, pos+0.03], [0.0, 0.0], 'r-', linewidth=1.2, alpha=0.7, zorder=999)
+                    val_text = '0 (Failed)'
+                    offset = 0.12
+                    ax.text(pos + offset, 0.0, val_text,
+                           ha='left', va='center',
+                           fontsize=7, alpha=0.9, fontweight='bold', color='red',
+                           zorder=1000,
+                           bbox=dict(boxstyle='round,pad=0.1',
+                                    facecolor='#ffeeee', alpha=0.8, edgecolor='red'))
+
+                # Labels for successful experiments (non-zero values)
+                # Show min, max, and a few intermediate values
+                min_non_zero = col_ranges[col]['min_non_zero']
+                max_non_zero = col_ranges[col]['max_non_zero']
+
+                # Calculate positions in normalized space
+                success_values_to_show = [min_non_zero, max_non_zero]
+                if len(non_zero_data := col_data[col_data > 0]) > 2:
+                    # Add median
+                    median_val = non_zero_data.median()
+                    if median_val not in success_values_to_show:
+                        success_values_to_show.insert(1, median_val)
+                    # Add quartiles if enough data
+                    if len(non_zero_data) >= 10:
+                        q1 = non_zero_data.quantile(0.25)
+                        q3 = non_zero_data.quantile(0.75)
+                        success_values_to_show = sorted(set([min_non_zero, q1, median_val, q3, max_non_zero]))
+
+                # Draw labels for success region
+                for j, actual_val in enumerate(success_values_to_show):
+                    # Calculate normalized position using dual-scale
+                    if max_non_zero > min_non_zero:
+                        norm_val = 0.20 + 0.80 * ((actual_val - min_non_zero) / (max_non_zero - min_non_zero))
+                    else:
+                        norm_val = 0.60
+
+                    # Draw tick mark
+                    ax.plot([pos-0.03, pos+0.03], [norm_val, norm_val], 'g-', linewidth=0.8, alpha=0.5, zorder=999)
+
+                    # Format value text
+                    val_text = f'{actual_val:.4f}'
+
+                    # Alternate positioning to avoid overlap
+                    offset = 0.12 if j % 2 == 0 else -0.12
+                    ha = 'left' if offset > 0 else 'right'
+
+                    ax.text(pos + offset, norm_val, val_text,
+                           ha=ha, va='center',
+                           fontsize=7, alpha=0.9, fontweight='normal',
+                           zorder=1000,
+                           bbox=dict(boxstyle='round,pad=0.1',
+                                    facecolor='#eeffee', alpha=0.7, edgecolor='green'))
+
+                # Skip normal processing for F1 score
+                values_to_show = []
+
             # Draw tick marks and labels for each unique value
             for j, actual_val in enumerate(values_to_show):
                 # Calculate normalized position for this value
-                if col_max > col_min:
+                # Skip F1 score as it's already handled above with dual-scale
+                if col == 'f1_score' and isinstance(col_ranges[col], dict) and 'dual_scale' in col_ranges[col]:
+                    continue  # Already handled above with custom dual-scale logic
+                elif col_max > col_min:
                     norm_val = (actual_val - col_min) / (col_max - col_min)
                 else:
                     norm_val = 0.5
@@ -1830,6 +2412,9 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
                     val_text = f'{int(actual_val)}'
                 elif col == 'lr_factor':
                     val_text = f'{actual_val:.2f}'
+                elif col == 'f1_score':
+                    # Special formatting for F1 score
+                    val_text = f'{actual_val:.3f}'
                 elif 'accuracy' in col.lower():
                     # Show as percentage
                     val_text = f'{actual_val*100:.1f}%' if col_max <= 1 else f'{actual_val:.1f}'
@@ -1860,23 +2445,68 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
                                 facecolor='white', alpha=0.7, edgecolor='none'))
     
     # Add improved colorbar with performance indicators
-    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    cbar = plt.colorbar(sm, ax=ax, pad=0.02, fraction=0.046)
+    if f1_custom_colorbar and metric_to_color == 'f1_score':
+        # Create custom colorbar for F1 scores
+        import matplotlib.colors as mcolors
+        from matplotlib.patches import Rectangle
 
-    # Format colorbar label based on metric type
-    if 'accuracy' in metric_to_color.lower():
-        cbar_label = f'{metric_to_color.replace("_", " ").title()} →'
-        cbar.ax.text(0.5, 1.05, 'Better', transform=cbar.ax.transAxes,
-                    ha='center', fontsize=9, weight='bold')
-        cbar.ax.text(0.5, -0.05, 'Worse', transform=cbar.ax.transAxes,
-                    ha='center', fontsize=9)
-    else:  # For loss metrics, lower is better
-        cbar_label = f'{metric_to_color.replace("_", " ").title()} →'
-        cbar.ax.text(0.5, 1.05, 'Worse', transform=cbar.ax.transAxes,
-                    ha='center', fontsize=9)
-        cbar.ax.text(0.5, -0.05, 'Better', transform=cbar.ax.transAxes,
-                    ha='center', fontsize=9, weight='bold')
+        # Create the colorbar
+        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax, pad=0.02, fraction=0.046)
+
+        # Remove default ticks
+        cbar.set_ticks([])
+
+        # Add custom ticks for F1 score
+        # Add tick for failed (zeros)
+        cbar.ax.plot([0, 1], [-1, -1], 'k-', linewidth=2, transform=cbar.ax.transData)
+        cbar.ax.text(1.3, -1, 'Failed\n(0.000)', transform=cbar.ax.transData,
+                    va='center', fontsize=8, color='darkred', weight='bold')
+
+        # Add ticks for successful range
+        tick_positions = [0, 0.25, 0.5, 0.75, 1.0]
+        tick_labels = []
+        for pos in tick_positions:
+            # Map position back to actual F1 value
+            actual_value = f1_colorbar_info['min_non_zero'] + pos * (f1_colorbar_info['max_non_zero'] - f1_colorbar_info['min_non_zero'])
+            tick_labels.append(f'{actual_value:.4f}')
+            # Draw tick mark
+            cbar.ax.plot([0, 0.2], [pos, pos], 'k-', linewidth=1, transform=cbar.ax.transData)
+
+        # Add labels for the successful range
+        for pos, label in zip(tick_positions, tick_labels):
+            cbar.ax.text(1.3, pos, label, transform=cbar.ax.transData,
+                        va='center', fontsize=8)
+
+        # Add separator line between failed and successful
+        cbar.ax.plot([0, 1], [-0.8, -0.8], 'k--', linewidth=1, alpha=0.5, transform=cbar.ax.transData)
+
+        # Add title
+        cbar_label = 'F1 Score'
+        cbar.ax.text(0.5, 1.1, 'Better →', transform=cbar.ax.transAxes,
+                    ha='center', fontsize=9, weight='bold', color='green')
+        cbar.ax.text(0.5, -0.35, 'Worse →', transform=cbar.ax.transAxes,
+                    ha='center', fontsize=9, color='red')
+    else:
+        # Standard colorbar for other metrics
+        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax, pad=0.02, fraction=0.046)
+
+        # Format colorbar label based on metric type
+        if 'accuracy' in metric_to_color.lower():
+            cbar_label = f'{metric_to_color.replace("_", " ").title()} →'
+            cbar.ax.text(0.5, 1.05, 'Better', transform=cbar.ax.transAxes,
+                        ha='center', fontsize=9, weight='bold')
+            cbar.ax.text(0.5, -0.05, 'Worse', transform=cbar.ax.transAxes,
+                        ha='center', fontsize=9)
+        else:  # For loss metrics, lower is better
+            cbar_label = f'{metric_to_color.replace("_", " ").title()} →'
+            cbar.ax.text(0.5, 1.05, 'Worse', transform=cbar.ax.transAxes,
+                        ha='center', fontsize=9)
+            cbar.ax.text(0.5, -0.05, 'Better', transform=cbar.ax.transAxes,
+                        ha='center', fontsize=9, weight='bold')
 
     cbar.set_label(cbar_label, fontsize=11, fontweight='bold')
     
