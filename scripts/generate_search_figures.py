@@ -166,10 +166,32 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
     # 2. Parallel coordinates plot
     logger.info("Generating parallel coordinates plot...")
     try:
+        # Check which metrics are available to determine best coloring metric
+        df = pd.DataFrame(tracker.experiments) if tracker.experiments else pd.DataFrame()
+
+        # Priority order for coloring metric:
+        # 1. generalization_score (best indicator of real-world performance)
+        # 2. f1_score (balanced metric for segmentation)
+        # 3. val_test_gap (shows distribution mismatch)
+        # 4. test_accuracy (fallback)
+        color_metric = 'test_accuracy'  # Default fallback
+
+        if 'generalization_score' in df.columns and df['generalization_score'].notna().sum() > 0:
+            color_metric = 'generalization_score'
+            logger.info("Using generalization_score for parallel coordinates coloring (optimal generalization indicator)")
+        elif 'f1_score' in df.columns and df['f1_score'].notna().sum() > 0:
+            color_metric = 'f1_score'
+            logger.info("Using f1_score for parallel coordinates coloring (balanced segmentation metric)")
+        elif 'val_test_gap' in df.columns and df['val_test_gap'].notna().sum() > 0:
+            color_metric = 'val_test_gap'
+            logger.info("Using val_test_gap for parallel coordinates coloring (distribution mismatch indicator)")
+        else:
+            logger.info(f"Using {color_metric} for parallel coordinates coloring (fallback metric)")
+
         plot_parallel_coordinates(
             tracker,
             os.path.join(output_dir, 'parallel_coordinates_plot.png'),
-            metric_to_color='test_accuracy',  # Use test_accuracy since all experiments have it
+            metric_to_color=color_metric,
             highlight_top_n=10  # Highlight top 10 experiments
         )
         logger.info("✓ Parallel coordinates plot saved")
@@ -243,7 +265,43 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
         # Find best configuration
         if tracker.experiments:
             df = pd.DataFrame(tracker.experiments)
-            if 'test_accuracy' in df.columns:
+
+            # Calculate F1 scores if precision and recall are available
+            if 'avg_precision' in df.columns and 'avg_recall' in df.columns:
+                precision = pd.to_numeric(df['avg_precision'], errors='coerce')
+                recall = pd.to_numeric(df['avg_recall'], errors='coerce')
+                denominator = precision + recall
+                df['f1_score'] = np.where(
+                    denominator > 0,
+                    2 * (precision * recall) / denominator,
+                    0.0
+                )
+
+                # Find best by F1 score
+                best_idx = df['f1_score'].idxmax()
+                best_exp = df.iloc[best_idx]
+
+                print(f"\nBest F1 Score: {best_exp['f1_score']:.4f}")
+                print(f"  Test Accuracy: {best_exp['test_accuracy']:.4f}")
+                print(f"  Avg Precision: {best_exp['avg_precision']:.4f}")
+                print(f"  Avg Recall: {best_exp['avg_recall']:.4f}")
+                print(f"Experiment ID: {best_exp.get('experiment_id', 'N/A')}")
+                print("\nBest Hyperparameters:")
+                for param in ['learning_rate', 'batch_size', 'epochs', 'es_patience', 'lr_factor']:
+                    if param in best_exp:
+                        print(f"  {param}: {best_exp[param]}")
+
+                # Show top 5 experiments by F1 score
+                print("\nTop 5 Experiments by F1 Score:")
+                top_5 = df.nlargest(5, 'f1_score')[['experiment_id', 'f1_score', 'test_accuracy',
+                                                     'avg_precision', 'avg_recall',
+                                                     'learning_rate', 'batch_size', 'epochs']]
+                for idx, row in top_5.iterrows():
+                    print(f"  {row['experiment_id']}: F1={row['f1_score']:.4f}, Acc={row['test_accuracy']:.4f} "
+                          f"(lr={row['learning_rate']}, batch={row['batch_size']}, epochs={row['epochs']})")
+
+            elif 'test_accuracy' in df.columns:
+                # Fallback to test accuracy if F1 can't be calculated
                 best_idx = df['test_accuracy'].idxmax()
                 best_exp = df.iloc[best_idx]
 
