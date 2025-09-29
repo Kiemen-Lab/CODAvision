@@ -11,6 +11,9 @@ import numpy as np
 import tensorflow as tf
 import pickle
 
+# Import configuration
+from base.config import DataConfig
+
 # Set up logging
 import logging
 logger = logging.getLogger(__name__)
@@ -58,16 +61,26 @@ def create_dataset(
     image_paths: List[str],
     mask_paths: List[str],
     image_size: int,
-    batch_size: int
+    batch_size: int,
+    shuffle: bool = False,
+    shuffle_buffer_size: Optional[int] = None,
+    seed: Optional[int] = None,
+    cache: bool = False
 ) -> tf.data.Dataset:
     """
     Create a TensorFlow dataset from lists of image and mask paths.
+
+    Pipeline order: load → cache (optional) → shuffle (optional) → batch → prefetch
 
     Args:
         image_paths: List of paths to image files
         mask_paths: List of paths to mask files
         image_size: Size to resize images and masks to (assumes square images)
         batch_size: Number of samples per batch
+        shuffle: Whether to shuffle the dataset
+        shuffle_buffer_size: Size of the shuffle buffer (if None, uses full dataset size)
+        seed: Random seed for shuffling (for reproducibility)
+        cache: Whether to cache the dataset in memory after loading
 
     Returns:
         TensorFlow dataset containing batches of (image, mask) pairs
@@ -77,19 +90,168 @@ def create_dataset(
         image = read_image(image_path, image_size)
         mask = read_image(mask_path, image_size, mask=True)
         return image, mask
-    
+
     # Create a dataset from the file paths
     dataset = tf.data.Dataset.from_tensor_slices((image_paths, mask_paths))
-    
+
     # Map the load_data function to preprocess the images and masks
     dataset = dataset.map(
         lambda img, mask: load_data(img, mask),
         num_parallel_calls=tf.data.AUTOTUNE
     )
-    
+
+    # Cache after loading images if requested
+    if cache:
+        dataset = dataset.cache()
+
+    # Shuffle if requested (with reshuffle each iteration for training)
+    if shuffle:
+        buffer_size = shuffle_buffer_size or len(image_paths)
+        dataset = dataset.shuffle(buffer_size=buffer_size, seed=seed, reshuffle_each_iteration=True)
+
     # Batch the dataset
     dataset = dataset.batch(batch_size, drop_remainder=True)
-    
+
+    # Prefetch for performance
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+
+    return dataset
+
+
+def create_training_dataset(
+    image_paths: List[str],
+    mask_paths: List[str],
+    image_size: int,
+    batch_size: int,
+    data_config: Optional[DataConfig] = None,
+    seed: Optional[int] = None,
+    cache: bool = False,
+    repeat: bool = False
+) -> tf.data.Dataset:
+    """
+    Create an optimized TensorFlow training dataset with shuffling and performance optimizations.
+
+    This function creates a dataset specifically optimized for training with:
+    - Data loading and preprocessing
+    - Optional caching of loaded images for small datasets
+    - Shuffling for randomization (with reshuffle each epoch)
+    - Optional repeating for continuous training
+    - Prefetching for performance
+
+    Pipeline order: load → cache (optional) → shuffle → repeat (optional) → batch → prefetch
+
+    Args:
+        image_paths: List of paths to image files
+        mask_paths: List of paths to mask files
+        image_size: Size to resize images and masks to (assumes square images)
+        batch_size: Number of samples per batch
+        data_config: DataConfig object with dataset configuration (if None, uses defaults)
+        seed: Random seed for shuffling (for reproducibility)
+        cache: Whether to cache the dataset in memory (recommended for small datasets)
+        repeat: Whether to repeat the dataset indefinitely (usually False, let fit() handle epochs)
+
+    Returns:
+        Optimized TensorFlow dataset for training
+    """
+    if data_config is None:
+        data_config = DataConfig()
+
+    def load_data(image_path, mask_path):
+        """Inner function to load an image and its corresponding mask."""
+        image = read_image(image_path, image_size)
+        mask = read_image(mask_path, image_size, mask=True)
+        return image, mask
+
+    # Create a dataset from the file paths
+    dataset = tf.data.Dataset.from_tensor_slices((image_paths, mask_paths))
+
+    # Map the load_data function to preprocess the images and masks
+    num_parallel_calls = tf.data.AUTOTUNE if data_config.num_parallel_calls == -1 else data_config.num_parallel_calls
+    dataset = dataset.map(
+        lambda img, mask: load_data(img, mask),
+        num_parallel_calls=num_parallel_calls
+    )
+
+    # Cache after loading images if requested (for small datasets)
+    if cache:
+        dataset = dataset.cache()
+
+    # Always shuffle training data
+    shuffle_buffer_size = min(data_config.shuffle_buffer_size, len(image_paths))
+    dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=True)
+
+    # Repeat the dataset for continuous training
+    if repeat:
+        dataset = dataset.repeat()
+
+    # Batch the dataset
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+
+    # Prefetch for performance
+    dataset = dataset.prefetch(data_config.prefetch_buffer_size)
+
+    return dataset
+
+
+def create_validation_dataset(
+    image_paths: List[str],
+    mask_paths: List[str],
+    image_size: int,
+    batch_size: int,
+    data_config: Optional[DataConfig] = None,
+    cache: bool = False
+) -> tf.data.Dataset:
+    """
+    Create an optimized TensorFlow validation dataset without shuffling.
+
+    This function creates a dataset specifically optimized for validation with:
+    - Data loading and preprocessing
+    - Optional caching of loaded images for performance
+    - No shuffling (for consistent validation)
+    - Prefetching for performance
+
+    Pipeline order: load → cache (optional) → batch → prefetch
+
+    Args:
+        image_paths: List of paths to image files
+        mask_paths: List of paths to mask files
+        image_size: Size to resize images and masks to (assumes square images)
+        batch_size: Number of samples per batch
+        data_config: DataConfig object with dataset configuration (if None, uses defaults)
+        cache: Whether to cache the dataset in memory (recommended for validation sets)
+
+    Returns:
+        Optimized TensorFlow dataset for validation
+    """
+    if data_config is None:
+        data_config = DataConfig()
+
+    def load_data(image_path, mask_path):
+        """Inner function to load an image and its corresponding mask."""
+        image = read_image(image_path, image_size)
+        mask = read_image(mask_path, image_size, mask=True)
+        return image, mask
+
+    # Create a dataset from the file paths
+    dataset = tf.data.Dataset.from_tensor_slices((image_paths, mask_paths))
+
+    # Map the load_data function to preprocess the images and masks
+    num_parallel_calls = tf.data.AUTOTUNE if data_config.num_parallel_calls == -1 else data_config.num_parallel_calls
+    dataset = dataset.map(
+        lambda img, mask: load_data(img, mask),
+        num_parallel_calls=num_parallel_calls
+    )
+
+    # Cache after loading images if requested (useful for validation sets)
+    if cache:
+        dataset = dataset.cache()
+
+    # Batch the dataset
+    dataset = dataset.batch(batch_size, drop_remainder=True)
+
+    # Prefetch for performance
+    dataset = dataset.prefetch(data_config.prefetch_buffer_size)
+
     return dataset
 
 
@@ -183,7 +345,11 @@ class DataGenerator:
     def create_dataset(
         self,
         image_paths: List[str],
-        mask_paths: List[str]
+        mask_paths: List[str],
+        shuffle: bool = False,
+        shuffle_buffer_size: Optional[int] = None,
+        seed: Optional[int] = None,
+        cache: bool = False
     ) -> tf.data.Dataset:
         """
         Create a TensorFlow dataset from lists of image and mask paths.
@@ -191,8 +357,16 @@ class DataGenerator:
         Args:
             image_paths: List of paths to image files
             mask_paths: List of paths to mask files
+            shuffle: Whether to shuffle the dataset
+            shuffle_buffer_size: Size of the shuffle buffer
+            seed: Random seed for shuffling
+            cache: Whether to cache the dataset in memory
 
         Returns:
             TensorFlow dataset containing batches of (image, mask) pairs
         """
-        return create_dataset(image_paths, mask_paths, self.image_size, self.batch_size)
+        return create_dataset(
+            image_paths, mask_paths, self.image_size, self.batch_size,
+            shuffle=shuffle, shuffle_buffer_size=shuffle_buffer_size,
+            seed=seed, cache=cache
+        )
