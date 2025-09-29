@@ -10,6 +10,7 @@ import time
 import pickle
 import os
 import warnings
+import platform
 from glob import glob
 from typing import Dict, List, Optional, Tuple, Union, Any
 import numpy as np
@@ -21,7 +22,8 @@ import traceback
 from base.models.backbones import model_call, unfreeze_model
 from base.utils.logger import Logger
 from base.models.utils import save_model_metadata, setup_gpu, calculate_class_weights, get_model_paths, create_distribution_strategy
-from base.data.loaders import create_dataset, load_model_metadata
+from base.data.loaders import create_dataset, create_training_dataset, create_validation_dataset, load_model_metadata
+from base.config import DataConfig, ModelDefaults
 
 # Suppress warnings and TensorFlow logs
 warnings.filterwarnings('ignore')
@@ -124,6 +126,63 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         """Create an instance from configuration dictionary."""
         class_weights = tf.convert_to_tensor(config.pop("class_weights"), dtype=tf.float32)
         return cls(class_weights=class_weights, **config)
+
+
+class RegularizationLossCallback(keras.callbacks.Callback):
+    """
+    Callback for monitoring regularization loss separately from data loss.
+
+    This callback tracks the L2 regularization loss during training and
+    logs the ratio of regularization loss to data loss for debugging.
+    """
+
+    def __init__(self, logger: Optional[Logger] = None):
+        """
+        Initialize the regularization loss callback.
+
+        Args:
+            logger: Optional logger for outputting regularization loss info
+        """
+        super().__init__()
+        self.logger = logger
+        self.regularization_losses = []
+        self.data_losses = []
+        self.total_losses = []
+
+    def on_epoch_end(self, epoch, logs=None):
+        """
+        Calculate and log regularization loss at the end of each epoch.
+
+        Args:
+            epoch: Current epoch number
+            logs: Dictionary of metrics from the epoch
+        """
+        if self.model and logs:
+            # Get total loss from logs
+            total_loss = logs.get('loss', 0)
+
+            # Calculate regularization loss (sum of all regularization losses in the model)
+            regularization_loss = 0
+            if hasattr(self.model, 'losses') and self.model.losses:
+                regularization_loss = tf.reduce_sum(self.model.losses).numpy()
+
+            # Calculate data loss (total loss minus regularization loss)
+            data_loss = total_loss - regularization_loss
+
+            # Store losses
+            self.regularization_losses.append(float(regularization_loss))
+            self.data_losses.append(float(data_loss))
+            self.total_losses.append(float(total_loss))
+
+            # Calculate ratio
+            ratio = regularization_loss / data_loss if data_loss > 0 else 0
+
+            # Log if logger is available
+            if self.logger:
+                self.logger.logger.info(
+                    f"Epoch {epoch + 1} - Regularization Loss: {regularization_loss:.6f}, "
+                    f"Data Loss: {data_loss:.6f}, Ratio: {ratio:.4f}"
+                )
 
 
 class BatchAccuracyCallback(keras.callbacks.Callback):
@@ -429,6 +488,8 @@ class SegmentationModelTrainer:
         self.num_val_samples = 0
         self.train_steps_per_epoch = 0
         self.val_steps_per_epoch = 0
+        self.l2_regularization_weight = None
+        self.use_adamw_optimizer = False
 
         # GPU information for logging
         self.gpu_info = self._setup_gpu()
@@ -457,6 +518,17 @@ class SegmentationModelTrainer:
             self.image_size = self.model_data.get('sxy')
             self.model_type = self.model_data.get('model_type', "DeepLabV3_plus")
             self.batch_size = self.model_data.get('batch_size', 3)
+            self.l2_regularization_weight = self.model_data.get('l2_regularization_weight', 1e-4)
+            self.use_adamw_optimizer = self.model_data.get('use_adamw_optimizer', False)
+
+            # Validate L2 regularization weight
+            if self.l2_regularization_weight > 1e-3:
+                module_logger.warning(f"L2 regularization weight {self.l2_regularization_weight} is very high and may cause training instability")
+                module_logger.warning("Consider using values between 1e-6 and 1e-4 for better stability")
+            elif self.l2_regularization_weight > 1e-4:
+                module_logger.info(f"Using strong L2 regularization (weight={self.l2_regularization_weight})")
+            elif self.l2_regularization_weight > 0:
+                module_logger.info(f"Using L2 regularization (weight={self.l2_regularization_weight})")
 
             # Get standard paths
             self.model_paths = get_model_paths(self.model_path, self.model_type)
@@ -471,12 +543,15 @@ class SegmentationModelTrainer:
         except Exception as e:
             raise ValueError(f"Failed to load model data: {e}")
 
-    def _prepare_data(self):
+    def _prepare_data(self, seed: Optional[int] = None):
         """
-        Prepare training and validation datasets.
+        Prepare training and validation datasets with proper shuffling and optimization.
 
         This method finds training and validation images and masks,
-        and creates TensorFlow datasets for them.
+        and creates optimized TensorFlow datasets for them.
+
+        Args:
+            seed: Random seed for shuffling (for reproducibility)
 
         Raises:
             ValueError: If no training or validation images are found
@@ -510,19 +585,34 @@ class SegmentationModelTrainer:
                              f"per-GPU batch size {self.batch_size // self.num_gpus}")
             effective_batch_size = self.batch_size // self.num_gpus
 
-        # Create datasets
-        self.train_dataset = create_dataset(
+        # Create DataConfig for optimized data pipeline
+        data_config = DataConfig()
+
+        # Determine if we should cache based on dataset size
+        # Cache small datasets (< 100 images) for better performance
+        cache_train = len(train_images) < 100
+        cache_val = len(val_images) < 100
+
+        # Create optimized training dataset with shuffling
+        self.train_dataset = create_training_dataset(
             train_images,
             train_masks,
             self.image_size,
-            effective_batch_size
+            effective_batch_size,
+            data_config=data_config,
+            seed=seed,
+            cache=cache_train,
+            repeat=False  # Don't repeat, let fit() handle epochs
         )
 
-        self.val_dataset = create_dataset(
+        # Create optimized validation dataset without shuffling
+        self.val_dataset = create_validation_dataset(
             val_images,
             val_masks,
             self.image_size,
-            effective_batch_size
+            effective_batch_size,
+            data_config=data_config,
+            cache=cache_val
         )
 
         # Store the number of samples for steps_per_epoch calculation
@@ -549,6 +639,12 @@ class SegmentationModelTrainer:
             # For distributed datasets, the logger will skip detailed analysis
             self.logger.log_dataset_info(self.train_dataset, "Training")
             self.logger.log_dataset_info(self.val_dataset, "Validation")
+            # Log that shuffling is enabled
+            module_logger.info(f"Training dataset shuffling: ENABLED (buffer_size={data_config.shuffle_buffer_size})")
+            module_logger.info(f"Validation dataset shuffling: DISABLED (standard practice)")
+        else:
+            module_logger.info(f"Training dataset shuffling: ENABLED")
+            module_logger.info(f"Validation dataset shuffling: DISABLED")
 
     def _calculate_class_weights(self, mask_list):
         """
@@ -630,7 +726,14 @@ class SegmentationModelTrainer:
             filepath=best_model_path
         )
 
-        return [batch_callback]
+        callbacks = [batch_callback]
+
+        # Add regularization loss monitoring if L2 regularization is enabled
+        if self.l2_regularization_weight and self.l2_regularization_weight > 0:
+            reg_callback = RegularizationLossCallback(logger=self.logger)
+            callbacks.append(reg_callback)
+
+        return callbacks
 
     def _compile_model(self, model: keras.Model):
         """
@@ -658,11 +761,14 @@ class SegmentationModelTrainer:
             "Subclasses must implement _train_model method"
         )
 
-    def train(self) -> Dict[str, Any]:
+    def train(self, seed: Optional[int] = None) -> Dict[str, Any]:
         """
         Train a segmentation model and return training results.
 
         This is the main method that orchestrates the entire training process.
+
+        Args:
+            seed: Random seed for shuffling (for reproducibility)
 
         Returns:
             Dictionary with training results and model information
@@ -670,8 +776,14 @@ class SegmentationModelTrainer:
         # Start timing
         start_time = time.time()
 
-        # Prepare data
-        self._prepare_data()
+        # Set seed if provided for reproducibility
+        if seed is not None:
+            np.random.seed(seed)
+            tf.random.set_seed(seed)
+            module_logger.info(f"Random seed set to {seed} for reproducibility")
+
+        # Prepare data with shuffling for training
+        self._prepare_data(seed=seed)
 
         # Create loss function
         self._create_loss_function()
@@ -731,7 +843,9 @@ class SegmentationModelTrainer:
             'history': history.history,
             'training_completed': True,
             'training_time': training_time,
-            'num_gpus_used': self.num_gpus
+            'num_gpus_used': self.num_gpus,
+            'l2_regularization_weight': self.l2_regularization_weight,
+            'use_adamw_optimizer': self.use_adamw_optimizer
         }
         save_model_metadata(self.model_path, metadata_update)
 
@@ -761,11 +875,19 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
         Returns:
             DeepLabV3+ model instance
         """
-        return model_call(
+        model = model_call(
             name="DeepLabV3_plus",
             IMAGE_SIZE=self.image_size,
-            NUM_CLASSES=self.num_classes
+            NUM_CLASSES=self.num_classes,
+            l2_regularization_weight=self.l2_regularization_weight
         )
+
+        if self.logger and self.l2_regularization_weight > 0:
+            # Count regularized layers
+            reg_layers = sum(1 for l in model.layers if hasattr(l, 'kernel_regularizer') and l.kernel_regularizer)
+            self.logger.logger.info(f"Created DeepLabV3+ model with {reg_layers} L2-regularized layers")
+
+        return model
 
     def _compile_model(self, model: keras.Model):
         """
@@ -774,8 +896,35 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
         Args:
             model: The model to compile
         """
+        # Use AdamW for weight decay or regular Adam with kernel regularizers
+        if self.use_adamw_optimizer:
+            # Check for Metal device (AdamW has issues on Apple Silicon)
+            # Use platform detection as Metal devices don't contain "metal" in their string representation
+            is_metal = platform.machine() == 'arm64' and platform.system() == 'Darwin'
+
+            if is_metal:
+                module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
+                optimizer = keras.optimizers.Adam(
+                    learning_rate=0.0005,
+                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                )
+            else:
+                # AdamW provides weight decay (different from L2 regularization)
+                # weight_decay is typically similar to L2 regularization weight
+                optimizer = tf.keras.optimizers.experimental.AdamW(
+                    learning_rate=0.0005,
+                    weight_decay=self.l2_regularization_weight,
+                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                )
+        else:
+            # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
+            optimizer = keras.optimizers.Adam(
+                learning_rate=0.0005,
+                epsilon=ModelDefaults.OPTIMIZER_EPSILON
+            )
+
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=0.0005),
+            optimizer=optimizer,
             loss=self.loss_function,
             metrics=["accuracy"],
         )
@@ -824,11 +973,19 @@ class UNetTrainer(SegmentationModelTrainer):
         Returns:
             UNet model instance
         """
-        return model_call(
+        model = model_call(
             name="UNet",
             IMAGE_SIZE=self.image_size,
-            NUM_CLASSES=self.num_classes
+            NUM_CLASSES=self.num_classes,
+            l2_regularization_weight=self.l2_regularization_weight
         )
+
+        if self.logger and self.l2_regularization_weight > 0:
+            # Count regularized layers
+            reg_layers = sum(1 for l in model.layers if hasattr(l, 'kernel_regularizer') and l.kernel_regularizer)
+            self.logger.logger.info(f"Created UNet model with {reg_layers} L2-regularized layers")
+
+        return model
 
     def _compile_model(self, model: keras.Model, learning_rate: float = 0.001):
         """
@@ -838,8 +995,34 @@ class UNetTrainer(SegmentationModelTrainer):
             model: The model to compile
             learning_rate: Learning rate for the optimizer
         """
+        # Use AdamW for weight decay or regular Adam with kernel regularizers
+        if self.use_adamw_optimizer:
+            # Check for Metal device (AdamW has issues on Apple Silicon)
+            # Use platform detection as Metal devices don't contain "metal" in their string representation
+            is_metal = platform.machine() == 'arm64' and platform.system() == 'Darwin'
+
+            if is_metal:
+                module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
+                optimizer = keras.optimizers.Adam(
+                    learning_rate=learning_rate,
+                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                )
+            else:
+                # AdamW provides weight decay (different from L2 regularization)
+                optimizer = tf.keras.optimizers.experimental.AdamW(
+                    learning_rate=learning_rate,
+                    weight_decay=self.l2_regularization_weight,
+                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                )
+        else:
+            # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
+            optimizer = keras.optimizers.Adam(
+                learning_rate=learning_rate,
+                epsilon=ModelDefaults.OPTIMIZER_EPSILON
+            )
+
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+            optimizer=optimizer,
             loss=self.loss_function,
             metrics=["accuracy"]
         )
