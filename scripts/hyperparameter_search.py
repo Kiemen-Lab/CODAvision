@@ -156,6 +156,7 @@ from base.data.annotation import load_annotation_data
 from base.data.tiles import create_training_tiles
 from base.models.training import DeepLabV3PlusTrainer
 from base.evaluation.testing import test_segmentation_model
+from base.config import ModelDefaults
 from hyperparameter_utils import (
     HyperparameterGrid, ExperimentTracker, 
     plot_hyperparameter_results, plot_parallel_coordinates, create_summary_report,
@@ -313,7 +314,9 @@ class HyperparameterSearcher:
             'learning_rate': params.get('learning_rate', 0.0005),
             'epochs': params.get('epochs', 8),
             'es_patience': params.get('es_patience', 6),
-            'lr_factor': params.get('lr_factor', 0.75)
+            'lr_factor': params.get('lr_factor', 0.75),
+            'l2_regularization_weight': params.get('l2_regularization_weight', 1e-5),
+            'use_adamw_optimizer': params.get('use_adamw_optimizer', False)
         })
         
         # Save experiment configuration
@@ -827,9 +830,10 @@ class HyperparameterSearcher:
             analysis['warnings'].append("WARNING: Significant overfitting detected")
             analysis['recommendations'].append(
                 "Model is overfitting to training data. Consider: "
-                "1) Increasing regularization (dropout, L2), "
-                "2) Reducing model capacity, "
-                "3) Adding more data augmentation"
+                "1) Increasing L2 regularization weight (current experiments test up to 1e-3), "
+                "2) Using AdamW optimizer for weight decay, "
+                "3) Reducing model capacity, "
+                "4) Adding more data augmentation"
             )
 
         # Check consistency across experiments
@@ -982,7 +986,7 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
     Extended DeepLabV3+ trainer that accepts custom hyperparameters.
     """
     
-    def __init__(self, model_path: str, 
+    def __init__(self, model_path: str,
                  learning_rate: float = 0.0005,
                  batch_size: int = 3,
                  epochs: int = 8,
@@ -990,6 +994,8 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
                  lr_patience: int = 1,
                  lr_factor: float = 0.75,
                  num_validations: int = 3,
+                 l2_regularization_weight: float = 1e-4,
+                 use_adamw_optimizer: bool = False,
                  **kwargs):
         """
         Initialize trainer with custom hyperparameters.
@@ -1013,21 +1019,51 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
         self.custom_lr_patience = lr_patience
         self.custom_lr_factor = lr_factor
         self.custom_num_validations = num_validations
+        self.custom_l2_regularization_weight = l2_regularization_weight
+        self.custom_use_adamw_optimizer = use_adamw_optimizer
         
-        # Override batch size in model data
+        # Override batch size and regularization in model data
         super().__init__(model_path)
         self.batch_size = batch_size
+        self.l2_regularization_weight = l2_regularization_weight
+        self.use_adamw_optimizer = use_adamw_optimizer
         
         # Re-prepare data with new batch size
         self._prepare_data()
     
     def _compile_model(self, model):
         """
-        Compile model with custom learning rate.
+        Compile model with custom learning rate and optional L2 regularization.
         """
         import keras
+        import tensorflow as tf
+
+        # Use AdamW for weight decay or regular Adam with kernel regularizers
+        if self.custom_use_adamw_optimizer:
+            # Check for Metal device (AdamW has issues on Apple Silicon)
+            gpu_devices = tf.config.list_physical_devices('GPU')
+            is_metal = gpu_devices and 'metal' in str(gpu_devices[0]).lower()
+
+            if is_metal:
+                self.logger.logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
+                optimizer = keras.optimizers.Adam(
+                    learning_rate=self.custom_learning_rate,
+                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                )
+            else:
+                optimizer = tf.keras.optimizers.experimental.AdamW(
+                    learning_rate=self.custom_learning_rate,
+                    weight_decay=self.custom_l2_regularization_weight,
+                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                )
+        else:
+            optimizer = keras.optimizers.Adam(
+                learning_rate=self.custom_learning_rate,
+                epsilon=ModelDefaults.OPTIMIZER_EPSILON
+            )
+
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=self.custom_learning_rate),
+            optimizer=optimizer,
             loss=self.loss_function,
             metrics=["accuracy"],
         )
@@ -1041,6 +1077,8 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
             self.logger.logger.info(f'Learning rate: {self.custom_learning_rate}')
             self.logger.logger.info(f'Batch size: {self.custom_batch_size}')
             self.logger.logger.info(f'Epochs: {self.custom_epochs}')
+            self.logger.logger.info(f'L2 regularization weight: {self.custom_l2_regularization_weight}')
+            self.logger.logger.info(f'Using AdamW optimizer: {self.custom_use_adamw_optimizer}')
         
         # Update callbacks with custom parameters
         for callback in callbacks:
@@ -1141,7 +1179,8 @@ def main():
             'batch_size': [2, 3, 4],  # Removed 6 due to OOM failures
             'epochs': [6, 8, 10, 12, 14],  # Extended for longer training exploration
             'es_patience': [4, 6, 8],
-            'lr_factor': [0.5, 0.75, 0.9]
+            'lr_factor': [0.5, 0.75, 0.9],
+            'l2_regularization_weight': [0, 1e-6, 1e-5, 1e-4]  # Added L2 regularization (adjusted range)
         }
     
     # Create and run searcher
