@@ -377,8 +377,8 @@ def plot_hyperparameter_results(tracker: ExperimentTracker,
     n_metrics = len(metric_cols)
 
     # Dynamic figure sizing with reasonable limits
-    fig_width = min(24, max(10, 3.5 * n_params))  # Limit max width
-    fig_height = min(20, max(6, 3 * n_metrics))   # Limit max height
+    fig_width = min(96, max(40, 14.0 * n_params))  # Limit max width
+    fig_height = min(80, max(24, 12 * n_metrics))   # Limit max height
 
     fig, axes = plt.subplots(n_metrics, n_params,
                             figsize=(fig_width, fig_height),
@@ -880,15 +880,18 @@ def plot_correlation_heatmap(tracker: ExperimentTracker,
     mask = np.triu(np.ones_like(corr_matrix, dtype=bool), k=1)  # Mask upper triangle
     cmap = sns.diverging_palette(250, 10, as_cmap=True)
 
+    # Prepare labels
+    labels = [col.replace('_', ' ').title() for col in numeric_cols]
+
     sns.heatmap(corr_matrix, mask=mask, cmap=cmap, center=0,
                annot=True, fmt='.2f', square=True, linewidths=1,
                cbar_kws={"shrink": 0.8, "label": "Correlation"},
+               xticklabels=labels, yticklabels=labels,
                ax=ax)
 
-    # Improve labels
-    labels = [col.replace('_', ' ').title() for col in numeric_cols]
-    ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
-    ax.set_yticklabels(labels, rotation=0, fontsize=9)
+    # Adjust label formatting
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right', fontsize=9)
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0, fontsize=9)
 
     ax.set_title('Hyperparameter-Metric Correlation Heatmap',
                 fontsize=14, fontweight='bold', pad=20)
@@ -1683,17 +1686,32 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
         )
         logger.info(f"Calculated F1 scores from test_precision and test_recall. Mean F1: {df['f1_score'].mean():.4f}")
 
+    # Define known hyperparameters explicitly
+    known_hyperparams = ['learning_rate', 'batch_size', 'epochs', 'es_patience', 'lr_factor', 'l2_regularization_weight']
+
+    # Define columns to skip entirely
+    skip_cols = ['experiment_id', 'timestamp', 'error', 'status', 'training_history',
+                 'training_summary', 'test_metrics_available', 'actual_epochs', 'final_lr']
+
     # Identify columns
     param_cols = []
     metric_cols = []
 
     for col in df.columns:
-        if col in ['experiment_id', 'timestamp', 'error', 'status', 'training_history', 'training_summary', 'test_metrics_available']:
+        if col in skip_cols:
             continue
-        # Check if it's a metric - only true performance metrics
-        if any(metric in col.lower() for metric in ['loss', 'accuracy', 'precision', 'recall', 'f1', 'test',
-                                                      'avg_precision', 'avg_recall', 'avg_f1']):
-            # Only include numeric columns
+
+        # Check if it's a known hyperparameter
+        if col in known_hyperparams:
+            # Check if values vary
+            try:
+                if df[col].nunique() > 1:
+                    param_cols.append(col)
+            except:
+                continue
+        else:
+            # Everything else that's numeric is a metric
+            # This includes: loss, accuracy, precision, recall, f1, gaps, ratios, scores, time, etc.
             try:
                 # Try to convert to numeric if not already
                 if not pd.api.types.is_numeric_dtype(df[col]):
@@ -1702,98 +1720,44 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
                     metric_cols.append(col)
             except:
                 continue
-        else:
-            # Check if values vary (likely a hyperparameter)
-            try:
-                # Skip actual_epochs and final_lr - we don't want them in the plot
-                if col in ['actual_epochs', 'final_lr']:
-                    continue  # Skip these columns entirely
-                elif df[col].nunique() > 1:
-                    param_cols.append(col)
-            except:
-                continue
     
-    # Select columns to display (hyperparameters + key metrics)
+    # Order hyperparameters in a logical sequence
+    ordered_param_cols = []
+    param_order = ['learning_rate', 'batch_size', 'epochs', 'es_patience', 'lr_factor']
+    for param in param_order:
+        if param in param_cols:
+            ordered_param_cols.append(param)
+    # Add any remaining parameters not in the explicit order
+    for param in param_cols:
+        if param not in ordered_param_cols:
+            ordered_param_cols.append(param)
+    param_cols = ordered_param_cols
+
+    # Select and order metrics - LIMITED SET FOR READABILITY
     display_metrics = []
-    f1_score_col = None  # Track F1 score column separately
-    generalization_col = None  # Track generalization score separately
 
-    # Comprehensive list of metrics to display in order of priority
-    # Group 1: Basic performance metrics
-    basic_metrics = [
-        'test_accuracy', 'best_val_accuracy', 'final_val_accuracy',
-        'avg_precision', 'avg_recall'
+    # Priority order for metrics - ONLY THE MOST IMPORTANT ONES
+    # This is intentionally limited to 6 key metrics for readability
+    metric_priority = [
+        # Primary performance metrics (4 metrics)
+        'test_accuracy',
+        'avg_precision',
+        'avg_recall',
+        'weighted_f1_score',  # Overall multi-class performance
+
+        # Model health indicators (2 metrics)
+        'overfitting_ratio',
+        'generalization_score'
     ]
 
-    # Group 2: Distribution mismatch and generalization metrics (NEW)
-    distribution_metrics = [
-        'val_test_gap',           # Validation-test accuracy gap
-        'generalization_score',    # Test/validation ratio (closer to 1.0 is better)
-        'distribution_mismatch_warning',  # Boolean flag
-        'mismatch_severity'       # 'high' or 'medium'
-    ]
+    # Add metrics in priority order - ONLY those in the priority list
+    for metric in metric_priority:
+        if metric in metric_cols and metric not in display_metrics:
+            display_metrics.append(metric)
 
-    # Group 3: Overfitting indicators (NEW)
-    overfitting_metrics = [
-        'train_val_gap',          # Training-validation gap
-        'overfitting_ratio'       # Training/validation ratio
-    ]
-
-    # Group 4: Convergence and efficiency metrics (NEW)
-    convergence_metrics = [
-        'loss_convergence_rate',  # Rate of loss change
-        'val_loss_stability',     # Stability of validation loss
-        'early_stopping_efficiency',  # How well early stopping worked
-        'best_epoch',             # When best performance occurred
-        'epochs_after_best'       # Epochs trained past optimal point
-    ]
-
-    # Group 5: Loss metrics
-    loss_metrics = [
-        'best_val_loss', 'final_val_loss', 'best_loss', 'final_loss'
-    ]
-
-    # Special metrics to be placed at the end
-    special_end_metrics = ['f1_score', 'generalization_score']
-
-    # Process metrics in priority order
-    all_metric_groups = [
-        ('basic', basic_metrics),
-        ('distribution', distribution_metrics),
-        ('overfitting', overfitting_metrics),
-        ('convergence', convergence_metrics),
-        ('loss', loss_metrics)
-    ]
-
-    for group_name, metrics_list in all_metric_groups:
-        for metric in metrics_list:
-            if metric in metric_cols:
-                # Special handling for metrics we want at the end
-                if metric == 'f1_score':
-                    f1_score_col = metric
-                    continue
-                elif metric == 'generalization_score':
-                    generalization_col = metric
-                    continue
-
-                # Skip boolean/string metrics for parallel coordinates
-                if metric in ['distribution_mismatch_warning', 'mismatch_severity']:
-                    continue
-
-                # Add to display if not already present
-                if metric not in display_metrics:
-                    display_metrics.append(metric)
-
-    # Add F1 score if it exists but not generalization score
-    if f1_score_col and not generalization_col:
-        display_metrics.append(f1_score_col)
-
-    # Add generalization score to the end if it exists (highest priority)
-    if generalization_col:
-        display_metrics.append(generalization_col)
-        # Also add F1 score before it if available
-        if f1_score_col and f1_score_col not in display_metrics:
-            display_metrics.insert(-1, f1_score_col)
+    # DO NOT add remaining metrics - keep plot readable
+    # Skip per-class metrics entirely (precision_*, recall_*, f1_*)
+    # The weighted_f1_score captures overall performance across all classes
 
     if not param_cols:
         logger.warning("No varying hyperparameters found")
@@ -2022,10 +1986,13 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
             norm = Normalize(vmin=0, vmax=1)
 
     # Use a diverging colormap for better performance visualization
-    if 'accuracy' in metric_to_color.lower() or 'precision' in metric_to_color.lower() or metric_to_color == 'f1_score':
+    metric_lower = metric_to_color.lower()
+    if ('accuracy' in metric_lower or 'precision' in metric_lower or
+        'recall' in metric_lower or 'f1' in metric_lower or
+        'generalization_score' in metric_lower):
         # Higher is better - use green for good, red for bad
         cmap = cm.get_cmap('RdYlGn')
-    elif 'loss' in metric_to_color.lower():
+    elif 'loss' in metric_lower or 'gap' in metric_lower:
         # Lower is better - use green for low, red for high
         cmap = cm.get_cmap('RdYlGn_r')
     else:
@@ -2204,7 +2171,10 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
     ax.set_xticks(positions)
     
     # Create improved labels with better formatting
+    # Track used labels to avoid duplicates
     labels = []
+    used_labels = set()
+
     for col in display_cols:
         # Create concise, readable labels
         if col == 'learning_rate':
@@ -2219,14 +2189,43 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
             short_name = 'LR\nFactor'
         elif col == 'f1_score':
             short_name = 'F1\nScore'
-        elif 'val_accuracy' in col or 'best_val_accuracy' in col:
+        # Handle various accuracy metrics with unique labels
+        elif col == 'best_val_accuracy':
+            short_name = 'Best Val\nAccuracy'
+        elif col == 'final_val_accuracy':
+            short_name = 'Final Val\nAccuracy'
+        elif col == 'val_accuracy':
             short_name = 'Val\nAccuracy'
-        elif 'test_accuracy' in col:
+        elif col == 'test_accuracy':
             short_name = 'Test\nAccuracy'
-        elif 'val_loss' in col or 'best_val_loss' in col:
+        # Handle various loss metrics with unique labels
+        elif col == 'best_val_loss':
+            short_name = 'Best Val\nLoss'
+        elif col == 'final_val_loss':
+            short_name = 'Final Val\nLoss'
+        elif col == 'val_loss':
             short_name = 'Val\nLoss'
+        elif col == 'best_loss':
+            short_name = 'Best\nLoss'
+        elif col == 'final_loss':
+            short_name = 'Final\nLoss'
+        # Handle gap and ratio metrics
+        elif col == 'train_val_gap':
+            short_name = 'Train-Val\nGap'
+        elif col == 'val_test_gap':
+            short_name = 'Val-Test\nGap'
+        elif col == 'overfitting_ratio':
+            short_name = 'Overfitting\nRatio'
+        elif col == 'generalization_score':
+            short_name = 'Generalization\nScore'
+        elif col == 'training_time_seconds':
+            short_name = 'Training\nTime (s)'
         elif 'epochs_trained' in col:
             short_name = 'Actual\nEpochs'
+        elif col == 'avg_precision':
+            short_name = 'Avg\nPrecision'
+        elif col == 'avg_recall':
+            short_name = 'Avg\nRecall'
         else:
             # Default formatting
             short_name = col.replace('_', ' ').title()
@@ -2235,6 +2234,16 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
                 short_name = '\n'.join(words[:2]) + '\n' + ' '.join(words[2:])
             elif len(words) == 2:
                 short_name = '\n'.join(words)
+
+        # Ensure uniqueness
+        if short_name in used_labels:
+            # Add a suffix to make it unique
+            suffix_num = 2
+            while f"{short_name} ({suffix_num})" in used_labels:
+                suffix_num += 1
+            short_name = f"{short_name} ({suffix_num})"
+
+        used_labels.add(short_name)
         labels.append(short_name)
 
     # Set labels with better rotation for readability
@@ -2495,13 +2504,17 @@ def plot_parallel_coordinates(tracker: ExperimentTracker,
         cbar = plt.colorbar(sm, ax=ax, pad=0.02, fraction=0.046)
 
         # Format colorbar label based on metric type
-        if 'accuracy' in metric_to_color.lower():
+        # Metrics where higher is better
+        metric_lower = metric_to_color.lower()
+        if ('accuracy' in metric_lower or 'precision' in metric_lower or
+            'recall' in metric_lower or 'f1' in metric_lower or
+            'generalization_score' in metric_lower):
             cbar_label = f'{metric_to_color.replace("_", " ").title()} →'
             cbar.ax.text(0.5, 1.05, 'Better', transform=cbar.ax.transAxes,
                         ha='center', fontsize=9, weight='bold')
             cbar.ax.text(0.5, -0.05, 'Worse', transform=cbar.ax.transAxes,
                         ha='center', fontsize=9)
-        else:  # For loss metrics, lower is better
+        else:  # For loss metrics and gaps, lower is better
             cbar_label = f'{metric_to_color.replace("_", " ").title()} →'
             cbar.ax.text(0.5, 1.05, 'Worse', transform=cbar.ax.transAxes,
                         ha='center', fontsize=9)
