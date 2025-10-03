@@ -35,6 +35,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# Utility Functions
+# -----------------
+
+def is_hidden_file(filename: str) -> bool:
+    """
+    Check if a file is hidden (starts with _ or .).
+
+    Args:
+        filename: The name of the file to check
+
+    Returns:
+        bool: True if the file is hidden, False otherwise
+    """
+    return filename.startswith('_') or filename.startswith('.')
+
+
 # XML Parsing and Loading Utilities
 # ---------------------------------
 
@@ -81,11 +97,18 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
     cmap2 = np.vstack(([0, 0, 0], cmap)) / 255
     numclass = np.max(WS[2])
 
-    # Find XML files
-    imlist = [f for f in os.listdir(annotation_path) if f.endswith('.xml')]
+    # Find XML files, filtering out hidden files
+    all_xml_files = [f for f in os.listdir(annotation_path) if f.endswith('.xml')]
+    imlist = [f for f in all_xml_files if not is_hidden_file(f)]
+
+    # Log if hidden files were skipped
+    hidden_files = [f for f in all_xml_files if is_hidden_file(f)]
+    if hidden_files:
+        logger.info(f'Skipping {len(hidden_files)} hidden XML files: {", ".join(hidden_files[:5])}{"..." if len(hidden_files) > 5 else ""}')
+
     if not imlist:
         raise ValueError(
-            'No annotation files (.xml) found in the specified directory. '
+            'No annotation files (.xml) found in the specified directory (excluding hidden files). '
             'Please ensure that annotation files exist in the directory: ' + annotation_path
         )
 

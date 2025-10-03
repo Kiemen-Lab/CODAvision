@@ -181,7 +181,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                                                  training_folder, "XML Files (*.xml)")
         else:
             for file in os.listdir(training_folder):
-                if file.endswith('.xml'):
+                # Skip hidden files (starting with _ or .)
+                if file.endswith('.xml') and not file.startswith('_') and not file.startswith('.'):
                     xml_file = os.path.join(training_folder, file)
                     break
         if xml_file:
@@ -761,16 +762,18 @@ class MainWindow(QtWidgets.QMainWindow):
                                           'The folder selected for the testing annotations does not exist.')
             return False
 
-        # Check for .xml files in training path
-        if not any(f.endswith(('.xml')) for f in os.listdir(pth)):
+        # Check for .xml files in training path (excluding hidden files)
+        if not any(f.endswith(('.xml')) and not f.startswith('_') and not f.startswith('.')
+                   for f in os.listdir(pth)):
             QtWidgets.QMessageBox.warning(self, 'Warning',
-                                          'The selected training path does not contain .xml files')
+                                          'The selected training path does not contain .xml files (excluding hidden files)')
             return False
 
-        # Check for .xml files in testing path
-        if not any(f.endswith(('.xml')) for f in os.listdir(pthtest)):
+        # Check for .xml files in testing path (excluding hidden files)
+        if not any(f.endswith(('.xml')) and not f.startswith('_') and not f.startswith('.')
+                   for f in os.listdir(pthtest)):
             QtWidgets.QMessageBox.warning(self, 'Warning',
-                                          'The selected testing path does not contain .xml files')
+                                          'The selected testing path does not contain .xml files (excluding hidden files)')
             return False
 
         # Check if resolution is selected
@@ -1536,8 +1539,9 @@ class xml_sorter(QObject):
                 # Create backup directory
                 os.makedirs(backup_dir, exist_ok=True)
                 existing_backup=0
-            # Get all XML files in the directory
-            xml_files = [f for f in os.listdir(current_pth) if f.endswith('.xml')]
+            # Get all XML files in the directory (excluding hidden files)
+            xml_files = [f for f in os.listdir(current_pth)
+                        if f.endswith('.xml') and not f.startswith('_') and not f.startswith('.')]
             for idx, filename in enumerate(xml_files, 1):
                 file_path = os.path.join(current_pth, filename)
                 logger.info(f"Checking file {idx} of {len(xml_files)}: {filename}")
