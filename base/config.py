@@ -59,7 +59,7 @@ class ModelDefaults:
     MIN_LR = 1e-7  # Minimum learning rate
 
     # Validation
-    NUM_VALIDATIONS = 3  # Number of validation runs during training
+    VALIDATION_FREQUENCY = 128  # Number of iterations between validations
 
 
 class LoggingConfig:

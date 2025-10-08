@@ -200,7 +200,7 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         val_data: tf.data.Dataset,
         loss_function: tf.keras.losses.Loss,
         logger: Optional[Logger] = None,
-        num_validations: int = 3,
+        validation_frequency: int = 128,
         early_stopping: bool = True,
         reduce_lr_on_plateau: bool = True,
         monitor: str = 'val_accuracy',
@@ -209,7 +209,8 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         lr_factor: float = 0.75,
         verbose: int = 0,
         save_best_model: bool = True,
-        filepath: str = 'best_model.h5'
+        filepath: str = 'best_model.h5',
+        **kwargs  # For backward compatibility
     ):
         """
         Initialize the callback.
@@ -219,7 +220,7 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
             val_data: Validation dataset
             loss_function: Loss function used for validation
             logger: Logger for recording training information
-            num_validations: Number of validations to perform per epoch
+            validation_frequency: Number of iterations between validations (default: 128)
             early_stopping: Whether to use early stopping
             reduce_lr_on_plateau: Whether to reduce learning rate on plateau
             monitor: Metric to monitor ('val_loss' or 'val_accuracy')
@@ -230,6 +231,40 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
             save_best_model: Whether to save the best model
             filepath: Path to save the best model to
         """
+        # Handle deprecated num_validations parameter for backward compatibility
+        if 'num_validations' in kwargs:
+            import warnings
+            num_val = kwargs.pop('num_validations')
+
+            # Convert to iteration-based frequency
+            # Estimate steps per epoch (default assumption)
+            estimated_steps_per_epoch = 150  # Default estimate
+            new_freq = max(1, estimated_steps_per_epoch // num_val)
+
+            warnings.warn(
+                f"num_validations={num_val} is deprecated. Use validation_frequency instead. "
+                f"Converting to validation_frequency={new_freq} based on estimated "
+                f"{estimated_steps_per_epoch} steps/epoch.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+            validation_frequency = new_freq
+
+        # Check for environment variable override
+        env_freq = os.environ.get('CODAVISION_VALIDATION_FREQUENCY')
+        if env_freq:
+            try:
+                validation_frequency = int(env_freq)
+                if logger:
+                    logger.info(
+                        f"Using validation frequency {env_freq} from environment variable"
+                    )
+            except ValueError:
+                if logger:
+                    logger.warning(
+                        f"Invalid CODAVISION_VALIDATION_FREQUENCY value: {env_freq}"
+                    )
+
         super(BatchAccuracyCallback, self).__init__()
         self.logger = logger
         self._model = model
@@ -243,7 +278,9 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         self.epoch_numbers = []
         self.current_epoch = 0
         self.val_data = val_data
-        self.num_validations = num_validations
+        self.validation_frequency = validation_frequency
+        self.global_step = 0  # Track iterations across all epochs
+        self.validation_counter = 0  # Track total number of validations
         self.validation_losses = []
         self.validation_accuracies = []
         self.val_indices = []
@@ -300,15 +337,10 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         self.current_epoch = epoch
         self.epoch_indices.append(self.current_epoch)
 
-        # Set validation steps throughout the epoch
-        self.validation_steps = np.linspace(
-            0, self.params['steps'],
-            self.num_validations + 1,
-            dtype=int
-        )[1:]
-
-        self.validation_counter = 0
+        # No longer need to calculate validation steps per epoch
+        # Validation is now based on global iteration count
         self.current_step = 0
+        # Note: validation_counter is NOT reset per epoch - it tracks total validations
 
     def on_batch_end(self, batch, logs=None):
         """
@@ -320,23 +352,21 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         """
         logs = logs or {}
         self.current_step += 1
+        self.global_step += 1  # Track global iteration count
 
-        # Run validation at specified steps
-        if self.current_step in self.validation_steps:
+        # Run validation at specified iteration frequency
+        if self.global_step % self.validation_frequency == 0:
             self.run_validation()
-            # Record the global step (across all epochs)
-            self.val_indices.append(
-                self.current_step + self.params['steps'] * self.current_epoch
-            )
+            self.validation_counter += 1
+            # Record the global step
+            self.val_indices.append(self.global_step)
 
         # Record batch metrics
         accuracy = logs.get('accuracy')
         if accuracy is not None:
             self.batch_accuracies.append(accuracy)
-            # Record the global batch number
-            self.batch_numbers.append(
-                self.params['steps'] * self.current_epoch + batch + 1
-            )
+            # Record the global batch number (use global_step)
+            self.batch_numbers.append(self.global_step)
 
         loss = logs.get('loss')
         if loss is not None:
@@ -363,6 +393,24 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
                 )
 
             self.epoch_wait = 0
+
+    def on_train_end(self, logs=None):
+        """
+        Called at the end of training.
+        Ensures at least one validation occurs even for very short training runs.
+
+        Args:
+            logs: Dictionary of logs (unused)
+        """
+        if self.validation_counter == 0 and self.val_data is not None:
+            if self.logger:
+                self.logger.logger.warning(
+                    f"No validation occurred during training "
+                    f"(training ended before iteration {self.validation_frequency}). "
+                    f"Running final validation..."
+                )
+            self.run_validation()
+            self.val_indices.append(self.global_step)
 
     def run_validation(self):
         """
@@ -714,7 +762,7 @@ class SegmentationModelTrainer:
             val_data=self.val_dataset,
             loss_function=self.loss_function,
             logger=self.logger,
-            num_validations=3,  # Validate 3 times per epoch
+            validation_frequency=128,  # Validate every 128 iterations
             early_stopping=True,
             reduce_lr_on_plateau=True,
             monitor='val_accuracy',
