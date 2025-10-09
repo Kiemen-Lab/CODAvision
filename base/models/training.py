@@ -609,12 +609,12 @@ class SegmentationModelTrainer:
         val_path = self.model_paths['val_data']
 
         # Find training images and masks
-        train_images = sorted(glob(os.path.join(train_path, 'im', "*.png")))
-        train_masks = sorted(glob(os.path.join(train_path, 'label', "*.png")))
+        train_images = sorted(glob(os.path.join(train_path, 'im', "*.tif")))
+        train_masks = sorted(glob(os.path.join(train_path, 'label', "*.tif")))
 
         # Find validation images and masks
-        val_images = sorted(glob(os.path.join(val_path, 'im', "*.png")))
-        val_masks = sorted(glob(os.path.join(val_path, 'label', "*.png")))
+        val_images = sorted(glob(os.path.join(val_path, 'im', "*.tif")))
+        val_masks = sorted(glob(os.path.join(val_path, 'label', "*.tif")))
 
         # Check if we found any data
         if not train_images or not train_masks:
@@ -709,7 +709,7 @@ class SegmentationModelTrainer:
         """
         # Find all training masks
         train_path = os.path.join(self.model_path, 'training')
-        train_masks = sorted(glob(os.path.join(train_path, 'label', "*.png")))
+        train_masks = sorted(glob(os.path.join(train_path, 'label', "*.tif")))
 
         # Calculate class weights
         self.class_weights = self._calculate_class_weights(train_masks)
@@ -762,7 +762,7 @@ class SegmentationModelTrainer:
             val_data=self.val_dataset,
             loss_function=self.loss_function,
             logger=self.logger,
-            validation_frequency=128,  # Validate every 128 iterations
+            validation_frequency=ModelDefaults.VALIDATION_FREQUENCY,
             early_stopping=True,
             reduce_lr_on_plateau=True,
             monitor='val_accuracy',

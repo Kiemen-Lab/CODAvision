@@ -1503,9 +1503,9 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
     for future in futures:
         nm, tmpim, tmplabel = future.result()
 
-        # Save image and label
-        Image.fromarray(tmpim.astype(np.uint8)).save(os.path.join(pthim, f'{nm}.png'))
-        Image.fromarray(tmplabel.astype(np.uint8)).save(os.path.join(pthlabel, f'{nm}.png'))
+        # Save image and label - Use TIFF format to match MATLAB
+        Image.fromarray(tmpim.astype(np.uint8)).save(os.path.join(pthim, f'{nm}.tif'))
+        Image.fromarray(tmplabel.astype(np.uint8)).save(os.path.join(pthlabel, f'{nm}.tif'))
 
         # Count pixels per class
         for anns in range(num_classes):
@@ -1514,8 +1514,8 @@ def save_bounding_boxes(image: np.ndarray, output_path: str, model_name: str, nu
 
     # Create list of tile names and paths
     ctlist = {
-        'tile_name': sorted([f for f in os.listdir(pthim) if f.endswith('.png')]),
-        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in sorted(os.listdir(pthim)) if f.endswith('.png')]
+        'tile_name': sorted([f for f in os.listdir(pthim) if f.endswith('.tif')]),
+        'tile_pth': [os.path.dirname(os.path.join(pthim, f)) for f in sorted(os.listdir(pthim)) if f.endswith('.tif')]
     }
 
     # Save data to pickle file

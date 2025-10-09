@@ -36,7 +36,7 @@ def combine_annotations_into_tiles(
     model_path: str,
     output_folder: str,
     tile_size: int,
-    big_tile_size: int = 10240,
+    big_tile_size: int = 10000,  # Match MATLAB default (was 10240)
     background_class: int = 0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -56,7 +56,7 @@ def combine_annotations_into_tiles(
         model_path: Path to the model directory
         output_folder: Output folder name where tiles will be saved (relative to model_path)
         tile_size: Size for the output tiles
-        big_tile_size: Size of the big tiles before cutting into smaller ones (default: 10240)
+        big_tile_size: Size of the big tiles before cutting into smaller ones (default: 10000)
         background_class: Background class index (default: 0)
 
     Returns:
@@ -64,8 +64,8 @@ def combine_annotations_into_tiles(
         - Updated annotation counts array
         - Updated annotation percentage tracking array
     """
-    # Set a random seed for reproducibility
-    np.random.seed(3)
+    # Random seed removed to match MATLAB (no explicit seed) - increases tile diversity
+    # np.random.seed(3)
 
     logger.debug(f"Starting combine_annotations_into_tiles with {len(image_list['tile_name'])} tiles")
     logger.debug(f"initial_annotations shape: {initial_annotations.shape}")
@@ -86,8 +86,15 @@ def combine_annotations_into_tiles(
     os.makedirs(output_path_big_tiles, exist_ok=True)
 
     # Check if we've already done this work
-    existing_images = [f for f in os.listdir(output_path_images) if f.endswith('.png')]
+    existing_images = [f for f in os.listdir(output_path_images) if f.endswith('.tif')]
     next_image_number = len(existing_images) + 1
+
+    # Migration warning: Check for old PNG tiles
+    png_tiles = [f for f in os.listdir(output_path_images) if f.endswith('.png')]
+    if png_tiles:
+        logger.warning(f"Found {len(png_tiles)} existing PNG tiles in {output_path_images}.")
+        logger.warning("PNG tiles are incompatible with the TIFF format pipeline.")
+        logger.warning("Please delete PNG tiles or regenerate them as TIFF before proceeding.")
 
     # Initialize composite canvas
     composite_image = np.full((big_tile_size_with_margin, big_tile_size_with_margin, 3),
@@ -104,7 +111,7 @@ def combine_annotations_into_tiles(
     count = 1
     tile_count = 1
     cutoff_threshold = 0.55
-    reduction_factor = 10
+    reduction_factor = 5  # Match MATLAB's rsf=5 (was 10)
     last_class_type = 0
     num_tiles_used = np.zeros(len(image_list['tile_name']))
     class_type_counts = np.zeros(num_classes)
@@ -115,8 +122,8 @@ def combine_annotations_into_tiles(
     while fill_ratio < cutoff_threshold:
         iteration_start_time = time.time()
 
-        # Select which class to sample
-        if count % 5 == 1:
+        # Select which class to sample - Match MATLAB's rem(count,10)==1
+        if count % 10 == 1:
             class_type = tile_count - 1
             tile_count = (tile_count % num_classes) + 1
         else:
@@ -328,12 +335,11 @@ def combine_annotations_into_tiles(
                 image_tile = composite_image[row:row + tile_size, col:col + tile_size, :]
                 mask_tile = composite_mask[row:row + tile_size, col:col + tile_size]
 
-                # Save tiles
-                # cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"), image_tile)
-                cv2.imwrite(os.path.join(output_path_images, f"{next_image_number}.png"),
-                            cv2.cvtColor(image_tile.astype(np.uint8), cv2.COLOR_RGB2BGR))
+                # Save tiles - Use PIL for both images and masks to match MATLAB's RGB handling
+                Image.fromarray(image_tile.astype(np.uint8)).save(
+                    os.path.join(output_path_images, f"{next_image_number}.tif"))
                 Image.fromarray(mask_tile.astype(np.uint8)).save(
-                                                        os.path.join(output_path_labels, f"{next_image_number}.png"))
+                    os.path.join(output_path_labels, f"{next_image_number}.tif"))
 
 
                 next_image_number += 1
@@ -344,10 +350,11 @@ def combine_annotations_into_tiles(
     # Save the big tile for reference
     big_tile_number = len([f for f in os.listdir(output_path_big_tiles) if f.startswith('HE')]) + 1
     logger.info('  Saving big tile')
-    # cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"), composite_image)
-    cv2.imwrite(os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.jpg"),
-                cv2.cvtColor(composite_image.astype(np.uint8), cv2.COLOR_RGB2BGR))
-    Image.fromarray(composite_mask).save(os.path.join(output_path_big_tiles, f"label_tile_{big_tile_number}.jpg"))
+    # Use PIL and TIFF format for big tiles to match MATLAB
+    Image.fromarray(composite_image.astype(np.uint8)).save(
+        os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.tif"))
+    Image.fromarray(composite_mask).save(
+        os.path.join(output_path_big_tiles, f"label_tile_{big_tile_number}.tif"))
 
     return current_annotations, annotation_percentages
 
@@ -374,8 +381,8 @@ def create_training_tiles(
     Raises:
         ValueError: If no valid annotations are found
     """
-    # Set a random seed for reproducibility
-    np.random.seed(3)
+    # Random seed removed to match MATLAB (no explicit seed) - increases tile diversity
+    # np.random.seed(3)
 
     # Load model metadata
     with open(os.path.join(model_path, 'net.pkl'), 'rb') as f:
@@ -446,10 +453,10 @@ def create_training_tiles(
     big_tiles_path = os.path.join(model_path, output_type, 'big_tiles')
 
     train_start = time.time()
-    if len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) >= num_train_tiles:
+    if len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) >= num_train_tiles:
         logger.info('  Already done.')
     else:
-        while len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) < num_train_tiles:
+        while len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) < num_train_tiles:
             current_annotations, annotation_percentages = combine_annotations_into_tiles(
                 annotations_array,
                 current_annotations,
@@ -466,7 +473,7 @@ def create_training_tiles(
 
             elapsed_time = time.time() - train_start
             logger.info(
-                f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.jpg")))} of {num_train_tiles} training images completed in {int(elapsed_time / 60)} minutes')
+                f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.tif")))} of {num_train_tiles} training images completed in {int(elapsed_time / 60)} minutes')
 
             # Report usage statistics
             base_class_count = np.sum(annotation_percentages_original[:, :, 0], axis=0)
@@ -500,10 +507,10 @@ def create_training_tiles(
     validation_start_time = time.time()
     logger.info('Building validation tiles...')
 
-    if len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) >= num_validation_tiles:
+    if len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) >= num_validation_tiles:
         logger.info('  Already done.')
     else:
-        while len(glob.glob(os.path.join(big_tiles_path, 'HE*.jpg'))) < num_validation_tiles:
+        while len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) < num_validation_tiles:
             current_annotations, annotation_percentages = combine_annotations_into_tiles(
                 annotations_array,
                 current_annotations,
@@ -517,7 +524,7 @@ def create_training_tiles(
 
             elapsed_time = time.time() - validation_start_time
             logger.info(
-                f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.jpg")))} of {num_validation_tiles} validation images completed in {int(elapsed_time / 60)} minutes')
+                f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.tif")))} of {num_validation_tiles} validation images completed in {int(elapsed_time / 60)} minutes')
 
             # Report usage statistics
             base_class_count = np.sum(annotation_percentages_original[:, :, 0], axis=0)

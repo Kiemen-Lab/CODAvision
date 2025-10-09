@@ -10,6 +10,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import pickle
+from PIL import Image
 
 # Import configuration
 from base.config import DataConfig
@@ -17,6 +18,91 @@ from base.config import DataConfig
 # Set up logging
 import logging
 logger = logging.getLogger(__name__)
+
+
+def _load_image_pil_internal(image_path, image_size: int, mask: bool) -> np.ndarray:
+    """
+    Internal helper function to load images using PIL (for TIFF support).
+    This function is designed to be called via tf.py_function.
+
+    Args:
+        image_path: File path (can be string, bytes, or numpy array of bytes)
+        image_size: Size to which the image should be resized
+        mask: Whether the image is a segmentation mask (single channel) or not (RGB)
+
+    Returns:
+        Numpy array of the loaded and preprocessed image
+    """
+    # Convert to string path - handle various input types from tf.py_function
+    if isinstance(image_path, bytes):
+        path_str = image_path.decode('utf-8')
+    elif isinstance(image_path, np.ndarray):
+        # numpy array of bytes (from tensor)
+        if image_path.dtype == np.object_ or image_path.dtype.kind == 'O':
+            path_str = image_path.item().decode('utf-8')
+        else:
+            path_str = str(image_path.item())
+    elif isinstance(image_path, str):
+        path_str = image_path
+    else:
+        # Try converting to string
+        try:
+            # If it's a tensor object, try to extract the value
+            path_val = image_path.numpy() if hasattr(image_path, 'numpy') else image_path
+            if isinstance(path_val, bytes):
+                path_str = path_val.decode('utf-8')
+            else:
+                path_str = str(path_val)
+        except:
+            path_str = str(image_path)
+            # Remove tensor wrapper if present
+            if "tf.Tensor" in path_str:
+                # Extract the path from the tensor representation
+                import re
+                match = re.search(r"b'([^']+)'", path_str)
+                if match:
+                    path_str = match.group(1)
+
+    # Load image with PIL
+    pil_image = Image.open(path_str)
+    image_array = np.array(pil_image)
+
+    if mask:
+        # Ensure single channel for masks
+        if len(image_array.shape) == 3:
+            # Multi-channel image, take first channel
+            image_array = image_array[:, :, 0]
+        # Add channel dimension
+        if len(image_array.shape) == 2:
+            image_array = np.expand_dims(image_array, -1)
+        # Resize
+        if image_array.shape[0] != image_size or image_array.shape[1] != image_size:
+            image_pil = Image.fromarray(image_array.squeeze())
+            image_pil = image_pil.resize((image_size, image_size), Image.BILINEAR)
+            image_array = np.array(image_pil)
+            if len(image_array.shape) == 2:
+                image_array = np.expand_dims(image_array, -1)
+        return image_array.astype(np.float32)
+    else:
+        # Ensure 3 channels for RGB images
+        if len(image_array.shape) == 2:
+            # Grayscale, convert to RGB
+            image_array = np.stack([image_array] * 3, axis=-1)
+        elif len(image_array.shape) == 3 and image_array.shape[-1] == 1:
+            # Single channel, convert to RGB
+            image_array = np.repeat(image_array, 3, axis=-1)
+        elif len(image_array.shape) == 3 and image_array.shape[-1] > 3:
+            # More than 3 channels, take first 3
+            image_array = image_array[:, :, :3]
+        # Resize
+        if image_array.shape[0] != image_size or image_array.shape[1] != image_size:
+            image_pil = Image.fromarray(image_array.astype(np.uint8))
+            image_pil = image_pil.resize((image_size, image_size), Image.BILINEAR)
+            image_array = np.array(image_pil)
+        return image_array.astype(np.float32)
+
+# Don't let AutoGraph convert this function
+_load_image_pil_internal = tf.autograph.experimental.do_not_convert(_load_image_pil_internal)
 
 
 def read_image(
@@ -41,16 +127,55 @@ def read_image(
             image = tf.convert_to_tensor(image_input)
             image = tf.image.resize(image, [image_size, image_size])
         else:
-            # Load from file
-            image = tf.io.read_file(image_input)
-            if mask:
-                image = tf.image.decode_png(image, channels=1)
-                image.set_shape([None, None, 1])
-                image = tf.image.resize(images=image, size=[image_size, image_size])
+            # Detect file format based on extension
+            is_tiff = isinstance(image_input, str) and image_input.lower().endswith(('.tif', '.tiff'))
+
+            if is_tiff:
+                # Use PIL to read TIFF files (TensorFlow 2.10 doesn't support decode_tiff)
+                pil_image = Image.open(image_input)
+                # Convert to numpy array
+                image_array = np.array(pil_image)
+
+                if mask:
+                    # Ensure single channel for masks
+                    if len(image_array.shape) == 3:
+                        # Multi-channel image, take first channel
+                        image_array = image_array[:, :, 0]
+                    # Add channel dimension
+                    if len(image_array.shape) == 2:
+                        image_array = np.expand_dims(image_array, -1)
+                    # Convert to tensor and resize
+                    image = tf.convert_to_tensor(image_array, dtype=tf.float32)
+                    image = tf.image.resize(images=image, size=[image_size, image_size])
+                    image.set_shape([image_size, image_size, 1])
+                else:
+                    # Ensure 3 channels for RGB images
+                    if len(image_array.shape) == 2:
+                        # Grayscale, convert to RGB
+                        image_array = np.stack([image_array] * 3, axis=-1)
+                    elif len(image_array.shape) == 3 and image_array.shape[-1] == 1:
+                        # Single channel, convert to RGB
+                        image_array = np.repeat(image_array, 3, axis=-1)
+                    elif len(image_array.shape) == 3 and image_array.shape[-1] > 3:
+                        # More than 3 channels, take first 3
+                        image_array = image_array[:, :, :3]
+                    # Convert to tensor and resize
+                    image = tf.convert_to_tensor(image_array, dtype=tf.float32)
+                    image = tf.image.resize(images=image, size=[image_size, image_size])
+                    image.set_shape([image_size, image_size, 3])
             else:
-                image = tf.image.decode_png(image, channels=3)
-                image.set_shape([None, None, 3])
-                image = tf.image.resize(images=image, size=[image_size, image_size])
+                # Use TensorFlow's decode_image for other formats (PNG, JPEG, GIF, BMP)
+                image = tf.io.read_file(image_input)
+                if mask:
+                    # Decode mask (single channel)
+                    image = tf.io.decode_image(image, channels=1, expand_animations=False)
+                    image.set_shape([None, None, 1])
+                    image = tf.image.resize(images=image, size=[image_size, image_size])
+                else:
+                    # Decode RGB image
+                    image = tf.io.decode_image(image, channels=3, expand_animations=False)
+                    image.set_shape([None, None, 3])
+                    image = tf.image.resize(images=image, size=[image_size, image_size])
         return image
     except Exception as e:
         logger.info(f"Error reading image {image_input}: {e}")
@@ -85,10 +210,29 @@ def create_dataset(
     Returns:
         TensorFlow dataset containing batches of (image, mask) pairs
     """
+    # Define wrapper functions outside of load_data to avoid AutoGraph issues
+    def load_image_wrapper(path):
+        return _load_image_pil_internal(path, image_size, False)
+
+    def load_mask_wrapper(path):
+        return _load_image_pil_internal(path, image_size, True)
+
     def load_data(image_path, mask_path):
-        """Inner function to load an image and its corresponding mask."""
-        image = read_image(image_path, image_size)
-        mask = read_image(mask_path, image_size, mask=True)
+        """Inner function to load an image and its corresponding mask using tf.py_function."""
+        # Use tf.py_function to load TIFF files with PIL
+        image = tf.py_function(
+            func=load_image_wrapper,
+            inp=[image_path],
+            Tout=tf.float32
+        )
+        mask = tf.py_function(
+            func=load_mask_wrapper,
+            inp=[mask_path],
+            Tout=tf.float32
+        )
+        # Set shapes explicitly (required after tf.py_function)
+        image.set_shape([image_size, image_size, 3])
+        mask.set_shape([image_size, image_size, 1])
         return image, mask
 
     # Create a dataset from the file paths
@@ -156,10 +300,29 @@ def create_training_dataset(
     if data_config is None:
         data_config = DataConfig()
 
+    # Define wrapper functions outside of load_data to avoid AutoGraph issues
+    def load_image_wrapper(path):
+        return _load_image_pil_internal(path, image_size, False)
+
+    def load_mask_wrapper(path):
+        return _load_image_pil_internal(path, image_size, True)
+
     def load_data(image_path, mask_path):
-        """Inner function to load an image and its corresponding mask."""
-        image = read_image(image_path, image_size)
-        mask = read_image(mask_path, image_size, mask=True)
+        """Inner function to load an image and its corresponding mask using tf.py_function."""
+        # Use tf.py_function to load TIFF files with PIL
+        image = tf.py_function(
+            func=load_image_wrapper,
+            inp=[image_path],
+            Tout=tf.float32
+        )
+        mask = tf.py_function(
+            func=load_mask_wrapper,
+            inp=[mask_path],
+            Tout=tf.float32
+        )
+        # Set shapes explicitly (required after tf.py_function)
+        image.set_shape([image_size, image_size, 3])
+        mask.set_shape([image_size, image_size, 1])
         return image, mask
 
     # Create a dataset from the file paths
@@ -226,10 +389,29 @@ def create_validation_dataset(
     if data_config is None:
         data_config = DataConfig()
 
+    # Define wrapper functions outside of load_data to avoid AutoGraph issues
+    def load_image_wrapper(path):
+        return _load_image_pil_internal(path, image_size, False)
+
+    def load_mask_wrapper(path):
+        return _load_image_pil_internal(path, image_size, True)
+
     def load_data(image_path, mask_path):
-        """Inner function to load an image and its corresponding mask."""
-        image = read_image(image_path, image_size)
-        mask = read_image(mask_path, image_size, mask=True)
+        """Inner function to load an image and its corresponding mask using tf.py_function."""
+        # Use tf.py_function to load TIFF files with PIL
+        image = tf.py_function(
+            func=load_image_wrapper,
+            inp=[image_path],
+            Tout=tf.float32
+        )
+        mask = tf.py_function(
+            func=load_mask_wrapper,
+            inp=[mask_path],
+            Tout=tf.float32
+        )
+        # Set shapes explicitly (required after tf.py_function)
+        image.set_shape([image_size, image_size, 3])
+        mask.set_shape([image_size, image_size, 1])
         return image, mask
 
     # Create a dataset from the file paths

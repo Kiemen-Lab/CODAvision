@@ -159,5 +159,5 @@ def get_model_config() -> dict:
         'lr_patience': ModelDefaults.LR_PATIENCE,
         'lr_factor': ModelDefaults.LR_FACTOR,
         'min_lr': ModelDefaults.MIN_LR,
-        'num_validations': ModelDefaults.NUM_VALIDATIONS
+        'validation_frequency': ModelDefaults.VALIDATION_FREQUENCY
     }

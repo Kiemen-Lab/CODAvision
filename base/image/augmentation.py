@@ -88,8 +88,13 @@ def augment_image(
 
     # Scaling augmentation
     if scaling:
-        # Random scaling between 0.6x and 1.4x
-        scales = np.concatenate((np.arange(0.6, 0.96, 0.01), np.arange(1.1, 1.41, 0.01)))
+        # Match MATLAB exactly: [0.6:0.01:0.95, 1.1:0.01:1.4]
+        # Using explicit upper bounds (0.951, 1.401) to ensure endpoints are included
+        # and guard against floating-point edge cases
+        scales = np.concatenate((
+            np.arange(0.6, 0.951, 0.01),  # Include 0.95 (numpy is exclusive on upper bound)
+            np.arange(1.1, 1.401, 0.01)   # Include 1.4 (numpy is exclusive on upper bound)
+        ))
         scale_factor = np.random.choice(scales)
 
         augmented_image = cv2.resize(

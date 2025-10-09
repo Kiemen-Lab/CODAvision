@@ -208,10 +208,17 @@ def read_image_overlay(image_input: Union[str, np.ndarray]) -> Optional[tf.Tenso
             # If it's already a numpy array, just convert to tensor
             image = tf.convert_to_tensor(image_input)
         else:
-            # Otherwise, read from file
-            image = tf.io.read_file(image_input)
-            image = tf.image.decode_png(image, channels=3)
-            image.set_shape([None, None, 3])
+            # Check if it's a TIFF file - use PIL since TensorFlow doesn't support TIFF
+            if image_input.lower().endswith(('.tiff', '.tif')):
+                # Use PIL to load TIFF files
+                image_array = load_image_with_fallback(image_input, mode="RGB")
+                image = tf.convert_to_tensor(image_array)
+            else:
+                # For other formats, use TensorFlow's built-in decoder
+                image = tf.io.read_file(image_input)
+                # Auto-detect format (PNG, JPEG, GIF, BMP)
+                image = tf.io.decode_image(image, channels=3, expand_animations=False)
+                image.set_shape([None, None, 3])
         return image
     except Exception as e:
         logger.error(f"Error reading image {image_input}: {e}")
