@@ -993,7 +993,7 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
                  es_patience: int = 6,
                  lr_patience: int = 1,
                  lr_factor: float = 0.75,
-                 num_validations: int = 3,
+                 validation_frequency: int = ModelDefaults.VALIDATION_FREQUENCY,
                  l2_regularization_weight: float = 1e-4,
                  use_adamw_optimizer: bool = False,
                  **kwargs):
@@ -1008,7 +1008,7 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
             es_patience: Early stopping patience
             lr_patience: Learning rate reduction patience
             lr_factor: Learning rate reduction factor
-            num_validations: Number of validations per epoch
+            validation_frequency: Number of iterations between validations
             **kwargs: Additional parameters
         """
         # Store hyperparameters
@@ -1018,7 +1018,7 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
         self.custom_es_patience = es_patience
         self.custom_lr_patience = lr_patience
         self.custom_lr_factor = lr_factor
-        self.custom_num_validations = num_validations
+        self.custom_validation_frequency = validation_frequency
         self.custom_l2_regularization_weight = l2_regularization_weight
         self.custom_use_adamw_optimizer = use_adamw_optimizer
         
@@ -1088,8 +1088,8 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
                 elif 'ReduceLROnPlateau' in str(type(callback)):
                     callback.patience = self.custom_lr_patience
                     callback.factor = self.custom_lr_factor
-            if hasattr(callback, 'num_validations'):
-                callback.num_validations = self.custom_num_validations
+            if hasattr(callback, 'validation_frequency'):
+                callback.validation_frequency = self.custom_validation_frequency
         
         history = model.fit(
             self.train_dataset,
@@ -1117,38 +1117,82 @@ def main():
     parser = argparse.ArgumentParser(description='Hyperparameter grid search for DeepLabV3+ model')
     parser.add_argument('--resume', action='store_true', help='Resume from checkpoint')
     parser.add_argument('--small', action='store_true', help='Run a small test grid')
+    parser.add_argument('--michigan', action='store_true',
+                       help='Use Michigan pancreas-optimized hyperparameters for class imbalance')
     parser.add_argument('--output-dir', type=str, default='hyperparameter_search_results',
                        help='Directory to store results')
     args = parser.parse_args()
-    
-    # Base configuration (same as non-gui_workflow.py)
-    base_config = {
-        'pth': '/Users/tnewton3/Desktop/liver_tissue_data',
-        'pthim': os.path.join('/Users/tnewton3/Desktop/liver_tissue_data', '10x'),
-        'umpix': 1,
-        'pthtest': os.path.join('/Users/tnewton3/Desktop/liver_tissue_data', 'testing_image'),
-        'pthtestim': os.path.join('/Users/tnewton3/Desktop/liver_tissue_data', 'testing_image', '10x'),
-        'nm': 'hyperparam_search_model',
-        'resolution': '10x',
-        'WS': [[0, 0, 0, 0, 2, 0, 2],
-               [7, 6],
-               [1, 2, 3, 4, 5, 6, 7],
-               [6, 4, 2, 3, 5, 1, 7],
-               []],
-        'sxy': 1024,
-        'cmap': np.array([[230, 190, 100],
-                          [65, 155, 210],
-                          [145, 35, 35],
-                          [158, 24, 118],
-                          [30, 50, 50],
-                          [235, 188, 215],
-                          [255, 255, 255]]),
-        'classNames': ['PDAC', 'bile duct', 'vasculature', 'hepatocyte', 'immune', 'stroma', 'whitespace'],
-        'classCheck': [],
-        'ntrain': 15,
-        'nvalidate': 3,
-        'model_type': 'DeepLabV3_plus'
-    }
+
+    # Base configuration - switch between datasets based on args
+    if args.michigan:
+        # Michigan pancreas dataset configuration
+        base_config = {
+            'pth': '/Volumes/kiemen-lab-data/Valentina Matos/PanIn Lifespan study/Michigan pancreas model',
+            'pthim': os.path.join('/Volumes/kiemen-lab-data/Valentina Matos/PanIn Lifespan study/Michigan pancreas model', '5x'),
+            'umpix': 2,  # Microns per pixel at 5x magnification
+            'pthtest': os.path.join('/Volumes/kiemen-lab-data/Valentina Matos/PanIn Lifespan study/Michigan pancreas model', 'testing annotations'),
+            'pthtestim': os.path.join('/Volumes/kiemen-lab-data/Valentina Matos/PanIn Lifespan study/Michigan pancreas model', 'testing annotations', '5x'),
+            'nm': 'michigan_hyperparam_search',
+            'resolution': '5x',
+            'WS': [[2, 0, 0, 1, 0, 0, 2, 0, 0, 2, 2, 0, 0],  # Michigan-specific whitespace handling
+                   [7, 6],
+                   [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 6],
+                   [13, 6, 5, 4, 1, 2, 3, 8, 11, 12, 10, 9, 7],
+                   []],
+            'sxy': 1024,
+            'cmap': np.array([
+                [0, 255, 255],    # islets - cyan
+                [0, 0, 255],      # ducts - blue
+                [85, 255, 0],     # vasculature - lime green
+                [255, 255, 127],  # fat - light yellow
+                [170, 0, 255],    # acini - purple
+                [255, 170, 255],  # ecm - light pink
+                [255, 255, 255],  # whitespace - white
+                [255, 0, 0],      # panin - red
+                [63, 63, 63],     # noise - dark gray
+                [255, 0, 254],    # nerves - magenta
+                [255, 128, 0],    # endo - orange
+                [128, 0, 128]     # immuno - dark purple
+            ], dtype=np.int32),
+            'classNames': ['islets', 'ducts', 'vasculature', 'fat', 'acini', 'ecm',
+                          'whitespace', 'panin', 'noise', 'nerves', 'endo', 'immuno'],
+            'classCheck': [],
+            'ntrain': 24,      # Increased for better class representation (12 classes)
+            'nvalidate': 4,    # Increased for stable validation metrics
+            'model_type': 'DeepLabV3_plus'
+        }
+        logger.info("Using Michigan pancreas dataset configuration")
+        logger.info(f"Dataset path: {base_config['pth']}")
+        logger.info(f"Number of classes: {len(base_config['classNames'])}")
+    else:
+        # Default liver tissue dataset configuration
+        base_config = {
+            'pth': '/Users/tnewton3/Desktop/liver_tissue_data',
+            'pthim': os.path.join('/Users/tnewton3/Desktop/liver_tissue_data', '10x'),
+            'umpix': 1,
+            'pthtest': os.path.join('/Users/tnewton3/Desktop/liver_tissue_data', 'testing_image'),
+            'pthtestim': os.path.join('/Users/tnewton3/Desktop/liver_tissue_data', 'testing_image', '10x'),
+            'nm': 'hyperparam_search_model',
+            'resolution': '10x',
+            'WS': [[0, 0, 0, 0, 2, 0, 2],
+                   [7, 6],
+                   [1, 2, 3, 4, 5, 6, 7],
+                   [6, 4, 2, 3, 5, 1, 7],
+                   []],
+            'sxy': 1024,
+            'cmap': np.array([[230, 190, 100],
+                              [65, 155, 210],
+                              [145, 35, 35],
+                              [158, 24, 118],
+                              [30, 50, 50],
+                              [235, 188, 215],
+                              [255, 255, 255]]),
+            'classNames': ['PDAC', 'bile duct', 'vasculature', 'hepatocyte', 'immune', 'stroma', 'whitespace'],
+            'classCheck': [],
+            'ntrain': 24,
+            'nvalidate': 4,
+            'model_type': 'DeepLabV3_plus'
+        }
     
     # Define hyperparameter grid
     if args.small:
@@ -1160,6 +1204,26 @@ def main():
             'es_patience': [4],
             'lr_factor': [0.75]
         }
+    elif args.michigan:
+        # Michigan Pancreas-optimized param_grid (for addressing class imbalance)
+        # Based on confusion matrix analysis showing 74.4% overall accuracy with poor performance
+        # on minority classes (immuno: 8.7% recall, noise: 22.9% recall, whitespace: 65.7% recall)
+        # This configuration specifically targets:
+        # - Severe class imbalance issues
+        # - Need for better minority class learning
+        # - Prevention of overfitting on majority classes
+        param_grid = {
+            'learning_rate': [0.000005, 0.00001, 0.00005, 0.0001],  # Lower LR for imbalanced classes
+            'batch_size': [2, 3],  # Small batches for 12-class problem with memory constraints
+            'epochs': [12, 16, 20, 24],  # Extended training for minority classes
+            'es_patience': [8, 10, 12],  # More patience for complex class boundaries
+            'lr_factor': [0.5, 0.75],  # Conservative LR reduction for stability
+            'l2_regularization_weight': [1e-5, 5e-5, 1e-4, 5e-4],  # Stronger regularization to prevent overfitting
+            'use_adamw_optimizer': [False]  # Test AdamW for better weight decay with imbalanced data
+        }
+        logger.info("Using Michigan pancreas-optimized hyperparameter grid")
+        logger.info(f"Total combinations: {len(list(HyperparameterGrid(param_grid)))}")
+        logger.info("Optimized for class imbalance with focus on minority classes (immuno, noise, whitespace)")
     else:
         # Full hyperparameter grid - Revised based on analysis of 576 experiments
         # param_grid = {
