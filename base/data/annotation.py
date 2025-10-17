@@ -34,7 +34,7 @@ import xml.sax
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"  # Set max image size for OpenCV
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))  # Set max image size for OpenCV
 
 
 # XML Parsing and Loading Utilities
