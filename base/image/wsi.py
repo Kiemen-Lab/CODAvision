@@ -127,12 +127,13 @@ class WSIConverter(ImageConverter):
     
     def convert(self, input_path: Path, output_path: Path, scale: Optional[float] = None) -> None:
         """Convert WSI to TIFF with optional scaling."""
+        wsi = None
         try:
             wsi = self.OpenSlide(str(input_path))
-            
+
             # Read the full image
             image = wsi.read_region(location=(0, 0), level=0, size=wsi.level_dimensions[0]).convert('RGB')
-            
+
             # Calculate resize dimensions
             if scale is not None:
                 resize_dimension = (
@@ -147,14 +148,18 @@ class WSIConverter(ImageConverter):
                     int(np.ceil(wsi.dimensions[0] / resize_factor_x)),
                     int(np.ceil(wsi.dimensions[1] / resize_factor_y))
                 )
-            
+
             # Resize and save
             image = image.resize(resize_dimension, resample=Image.NEAREST)
             image.save(str(output_path), resolution=1, resolution_unit=1, quality=100, compression=None)
-            
+
         except Exception as e:
             logger.error(f"Error converting WSI {input_path}: {e}")
             raise
+        finally:
+            # Always close the OpenSlide object to free file descriptors
+            if wsi is not None:
+                wsi.close()
 
 
 class DICOMConverter(ImageConverter):
@@ -166,27 +171,32 @@ class DICOMConverter(ImageConverter):
     
     def convert(self, input_path: Path, output_path: Path, scale: float) -> None:
         """Convert DICOM to TIFF with scaling."""
+        image = None
         try:
             ds = dicom.dcmread(str(input_path))
             pixel_array = ds.pixel_array
-            
+
             # Normalize to 8-bit
             image_8bit = np.uint8((pixel_array / np.max(pixel_array)) * 255)
-            
+
             # Calculate resize dimensions
             resize_dimension = (
                 int(np.ceil(image_8bit.shape[1] / scale)),
                 int(np.ceil(image_8bit.shape[0] / scale))
             )
-            
+
             # Convert to PIL Image, resize, and save
             image = Image.fromarray(image_8bit)
             image = image.resize(resize_dimension, resample=Image.NEAREST)
             image.save(str(output_path), resolution=1, resolution_unit=1, quality=100, compression=None)
-            
+
         except Exception as e:
             logger.error(f"Error converting DICOM {input_path}: {e}")
             raise
+        finally:
+            # Explicitly close the image to release any resources
+            if image is not None:
+                image.close()
 
 
 class StandardImageConverter(ImageConverter):
@@ -199,18 +209,19 @@ class StandardImageConverter(ImageConverter):
     def convert(self, input_path: Path, output_path: Path, scale: float) -> None:
         """Convert standard image to TIFF with scaling."""
         try:
-            image = Image.open(str(input_path))
-            
-            # Calculate resize dimensions
-            resize_dimension = (
-                int(np.ceil(image.width / scale)),
-                int(np.ceil(image.height / scale))
-            )
-            
-            # Resize and save
-            image = image.resize(resize_dimension, resample=Image.NEAREST)
-            image.save(str(output_path), resolution=1, resolution_unit=1, quality=100, compression=None)
-            
+            with Image.open(str(input_path)) as image:
+                # Calculate resize dimensions
+                resize_dimension = (
+                    int(np.ceil(image.width / scale)),
+                    int(np.ceil(image.height / scale))
+                )
+
+                # Resize
+                resized_image = image.resize(resize_dimension, resample=Image.NEAREST)
+
+            # Save outside context manager to avoid issues with closed file
+            resized_image.save(str(output_path), resolution=1, resolution_unit=1, quality=100, compression=None)
+
         except Exception as e:
             logger.error(f"Error converting image {input_path}: {e}")
             raise
