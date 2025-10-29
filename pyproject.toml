@@ -25,39 +25,119 @@ classifiers = [
 keywords = ["medical imaging", "image labeling", "machine learning", "deep learning", "tissue labeling"]
 
 dependencies = [
-
+    # Numerical computing (pinned for TensorFlow 2.10 compatibility)
     "numpy==1.23.5",
+
+    # Image processing
     "pillow==10.4.0",
-    "tensorflow==2.10.1",
-    "tensorflow-gpu==2.10.0",
+
+    # Deep Learning - Platform-specific TensorFlow installation
+    # Windows and Linux use standard TensorFlow 2.10.1 (includes GPU support)
+    "tensorflow==2.10.1; sys_platform != 'darwin'",
+    # macOS Intel uses CPU-only TensorFlow 2.10.1
+    "tensorflow==2.10.1; sys_platform == 'darwin' and platform_machine != 'arm64'",
+    # Note: macOS Silicon (M1/M2/M3) requires TensorFlow 2.9+ installed via optional extra [macos-silicon]
+
     "keras==2.10.0",
     "opencv-python==4.10.0.84",
+
+    # Scientific computing and visualization
     "matplotlib==3.9.2",
     "scipy==1.13.1",
-    "scikit-image==0.24.0",
-    "xmltodict==0.13.0",
     "pandas==2.2.2",
     "seaborn==0.13.2",
+
+    # Additional image processing
+    "scikit-image==0.24.0",
     "tifffile==2024.8.28",
+
+    # Data handling
+    "xmltodict==0.13.0",
+    "openpyxl==3.1.2",
+
+    # Whole Slide Imaging (cross-platform - works on Linux, macOS, Windows)
+    "openslide-python",
+    "openslide-bin",
+
+    # Medical imaging formats
+    "pydicom",
+
+    # GUI framework
+    "PySide6==6.5.1.1",
+
+    # Utilities
+    "GPUtil==1.4.0",
+
+    # Jupyter support
     "jupyter==1.1.1",
+    "tornado==6.4.1",
+    "jinja2==3.1.4",
+
+    # PDF generation
+    "fpdf==1.7.2",
+
+    # Build tools
     #"pip==24.2",
     "attrs==24.2.0",
     "wheel==0.43.0",
-    "tornado==6.4.1",
-    "jinja2==3.1.4",
     "setuptools==72.1.0",
     "packaging==24.1",
     "zipp==3.20.1",
-    "openslide-python",
-    "openslide-bin",
-    "openpyxl==3.1.2",
-    "GPUtil==1.4.0",
-    "PySide6==6.5.1.1",
-    "pydicom",
-    "fpdf==1.7.2",
     ]
 
 requires-python = ">=3.9,<3.10"
+
+[project.optional-dependencies]
+# Apple Silicon (M1/M2/M3/M4) GPU support
+# TensorFlow 2.10 is not compatible with macOS Silicon, so use TF 2.9+ instead
+# Install with: pip install -e ".[macos-silicon]"
+macos-silicon = [
+    "tensorflow-macos>=2.9.0",
+    "tensorflow-metal>=0.5.0",
+]
+
+# Development dependencies (includes all test and code quality tools)
+# Install with: pip install -e ".[dev]"
+dev = [
+    # Testing framework
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-xdist>=3.3.0",
+
+    # GUI testing
+    "pytest-qt>=4.2.0",
+    "pytest-xvfb>=3.0.0; sys_platform == 'linux'",
+
+    # Mocking and fixtures
+    "pytest-mock>=3.11.0",
+    "factory-boy>=3.3.0",
+    "responses>=0.23.0",
+
+    # Test utilities and coverage
+    "coverage[toml]>=7.2.0",
+
+    # Code quality tools
+    "black>=23.7.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "pylint>=2.17.0",
+    "mypy>=1.4.0",
+
+    # Additional testing tools
+    "hypothesis>=6.82.0",
+    "pytest-benchmark>=4.0.0",
+    "freezegun>=1.2.2",
+]
+
+# Minimal testing dependencies (for CI pipelines)
+# Install with: pip install -e ".[test]"
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-qt>=4.2.0",
+    "pytest-xvfb>=3.0.0; sys_platform == 'linux'",
+]
 
 [project.urls]
 Homepage = "https://github.com/Kiemen-Lab/CODAvision"
