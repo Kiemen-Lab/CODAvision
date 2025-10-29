@@ -116,14 +116,28 @@ def combine_annotations_into_tiles(
     num_tiles_used = np.zeros(len(image_list['tile_name']))
     class_type_counts = np.zeros(num_classes)
 
+    # Pre-compute constant values used in distance transform calculation
+    # These values never change across iterations, so computing once saves significant time
+    padding = int(100/reduction_factor)
+
+    # Create disk filter once (used for convolution in placement optimization)
+    # This 51x51 disk filter with radius 25 is constant throughout all iterations
+    disk_radius = 25
+    disk_size = 51
+    h = np.zeros((disk_size, disk_size))
+    center = disk_size // 2
+    y_disk, x_disk = np.ogrid[:disk_size, :disk_size]
+    disk_mask = (x_disk - center)**2 + (y_disk - center)**2 <= center**2
+    h[disk_mask] = 1.0
+
     # Main loop
     iteration = 1
 
     while fill_ratio < cutoff_threshold:
         iteration_start_time = time.time()
 
-        # Select which class to sample - Match MATLAB's rem(count,10)==1
-        if count % 10 == 1:
+        # Select which class to sample - Match MATLAB's rem(count,3)==1
+        if count % 3 == 1:
             class_type = tile_count - 1
             tile_count = (tile_count % num_classes) + 1
         else:
@@ -215,10 +229,14 @@ def combine_annotations_into_tiles(
         # Find optimal location to place this tile in the composite
         # Downsample for faster distance calculation
         downsampled_mask = composite_mask[::reduction_factor, ::reduction_factor] > 0
-        padding = int(100/reduction_factor)
 
-        # Calculate distance transform to find largest empty area
-        dist = cv2.distanceTransform((downsampled_mask <= 0).astype(np.uint8), cv2.DIST_L2, 3)
+        # Apply disk filter to downsampled mask (MATLAB's imfilter)
+        # Note: disk filter 'h' and 'padding' are pre-computed outside the loop for performance
+        # Using OpenCV's filter2D for optimal performance (2-4x faster than scipy.ndimage.convolve)
+        filtered_mask = cv2.filter2D(downsampled_mask.astype(np.float32), -1, h, borderType=cv2.BORDER_CONSTANT)
+
+        # Calculate distance transform to find largest empty area (using filtered mask)
+        dist = cv2.distanceTransform((filtered_mask <= 0).astype(np.uint8), cv2.DIST_L2, 3)
         # Add border padding
         dist[:padding, :] = 0
         dist[:, :padding] = 0

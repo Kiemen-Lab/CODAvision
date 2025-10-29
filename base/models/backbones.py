@@ -44,14 +44,14 @@ class BaseSegmentationModel(ABC):
         l2_regularization_weight (float): L2 regularization weight for Conv2D layers
     """
 
-    def __init__(self, input_size: int, num_classes: int, l2_regularization_weight: float = 1e-4):
+    def __init__(self, input_size: int, num_classes: int, l2_regularization_weight: float = 0):
         """
         Initialize the segmentation model.
 
         Args:
             input_size: Size of the input images (assumes square images)
             num_classes: Number of segmentation classes
-            l2_regularization_weight: L2 regularization weight for Conv2D layers (default: 1e-4)
+            l2_regularization_weight: L2 regularization weight for Conv2D layers (default: 0 to match MATLAB)
 
         Raises:
             ValueError: If l2_regularization_weight is negative
@@ -61,7 +61,7 @@ class BaseSegmentationModel(ABC):
 
         self.input_size = input_size
         self.num_classes = num_classes
-        self.l2_regularization_weight = l2_regularization_weight
+        self.l2_regularization_weight = l2_regularization_weight  # Set to 0 to match MATLAB (no regularization)
 
     @abstractmethod
     def build_model(self) -> Model:
@@ -398,7 +398,7 @@ def unfreeze_model(model: Model) -> Model:
     return model
 
 
-def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int, l2_regularization_weight: float = 1e-4) -> Model:
+def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int, l2_regularization_weight: float = 0) -> Model:
     """
     Factory function to create a segmentation model of the specified type.
 
@@ -406,7 +406,7 @@ def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int, l2_regularization_w
         name: Model type ('UNet' or 'DeepLabV3_plus')
         IMAGE_SIZE: Size of input images (assumes square images)
         NUM_CLASSES: Number of segmentation classes
-        l2_regularization_weight: L2 regularization weight for Conv2D layers (default: 1e-4)
+        l2_regularization_weight: L2 regularization weight for Conv2D layers (default: 0 to match MATLAB)
 
     Returns:
         The requested segmentation model

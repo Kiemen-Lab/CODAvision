@@ -58,6 +58,10 @@ def augment_image(
         angles = np.arange(0, 360, 5)
         angle = np.random.choice(angles)
         height, width = augmented_image.shape[:2]
+
+        # Store original dimensions for cropping (MATLAB behavior)
+        original_height, original_width = height, width
+
         rotation_matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1)
 
         # Calculate new dimensions after rotation
@@ -85,6 +89,29 @@ def augment_image(
             borderValue=(0, 0, 0),
             flags=cv2.INTER_NEAREST
         )
+
+        # Crop back to original size to match MATLAB's imrotate behavior
+        if new_height != original_height or new_width != original_width:
+            # Calculate center crop coordinates
+            center_y = new_height // 2
+            center_x = new_width // 2
+            half_height = original_height // 2
+            half_width = original_width // 2
+
+            # Crop to original dimensions
+            y_start = max(0, center_y - half_height)
+            y_end = min(new_height, center_y + half_height)
+            x_start = max(0, center_x - half_width)
+            x_end = min(new_width, center_x + half_width)
+
+            augmented_image = augmented_image[y_start:y_end, x_start:x_end, :]
+            augmented_mask = augmented_mask[y_start:y_end, x_start:x_end]
+
+            # Ensure exact original size (handle odd dimensions)
+            if augmented_image.shape[0] != original_height or augmented_image.shape[1] != original_width:
+                augmented_image = cv2.resize(augmented_image, (original_width, original_height))
+                augmented_mask = cv2.resize(augmented_mask, (original_width, original_height),
+                                           interpolation=cv2.INTER_NEAREST)
 
     # Scaling augmentation
     if scaling:

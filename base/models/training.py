@@ -77,40 +77,70 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
             name: Name of the loss function
         """
         super().__init__(reduction=reduction, name=name)
-        self.class_weights = tf.convert_to_tensor(class_weights, dtype=tf.float32)
+
+        # Convert and normalize weights to sum to 1 (MATLAB behavior)
+        weights = tf.convert_to_tensor(class_weights, dtype=tf.float32)
+        weights_sum = tf.reduce_sum(weights)
+        self.class_weights = weights / weights_sum
+
         self.from_logits = from_logits
 
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """
-        Compute the weighted loss between predictions and targets.
+        Compute weighted loss using per-class approach (MATLAB-aligned).
+
+        This implementation computes the mean loss for each class separately,
+        then weights and sums them. This ensures true class balancing even
+        with highly imbalanced datasets, matching MATLAB's behavior.
 
         Args:
-            y_true: Ground truth labels
-            y_pred: Model predictions
+            y_true: Ground truth labels [batch, height, width, 1]
+            y_pred: Model predictions [batch, height, width, num_classes]
 
         Returns:
-            Computed loss value
+            Computed loss value (scalar)
         """
         y_true = tf.cast(y_true, tf.int32)
+        num_classes = tf.shape(y_pred)[-1]
+
+        # Flatten tensors for easier processing
         y_true_flat = tf.reshape(y_true, [-1])
+        y_pred_flat = tf.reshape(y_pred, [-1, num_classes])
 
-        # Prevent extreme values for numerical stability
-        epsilon = 1e-7
-        y_pred = tf.clip_by_value(y_pred, epsilon, 1 - epsilon)
-
-        # Apply class weights to each pixel
-        sample_weights = tf.gather(self.class_weights, y_true_flat)
-
-        # Compute the sparse categorical crossentropy
-        losses = tf.keras.losses.sparse_categorical_crossentropy(
-            y_true_flat,
-            tf.reshape(y_pred, [tf.shape(y_true_flat)[0], -1]),
-            from_logits=self.from_logits
+        # Compute per-pixel crossentropy loss
+        per_pixel_loss = tf.keras.losses.sparse_categorical_crossentropy(
+            y_true_flat, y_pred_flat, from_logits=self.from_logits
         )
 
-        # Apply weights and return mean
-        weighted_losses = losses * sample_weights
-        return tf.reduce_mean(weighted_losses)
+        # Per-class mean loss computation (MATLAB-style)
+        # Use tf.map_fn for graph mode compatibility
+        def compute_class_loss(class_idx):
+            """Compute weighted mean loss for a specific class."""
+            # Create binary mask for pixels belonging to this class
+            class_mask = tf.cast(tf.equal(y_true_flat, class_idx), tf.float32)
+            num_pixels_in_class = tf.reduce_sum(class_mask)
+
+            # Compute mean loss for this class (with numerical stability)
+            # If class is not present in batch, contribute 0 to total loss
+            masked_loss = per_pixel_loss * class_mask
+            class_mean_loss = tf.cond(
+                num_pixels_in_class > 0,
+                lambda: tf.reduce_sum(masked_loss) / num_pixels_in_class,
+                lambda: 0.0  # Empty class contributes nothing
+            )
+
+            # Apply normalized class weight
+            return self.class_weights[class_idx] * class_mean_loss
+
+        # Compute weighted loss for each class using vectorized map
+        class_losses = tf.map_fn(
+            compute_class_loss,
+            tf.range(num_classes),
+            dtype=tf.float32
+        )
+
+        # Sum all class contributions (MATLAB-style: sum not mean)
+        return tf.reduce_sum(class_losses)
 
     def get_config(self) -> Dict[str, Any]:
         """Get configuration for serialization."""
@@ -375,24 +405,21 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         """
         Called at the end of each epoch.
+        Reduces learning rate every epoch to match MATLAB piecewise schedule.
 
         Args:
             epoch: Current epoch number
             logs: Dictionary of logs (unused)
         """
-        # Check if learning rate should be reduced
-        self.epoch_wait += 1
-        if self.epoch_wait > self.lr_patience and self.reduce_lr:
-            old_lr = float(self._model.optimizer.learning_rate.numpy())
-            new_lr = old_lr * self.lr_factor
-            self._model.optimizer.learning_rate.assign(new_lr)
+        # MATLAB-style: Drop LR every epoch unconditionally (piecewise schedule)
+        old_lr = float(self._model.optimizer.learning_rate.numpy())
+        new_lr = old_lr * self.lr_factor
+        self._model.optimizer.learning_rate.assign(new_lr)
 
-            if self.verbose > 0 and self.logger:
-                self.logger.logger.debug(
-                    f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr} to {new_lr}"
-                )
-
-            self.epoch_wait = 0
+        if self.verbose > 0 and self.logger:
+            self.logger.logger.debug(
+                f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr:.6f} to {new_lr:.6f}"
+            )
 
     def on_train_end(self, logs=None):
         """
@@ -566,7 +593,7 @@ class SegmentationModelTrainer:
             self.image_size = self.model_data.get('sxy')
             self.model_type = self.model_data.get('model_type', "DeepLabV3_plus")
             self.batch_size = self.model_data.get('batch_size', 3)
-            self.l2_regularization_weight = self.model_data.get('l2_regularization_weight', 1e-4)
+            self.l2_regularization_weight = self.model_data.get('l2_regularization_weight', 0)  # Default 0 to match MATLAB (no regularization)
             self.use_adamw_optimizer = self.model_data.get('use_adamw_optimizer', False)
 
             # Validate L2 regularization weight

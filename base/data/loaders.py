@@ -340,7 +340,8 @@ def create_training_dataset(
         dataset = dataset.cache()
 
     # Always shuffle training data
-    shuffle_buffer_size = min(data_config.shuffle_buffer_size, len(image_paths))
+    # Use full dataset shuffle (MATLAB behavior), but cap at 50000 for memory safety
+    shuffle_buffer_size = min(len(image_paths), 50000)
     dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed, reshuffle_each_iteration=True)
 
     # Repeat the dataset for continuous training

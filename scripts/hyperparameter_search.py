@@ -315,7 +315,7 @@ class HyperparameterSearcher:
             'epochs': params.get('epochs', 8),
             'es_patience': params.get('es_patience', 6),
             'lr_factor': params.get('lr_factor', 0.75),
-            'l2_regularization_weight': params.get('l2_regularization_weight', 1e-5),
+            'l2_regularization_weight': params.get('l2_regularization_weight', 0),  # Default 0 to match MATLAB (no regularization)
             'use_adamw_optimizer': params.get('use_adamw_optimizer', False)
         })
         
@@ -994,7 +994,7 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
                  lr_patience: int = 1,
                  lr_factor: float = 0.75,
                  validation_frequency: int = ModelDefaults.VALIDATION_FREQUENCY,
-                 l2_regularization_weight: float = 1e-4,
+                 l2_regularization_weight: float = 0,  # Default 0 to match MATLAB (no regularization)
                  use_adamw_optimizer: bool = False,
                  **kwargs):
         """
