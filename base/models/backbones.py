@@ -11,12 +11,8 @@ CODAvision codebase.
 
 Original DeepLabV3+ implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
 
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
-    Arrun Sivasubramanian (Johns Hopkins - Kiemen Lab)
-
-Updated: March 12, 2025
+Note: Custom preprocessing functions are used instead of tf.keras.applications.*.preprocess_input
+to avoid serialization issues with Ellipsis objects that prevent model saving.
 """
 
 import os
@@ -45,18 +41,27 @@ class BaseSegmentationModel(ABC):
     Attributes:
         input_size (int): Size of the input images (assumes square images)
         num_classes (int): Number of segmentation classes
+        l2_regularization_weight (float): L2 regularization weight for Conv2D layers
     """
 
-    def __init__(self, input_size: int, num_classes: int):
+    def __init__(self, input_size: int, num_classes: int, l2_regularization_weight: float = 0):
         """
         Initialize the segmentation model.
 
         Args:
             input_size: Size of the input images (assumes square images)
             num_classes: Number of segmentation classes
+            l2_regularization_weight: L2 regularization weight for Conv2D layers (default: 0 to match MATLAB)
+
+        Raises:
+            ValueError: If l2_regularization_weight is negative
         """
+        if l2_regularization_weight < 0:
+            raise ValueError(f"L2 regularization weight must be >= 0, got {l2_regularization_weight}")
+
         self.input_size = input_size
         self.num_classes = num_classes
+        self.l2_regularization_weight = l2_regularization_weight  # Set to 0 to match MATLAB (no regularization)
 
     @abstractmethod
     def build_model(self) -> Model:
@@ -80,7 +85,35 @@ class DeepLabV3Plus(BaseSegmentationModel):
     Attributes:
         input_size (int): Size of the input images (assumes square images)
         num_classes (int): Number of segmentation classes
+        l2_regularization_weight (float): L2 regularization weight for Conv2D layers
     """
+
+    def resnet50_preprocess(self, x: tf.Tensor) -> tf.Tensor:
+        """
+        Custom preprocessing for ResNet50 that avoids serialization issues.
+        
+        This replaces tf.keras.applications.resnet50.preprocess_input which
+        uses Ellipsis in its implementation and causes serialization errors.
+        
+        The preprocessing performs channel-wise centering using ImageNet statistics.
+        
+        Args:
+            x: Input tensor
+            
+        Returns:
+            Preprocessed tensor
+        """
+        # ImageNet mean values for each channel (BGR order)
+        mean = tf.constant([103.939, 116.779, 123.68], dtype=tf.float32)
+        mean = tf.reshape(mean, [1, 1, 1, 3])
+        
+        # Convert RGB to BGR by reversing channels
+        x = tf.reverse(x, axis=[-1])
+        
+        # Subtract ImageNet mean
+        x = x - mean
+        
+        return x
 
     def convolution_block(
         self,
@@ -103,6 +136,9 @@ class DeepLabV3Plus(BaseSegmentationModel):
         Returns:
             Output tensor after convolution, batch normalization, and activation
         """
+        # Apply L2 regularization to Conv2D layers (but not to pretrained encoder)
+        kernel_regularizer = tf.keras.regularizers.l2(self.l2_regularization_weight) if self.l2_regularization_weight > 0 else None
+
         x = layers.Conv2D(
             num_filters,
             kernel_size=kernel_size,
@@ -110,6 +146,7 @@ class DeepLabV3Plus(BaseSegmentationModel):
             padding="same",
             use_bias=use_bias,
             kernel_initializer=tf.keras.initializers.HeNormal(),
+            kernel_regularizer=kernel_regularizer,
         )(block_input)
         x = layers.BatchNormalization()(x)
         x = layers.Activation('relu')(x)
@@ -162,7 +199,8 @@ class DeepLabV3Plus(BaseSegmentationModel):
         """
         # Input layer
         model_input = tf.keras.Input(shape=(self.input_size, self.input_size, 3))
-        preprocessed = applications.resnet50.preprocess_input(model_input)
+        # Use custom preprocessing to avoid Ellipsis serialization issue
+        preprocessed = self.resnet50_preprocess(model_input)
 
         # Encoder (ResNet50 backbone)
         resnet50 = applications.ResNet50(
@@ -197,7 +235,7 @@ class DeepLabV3Plus(BaseSegmentationModel):
             interpolation="bilinear",
         )(x)
 
-        # Output segmentation map
+        # Output segmentation map (no regularization on final layer)
         outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
 
         # Create and return model
@@ -218,6 +256,7 @@ class UNet(BaseSegmentationModel):
     Attributes:
         input_size (int): Size of the input images (assumes square images)
         num_classes (int): Number of segmentation classes
+        l2_regularization_weight (float): L2 regularization weight for Conv2D layers
     """
 
     def conv_block(self, inputs: tf.Tensor, num_filters: int, kernel_size: int = 3) -> tf.Tensor:
@@ -232,11 +271,14 @@ class UNet(BaseSegmentationModel):
         Returns:
             Output tensor after convolutions, batch normalization, and activation
         """
-        x = layers.Conv2D(num_filters, kernel_size, padding="same")(inputs)
+        # Apply L2 regularization to decoder Conv2D layers
+        kernel_regularizer = tf.keras.regularizers.l2(self.l2_regularization_weight) if self.l2_regularization_weight > 0 else None
+
+        x = layers.Conv2D(num_filters, kernel_size, padding="same", kernel_regularizer=kernel_regularizer)(inputs)
         x = layers.BatchNormalization()(x)
         x = layers.Activation("relu")(x)
 
-        x = layers.Conv2D(num_filters, kernel_size, padding="same")(x)
+        x = layers.Conv2D(num_filters, kernel_size, padding="same", kernel_regularizer=kernel_regularizer)(x)
         x = layers.BatchNormalization()(x)
         x = layers.Activation("relu")(x)
         return x
@@ -258,7 +300,9 @@ class UNet(BaseSegmentationModel):
         Returns:
             Output tensor after processing
         """
-        x = layers.Conv2DTranspose(num_filters, (2, 2), strides=2, padding="same")(inputs)
+        # Apply L2 regularization to decoder transposed convolution
+        kernel_regularizer = tf.keras.regularizers.l2(self.l2_regularization_weight) if self.l2_regularization_weight > 0 else None
+        x = layers.Conv2DTranspose(num_filters, (2, 2), strides=2, padding="same", kernel_regularizer=kernel_regularizer)(inputs)
         x = layers.Concatenate()([x, skip_features])
         x = self.conv_block(x, num_filters)
         return x
@@ -277,8 +321,12 @@ class UNet(BaseSegmentationModel):
         # Input layer
         inputs = layers.Input(input_shape)
 
-        # Apply preprocessing for ResNet50
-        preprocessed = applications.resnet50.preprocess_input(inputs)
+        # Apply custom preprocessing to avoid Ellipsis serialization issue
+        # ImageNet mean values for each channel (BGR order)
+        mean = tf.constant([103.939, 116.779, 123.68], dtype=tf.float32)
+        mean = tf.reshape(mean, [1, 1, 1, 3])
+        # Convert RGB to BGR and subtract ImageNet mean
+        preprocessed = tf.reverse(inputs, axis=[-1]) - mean
 
         # Encoder (ResNet50 backbone)
         resnet50 = applications.ResNet50(
@@ -303,6 +351,7 @@ class UNet(BaseSegmentationModel):
         d4 = self.decoder_block(d3, s1, 64)
 
         # Final upsampling and output layer
+        # Note: No regularization on final classification layer (best practice to avoid bias in predictions)
         outputs = layers.Conv2DTranspose(
             num_classes,
             (2, 2),
@@ -349,7 +398,7 @@ def unfreeze_model(model: Model) -> Model:
     return model
 
 
-def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int) -> Model:
+def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int, l2_regularization_weight: float = 0) -> Model:
     """
     Factory function to create a segmentation model of the specified type.
 
@@ -357,6 +406,7 @@ def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int) -> Model:
         name: Model type ('UNet' or 'DeepLabV3_plus')
         IMAGE_SIZE: Size of input images (assumes square images)
         NUM_CLASSES: Number of segmentation classes
+        l2_regularization_weight: L2 regularization weight for Conv2D layers (default: 0 to match MATLAB)
 
     Returns:
         The requested segmentation model
@@ -365,9 +415,9 @@ def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int) -> Model:
         ValueError: If an invalid model name is provided
     """
     if name == "UNet":
-        model = UNet(IMAGE_SIZE, NUM_CLASSES).build_model()
+        model = UNet(IMAGE_SIZE, NUM_CLASSES, l2_regularization_weight).build_model()
     elif name == "DeepLabV3_plus":
-        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
+        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES, l2_regularization_weight=l2_regularization_weight).build_model()
     else:
         raise ValueError(f'Incorrect Model Name / Pretrained model of {name} does not exist')
 

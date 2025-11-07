@@ -3,9 +3,6 @@ UI Definitions for CODAvision GUI
 
 This module contains the UI definitions generated from Qt Designer UI files.
 These classes define the layout and properties of the GUI components.
-
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Updated: March 2025
 """
 import os.path
 

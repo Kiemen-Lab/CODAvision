@@ -3,9 +3,6 @@ Dialog Components for CODAvision GUI
 
 This module provides dialog windows and UI components used in the CODAvision application
 for tasks such as tissue analysis optimization, image selection, and progress display.
-
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Updated: March 2025
 """
 
 from PySide6.QtCore import QCoreApplication, QPoint, QRect, QSize, Qt, QMetaObject

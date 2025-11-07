@@ -16,12 +16,6 @@ The workflow:
 Usage:
     Run this script directly to execute the complete workflow
     python non-gui_workflow.py
-
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: May 2025
 """
 
 import os
@@ -48,7 +42,7 @@ log_filename = os.path.join(logs_dir, f'{datetime.now().strftime("%Y%m%d_%H%M%S"
 if DEBUG_MODE:
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - [%(name)s:%(funcName)s:%(lineno)d] - %(message)s',
         handlers=[
             logging.FileHandler(log_filename),
             logging.StreamHandler()  # Console output
@@ -57,14 +51,13 @@ if DEBUG_MODE:
 else:
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - [%(name)s] - %(message)s',
         handlers=[logging.FileHandler(log_filename)]
     )
-logger = logging.getLogger(__name__)
-logger.info(f"Starting tissue segmentation workflow with debug logging to {log_filename}")
+logging.info(f"Starting tissue segmentation workflow. Log level set to {'DEBUG' if DEBUG_MODE else 'INFO'}. Logging to {log_filename}")
 
 # Set up data paths
-pth = '/Users/tnewton3/Desktop/liver_tissue_data'
+pth = '/path/to/liver_tissue_data'
 pthim = os.path.join(pth, '10x')  # Path to 10x magnification images
 umpix = 1  # Microns per pixel
 pthtest = os.path.join(pth, 'testing_image')  # Path to test dataset
@@ -154,4 +147,4 @@ create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles)
 train_segmentation_model_cnns(pthDL, retrain_model=True)
 
 # Step 5: Test the trained model on separate test images
-test_segmentation_model(pthDL, pthtest, pthtestim)
+test_segmentation_model(pthDL, pthtest, pthtestim, show_fig=False)

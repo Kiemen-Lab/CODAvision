@@ -18,16 +18,10 @@ Example usage:
     # Using the class interface
     classifier = ImageClassifier("path/to/images", "path/to/model", "DeepLabV3_plus")
     output_path = classifier.classify(color_overlay=True, color_mask=True, display=True)
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated March 2025
 """
 
 import os
-os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = "0"
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))
 import time
 import numpy as np
 import cv2
@@ -41,8 +35,12 @@ from scipy.ndimage import binary_fill_holes
 
 from base.models.utils import get_model_paths
 from base.image.segmentation import semantic_seg
-from base.image.utils import decode_segmentation_masks, create_overlay
+from base.image.utils import decode_segmentation_masks, create_overlay, load_image_with_fallback
 from base.data.loaders import load_model_metadata
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 class ImageClassifier:
@@ -51,6 +49,7 @@ class ImageClassifier:
 
     This class handles loading model data, processing images, and saving classification results.
     """
+
 
     def __init__(self, image_path: str, model_path: str, model_type: str):
         """
@@ -185,12 +184,8 @@ class ImageClassifier:
             tissue_mask = binary_fill_holes(np.array(tissue_mask))
         except:
             # Create a mask if none exists
-            try:
-                image = cv2.imread(image_path)
-                image = image[:, :, ::-1]  # BGR to RGB
-            except:
-                image = tifffile.imread(image_path)
-            tissue_mask = np.array(image[:,:,1]) < 205
+            image = load_image_with_fallback(image_path)
+            tissue_mask = np.array(image[:,:,1]) < 220
             tissue_mask = binary_fill_holes(tissue_mask.astype(bool))
 
         return tissue_mask
@@ -206,11 +201,7 @@ class ImageClassifier:
             Tuple of (original image, classified image)
         """
         # Load the image
-        try:
-            image = cv2.imread(image_path)
-            image = image[:, :, ::-1]  # BGR to RGB
-        except:
-            image = tifffile.imread(image_path)
+        image = load_image_with_fallback(image_path)
 
         # Get tissue mask
         tissue_mask = self._get_tissue_mask(image_path)
@@ -324,7 +315,7 @@ class ImageClassifier:
             image_list.extend(png_files)
 
         if not image_list:
-            print(f"No TIFF, PNG or JPG image files found in {self.image_path}")
+            logger.error(f"No TIFF, PNG or JPG image files found in {self.image_path}")
 
         return sorted(image_list)
 
@@ -349,8 +340,7 @@ class ImageClassifier:
         for ax in axs:
             ax.axis('off')
         plt.subplots_adjust(wspace=0, hspace=0)
-        plt.show()
-        plt.pause(0.2)
+        plt.show(block=False)
 
     def classify(self, color_overlay: bool = True, color_mask: bool = False, display: bool = True) -> str:
         """
@@ -382,7 +372,7 @@ class ImageClassifier:
         if not image_list:
             return self.output_path
 
-        print('   ')
+        logger.info(f"Processing {len(image_list)} images for classification...")
 
         # For displaying results
         first_image = None
@@ -392,14 +382,14 @@ class ImageClassifier:
         for i, img_path in enumerate(image_list):
             classification_start = time.time()
             img_name = os.path.basename(img_path)
-            print(f'Starting classification of image {i + 1} of {len(image_list)}: {img_name}')
+            logger.info(f'Starting classification of image {i + 1} of {len(image_list)}: {img_name}')
 
             # Define output path
             output_path = os.path.join(self.output_path, f"{os.path.splitext(img_name)[0]}.tif")
 
             # Skip if already classified
             if os.path.exists(output_path):
-                print(f'Image already classified, skipping: {img_name}')
+                logger.info(f'Image already classified, skipping: {img_name}')
                 continue
 
             # Process the image
@@ -423,7 +413,7 @@ class ImageClassifier:
                 first_img_prediction = classified_image - 1
 
             elapsed_time = round(time.time() - classification_start)
-            print(f'Image {i + 1} of {len(image_list)} took {elapsed_time} s')
+            logger.info(f'Image {i + 1} of {len(image_list)} took {elapsed_time} s')
 
         # Display results if requested
         if display and first_image is not None and first_img_prediction is not None:
@@ -433,7 +423,7 @@ class ImageClassifier:
         end_time = time.time() - start_time
         hours, rem = divmod(end_time, 3600)
         minutes, seconds = divmod(rem, 60)
-        print(f'  Total time for classification: {int(hours)}h {int(minutes)}m {int(seconds)}s')
+        logger.info(f'  Total time for classification: {int(hours)}h {int(minutes)}m {int(seconds)}s')
 
         return self.output_path
 
