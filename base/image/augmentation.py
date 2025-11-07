@@ -23,7 +23,8 @@ def augment_image(
     scaling: bool = True,
     hue_shift: bool = True,
     blur: bool = False,
-    resize: bool = False
+    resize: bool = False,
+    crop_rotations: bool = False
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Apply random augmentations to an image and its mask.
@@ -39,6 +40,8 @@ def augment_image(
         hue_shift: Whether to apply random hue adjustment
         blur: Whether to apply random Gaussian blur
         resize: Whether to resize images after scaling augmentation
+        crop_rotations: If True, crop rotated images back to original size (legacy/MATLAB behavior).
+                       If False, keep expanded dimensions (modern/CODAvision behavior). Default: False.
 
     Returns:
         Tuple containing:
@@ -90,8 +93,8 @@ def augment_image(
             flags=cv2.INTER_NEAREST
         )
 
-        # Crop back to original size to match MATLAB's imrotate behavior
-        if new_height != original_height or new_width != original_width:
+        # Optionally crop back to original size (legacy/MATLAB behavior)
+        if crop_rotations and (new_height != original_height or new_width != original_width):
             # Calculate center crop coordinates
             center_y = new_height // 2
             center_x = new_width // 2
@@ -217,7 +220,8 @@ def edit_annotation_tiles(
     class_id: int,
     num_pixels_class: np.ndarray,
     big_tile_size: int,
-    kpall: int
+    kpall: int,
+    crop_rotations: bool = False
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Edit annotation tiles by performing augmentation and adjusting class distribution.
@@ -233,6 +237,8 @@ def edit_annotation_tiles(
         num_pixels_class: Array containing the pixel counts for each class
         big_tile_size: Size of the big tile
         kpall: Flag indicating whether to keep all classes (1) or not (0)
+        crop_rotations: If True, crop rotated images back to original size (legacy).
+                       If False, keep expanded dimensions (modern). Default: False.
 
     Returns:
         Tuple containing:
@@ -245,9 +251,9 @@ def edit_annotation_tiles(
 
     # Apply appropriate augmentation based on the flag
     if do_augmentation:
-        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=True, blur=True)
+        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=True, blur=True, crop_rotations=crop_rotations)
     else:
-        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=False, blur=False)
+        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=False, blur=False, crop_rotations=crop_rotations)
 
     # Filter classes based on kpall flag
     if kpall == 0:

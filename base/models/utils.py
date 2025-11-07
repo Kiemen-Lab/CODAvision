@@ -65,6 +65,7 @@ def create_initial_model_metadata(
         nvalidate: int,
         model_type: str = "DeepLabV3_plus",  # Default from GUI
         batch_size: int = 3,  # Default from GUI/training
+        tile_format: str = 'tif',  # Default file format for backward compatibility
         pthtest: str = None,
         nTA: int = None,
         final_df: Any = None,
@@ -174,7 +175,8 @@ def create_initial_model_metadata(
         "nwhite": nwhite,  # Index within the semantic classes (usually 1 to N, not including black)
         "nvalidate": nvalidate,
         "model_type": model_type,
-        "batch_size": batch_size
+        "batch_size": batch_size,
+        "tile_format": tile_format  # File format for training tiles (tif/png/jpg)
     }
 
     if pthtest is not None: metadata_dict["pthtest"] = pthtest

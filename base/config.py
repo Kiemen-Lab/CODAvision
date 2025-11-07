@@ -6,8 +6,9 @@ package, eliminating magic numbers and hardcoded values throughout the codebase.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from enum import Enum
+import os
 
 
 class ThresholdDefaults:
@@ -61,6 +62,9 @@ class ModelDefaults:
     # Validation
     VALIDATION_FREQUENCY = 128  # Number of iterations between validations
 
+    # Tile Generation
+    TILE_GENERATION_MODE = "legacy"  # Default tile generation mode ("modern" or "legacy")
+
 
 class LoggingConfig:
     """Configuration for logging system."""
@@ -106,6 +110,68 @@ class RuntimeConfig:
             raise ValueError("seed must be non-negative")
 
 
+@dataclass
+class TileGenerationConfig:
+    """Configuration for tile generation behavior."""
+    mode: str = "modern"  # "modern" or "legacy" or custom name
+    reduction_factor: int = 10
+    use_disk_filter: bool = False
+    crop_rotations: bool = False
+    class_rotation_frequency: int = 5
+    deterministic_seed: Optional[int] = 3
+    big_tile_size: int = 10240
+    file_format: str = "png"
+
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        # Validate mode (allow custom modes for flexibility)
+        if not isinstance(self.mode, str) or not self.mode:
+            raise ValueError(f"mode must be a non-empty string, got '{self.mode}'")
+
+        # Validate reduction_factor
+        if not 1 <= self.reduction_factor <= 20:
+            raise ValueError(f"reduction_factor must be 1-20, got {self.reduction_factor}")
+
+        # Validate file_format and normalize to 3-char extension
+        if not isinstance(self.file_format, str):
+            raise ValueError(f"file_format must be a string, got {type(self.file_format)}")
+
+        # Normalize file format to 3-char extension
+        format_lower = self.file_format.lower()
+        if format_lower in ("tif", "tiff"):
+            self.file_format = "tif"
+        elif format_lower == "png":
+            self.file_format = "png"
+        elif format_lower in ("jpg", "jpeg"):
+            self.file_format = "jpg"
+        else:
+            raise ValueError(f"file_format must be 'tif'/'tiff', 'png', or 'jpg'/'jpeg', got '{self.file_format}'")
+
+
+# Preset tile generation configurations
+MODERN_CONFIG = TileGenerationConfig(
+    mode="modern",
+    reduction_factor=10,
+    use_disk_filter=False,
+    crop_rotations=False,
+    class_rotation_frequency=5,
+    deterministic_seed=3,
+    big_tile_size=10240,
+    file_format="png"
+)
+
+LEGACY_CONFIG = TileGenerationConfig(
+    mode="legacy",
+    reduction_factor=5,
+    use_disk_filter=True,
+    crop_rotations=True,
+    class_rotation_frequency=3,
+    deterministic_seed=None,
+    big_tile_size=10000,
+    file_format="tif"
+)
+
+
 # Global runtime configuration instance
 runtime_config = RuntimeConfig()
 
@@ -144,7 +210,7 @@ def get_display_config() -> dict:
 def get_model_config() -> dict:
     """
     Get model configuration as a dictionary.
-    
+
     Returns:
         Dictionary containing model configuration values
     """
@@ -161,3 +227,27 @@ def get_model_config() -> dict:
         'min_lr': ModelDefaults.MIN_LR,
         'validation_frequency': ModelDefaults.VALIDATION_FREQUENCY
     }
+
+
+def get_default_tile_config() -> TileGenerationConfig:
+    """
+    Get default tile configuration from environment or ModelDefaults.
+
+    Checks the CODAVISION_TILE_GENERATION_MODE environment variable first,
+    falling back to ModelDefaults.TILE_GENERATION_MODE if not set.
+
+    Returns:
+        TileGenerationConfig: Either MODERN_CONFIG or LEGACY_CONFIG preset
+
+    Raises:
+        ValueError: If the mode is not 'modern' or 'legacy'
+    """
+    mode = os.environ.get('CODAVISION_TILE_GENERATION_MODE',
+                         ModelDefaults.TILE_GENERATION_MODE).lower()
+
+    if mode == "legacy":
+        return LEGACY_CONFIG
+    elif mode == "modern":
+        return MODERN_CONFIG
+    else:
+        raise ValueError(f"Invalid TILE_GENERATION_MODE: '{mode}'. Must be 'modern' or 'legacy'.")

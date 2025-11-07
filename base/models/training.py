@@ -635,13 +635,17 @@ class SegmentationModelTrainer:
         train_path = self.model_paths['train_data']
         val_path = self.model_paths['val_data']
 
+        # Get file format from model metadata (default to 'tif' for backward compatibility)
+        tile_format = self.model_data.get('tile_format', 'tif')
+        file_pattern = f"*.{tile_format}"
+
         # Find training images and masks
-        train_images = sorted(glob(os.path.join(train_path, 'im', "*.tif")))
-        train_masks = sorted(glob(os.path.join(train_path, 'label', "*.tif")))
+        train_images = sorted(glob(os.path.join(train_path, 'im', file_pattern)))
+        train_masks = sorted(glob(os.path.join(train_path, 'label', file_pattern)))
 
         # Find validation images and masks
-        val_images = sorted(glob(os.path.join(val_path, 'im', "*.tif")))
-        val_masks = sorted(glob(os.path.join(val_path, 'label', "*.tif")))
+        val_images = sorted(glob(os.path.join(val_path, 'im', file_pattern)))
+        val_masks = sorted(glob(os.path.join(val_path, 'label', file_pattern)))
 
         # Check if we found any data
         if not train_images or not train_masks:
@@ -734,9 +738,13 @@ class SegmentationModelTrainer:
         This method calculates class weights and creates a loss function
         that accounts for class imbalance.
         """
+        # Get file format from model metadata (default to 'tif' for backward compatibility)
+        tile_format = self.model_data.get('tile_format', 'tif')
+        file_pattern = f"*.{tile_format}"
+
         # Find all training masks
         train_path = os.path.join(self.model_path, 'training')
-        train_masks = sorted(glob(os.path.join(train_path, 'label', "*.tif")))
+        train_masks = sorted(glob(os.path.join(train_path, 'label', file_pattern)))
 
         # Calculate class weights
         self.class_weights = self._calculate_class_weights(train_masks)

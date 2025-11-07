@@ -36,7 +36,7 @@ def combine_annotations_into_tiles(
     model_path: str,
     output_folder: str,
     tile_size: int,
-    big_tile_size: int = 10000,  # Match MATLAB default (was 10240)
+    config: 'TileGenerationConfig',
     background_class: int = 0
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -56,7 +56,7 @@ def combine_annotations_into_tiles(
         model_path: Path to the model directory
         output_folder: Output folder name where tiles will be saved (relative to model_path)
         tile_size: Size for the output tiles
-        big_tile_size: Size of the big tiles before cutting into smaller ones (default: 10000)
+        config: Tile generation configuration controlling algorithm behavior
         background_class: Background class index (default: 0)
 
     Returns:
@@ -64,15 +64,14 @@ def combine_annotations_into_tiles(
         - Updated annotation counts array
         - Updated annotation percentage tracking array
     """
-    # Random seed removed to match MATLAB (no explicit seed) - increases tile diversity
-    # np.random.seed(3)
 
     logger.debug(f"Starting combine_annotations_into_tiles with {len(image_list['tile_name'])} tiles")
     logger.debug(f"initial_annotations shape: {initial_annotations.shape}")
     logger.debug(f"current_annotations shape: {current_annotations.shape}")
     logger.debug(f"num_classes: {num_classes}")
 
-
+    # Use configured big tile size
+    big_tile_size = config.big_tile_size
     big_tile_size_with_margin = big_tile_size + 200
     keep_all_classes = 1
 
@@ -85,16 +84,10 @@ def combine_annotations_into_tiles(
     os.makedirs(output_path_labels, exist_ok=True)
     os.makedirs(output_path_big_tiles, exist_ok=True)
 
-    # Check if we've already done this work
-    existing_images = [f for f in os.listdir(output_path_images) if f.endswith('.tif')]
+    # Check if we've already done this work using configured file format
+    file_ext = f".{config.file_format}"
+    existing_images = [f for f in os.listdir(output_path_images) if f.endswith(file_ext)]
     next_image_number = len(existing_images) + 1
-
-    # Migration warning: Check for old PNG tiles
-    png_tiles = [f for f in os.listdir(output_path_images) if f.endswith('.png')]
-    if png_tiles:
-        logger.warning(f"Found {len(png_tiles)} existing PNG tiles in {output_path_images}.")
-        logger.warning("PNG tiles are incompatible with the TIFF format pipeline.")
-        logger.warning("Please delete PNG tiles or regenerate them as TIFF before proceeding.")
 
     # Initialize composite canvas
     composite_image = np.full((big_tile_size_with_margin, big_tile_size_with_margin, 3),
@@ -111,7 +104,7 @@ def combine_annotations_into_tiles(
     count = 1
     tile_count = 1
     cutoff_threshold = 0.55
-    reduction_factor = 5  # Match MATLAB's rsf=5 (was 10)
+    reduction_factor = config.reduction_factor  # Use configured reduction factor
     last_class_type = 0
     num_tiles_used = np.zeros(len(image_list['tile_name']))
     class_type_counts = np.zeros(num_classes)
@@ -120,15 +113,17 @@ def combine_annotations_into_tiles(
     # These values never change across iterations, so computing once saves significant time
     padding = int(100/reduction_factor)
 
-    # Create disk filter once (used for convolution in placement optimization)
+    # Create disk filter if enabled (used for convolution in placement optimization)
     # This 51x51 disk filter with radius 25 is constant throughout all iterations
-    disk_radius = 25
-    disk_size = 51
-    h = np.zeros((disk_size, disk_size))
-    center = disk_size // 2
-    y_disk, x_disk = np.ogrid[:disk_size, :disk_size]
-    disk_mask = (x_disk - center)**2 + (y_disk - center)**2 <= center**2
-    h[disk_mask] = 1.0
+    h = None
+    if config.use_disk_filter:
+        disk_radius = 25
+        disk_size = 51
+        h = np.zeros((disk_size, disk_size))
+        center = disk_size // 2
+        y_disk, x_disk = np.ogrid[:disk_size, :disk_size]
+        disk_mask = (x_disk - center)**2 + (y_disk - center)**2 <= center**2
+        h[disk_mask] = 1.0
 
     # Main loop
     iteration = 1
@@ -136,8 +131,8 @@ def combine_annotations_into_tiles(
     while fill_ratio < cutoff_threshold:
         iteration_start_time = time.time()
 
-        # Select which class to sample - Match MATLAB's rem(count,3)==1
-        if count % 3 == 1:
+        # Select which class to sample using configured rotation frequency
+        if count % config.class_rotation_frequency == 1:
             class_type = tile_count - 1
             tile_count = (tile_count % num_classes) + 1
         else:
@@ -198,13 +193,13 @@ def combine_annotations_into_tiles(
             iteration += 1
             continue
 
-        # Apply optional augmentation
-        apply_augmentation = 1 if count % 3 == 1 else 0
+        # Apply optional augmentation using configured frequency
+        apply_augmentation = 1 if count % config.class_rotation_frequency == 1 else 0
 
-        # Get augmented tiles
+        # Get augmented tiles with configured rotation cropping behavior
         image, annotation_mask, kept_classes = edit_annotation_tiles(
             image, annotation_mask, apply_augmentation, class_type, class_counts,
-            composite_mask.shape[0], keep_all_classes
+            composite_mask.shape[0], keep_all_classes, config.crop_rotations
         )
 
         # Update tracking of which annotations we've used
@@ -230,12 +225,16 @@ def combine_annotations_into_tiles(
         # Downsample for faster distance calculation
         downsampled_mask = composite_mask[::reduction_factor, ::reduction_factor] > 0
 
-        # Apply disk filter to downsampled mask (MATLAB's imfilter)
+        # Apply disk filter if enabled (MATLAB's imfilter)
         # Note: disk filter 'h' and 'padding' are pre-computed outside the loop for performance
-        # Using OpenCV's filter2D for optimal performance (2-4x faster than scipy.ndimage.convolve)
-        filtered_mask = cv2.filter2D(downsampled_mask.astype(np.float32), -1, h, borderType=cv2.BORDER_CONSTANT)
+        if config.use_disk_filter:
+            # Using OpenCV's filter2D for optimal performance (2-4x faster than scipy.ndimage.convolve)
+            filtered_mask = cv2.filter2D(downsampled_mask.astype(np.float32), -1, h, borderType=cv2.BORDER_CONSTANT)
+        else:
+            # Skip disk filter - use downsampled mask directly (modern/CODAvision approach)
+            filtered_mask = downsampled_mask.astype(np.float32)
 
-        # Calculate distance transform to find largest empty area (using filtered mask)
+        # Calculate distance transform to find largest empty area (using filtered/downsampled mask)
         dist = cv2.distanceTransform((filtered_mask <= 0).astype(np.uint8), cv2.DIST_L2, 3)
         # Add border padding
         dist[:padding, :] = 0
@@ -353,11 +352,11 @@ def combine_annotations_into_tiles(
                 image_tile = composite_image[row:row + tile_size, col:col + tile_size, :]
                 mask_tile = composite_mask[row:row + tile_size, col:col + tile_size]
 
-                # Save tiles - Use PIL for both images and masks to match MATLAB's RGB handling
+                # Save tiles using configured file format
                 Image.fromarray(image_tile.astype(np.uint8)).save(
-                    os.path.join(output_path_images, f"{next_image_number}.tif"))
+                    os.path.join(output_path_images, f"{next_image_number}{file_ext}"))
                 Image.fromarray(mask_tile.astype(np.uint8)).save(
-                    os.path.join(output_path_labels, f"{next_image_number}.tif"))
+                    os.path.join(output_path_labels, f"{next_image_number}{file_ext}"))
 
 
                 next_image_number += 1
@@ -368,11 +367,11 @@ def combine_annotations_into_tiles(
     # Save the big tile for reference
     big_tile_number = len([f for f in os.listdir(output_path_big_tiles) if f.startswith('HE')]) + 1
     logger.info('  Saving big tile')
-    # Use PIL and TIFF format for big tiles to match MATLAB
+    # Save big tiles using configured file format
     Image.fromarray(composite_image.astype(np.uint8)).save(
-        os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}.tif"))
+        os.path.join(output_path_big_tiles, f"HE_tile_{big_tile_number}{file_ext}"))
     Image.fromarray(composite_mask).save(
-        os.path.join(output_path_big_tiles, f"label_tile_{big_tile_number}.tif"))
+        os.path.join(output_path_big_tiles, f"label_tile_{big_tile_number}{file_ext}"))
 
     return current_annotations, annotation_percentages
 
@@ -381,7 +380,8 @@ def create_training_tiles(
     model_path: str,
     annotations: np.ndarray,
     image_list: Dict[str, List[str]],
-    create_new_tiles: bool
+    create_new_tiles: bool,
+    config: Optional['TileGenerationConfig'] = None
 ) -> None:
     """
     Build training and validation tiles using annotation bounding boxes.
@@ -395,12 +395,24 @@ def create_training_tiles(
         annotations: Array containing annotation pixel counts by class
         image_list: Dictionary with lists of image tile paths and names
         create_new_tiles: Flag indicating whether to create new tiles or use existing ones
+        config: Optional tile generation configuration. If None, uses get_default_tile_config()
 
     Raises:
         ValueError: If no valid annotations are found
     """
-    # Random seed removed to match MATLAB (no explicit seed) - increases tile diversity
-    # np.random.seed(3)
+    # Import here to avoid circular import
+    from base.config import get_default_tile_config, TileGenerationConfig
+
+    # Get configuration if not provided
+    if config is None:
+        config = get_default_tile_config()
+
+    # Set deterministic seed if specified in config
+    if config.deterministic_seed is not None:
+        np.random.seed(config.deterministic_seed)
+
+    # Create file pattern for glob operations using configured format
+    file_pattern = f"HE*.{config.file_format}"
 
     # Load model metadata
     with open(os.path.join(model_path, 'net.pkl'), 'rb') as f:
@@ -417,7 +429,7 @@ def create_training_tiles(
     logger.info('')
 
     # Verify annotations exist
-    if not annotations or len(annotations) == 0:
+    if annotations is None or len(annotations) == 0:
         raise ValueError(
             'No annotation data found. Please ensure that annotation files exist and contain valid annotations.'
         )
@@ -471,10 +483,10 @@ def create_training_tiles(
     big_tiles_path = os.path.join(model_path, output_type, 'big_tiles')
 
     train_start = time.time()
-    if len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) >= num_train_tiles:
+    if len(glob.glob(os.path.join(big_tiles_path, file_pattern))) >= num_train_tiles:
         logger.info('  Already done.')
     else:
-        while len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) < num_train_tiles:
+        while len(glob.glob(os.path.join(big_tiles_path, file_pattern))) < num_train_tiles:
             current_annotations, annotation_percentages = combine_annotations_into_tiles(
                 annotations_array,
                 current_annotations,
@@ -483,7 +495,8 @@ def create_training_tiles(
                 num_classes,
                 model_path,
                 output_type,
-                tile_size
+                tile_size,
+                config
             )
 
             logger.debug(f"After combine_annotations_into_tiles - current_annotations shape: {current_annotations.shape}")
@@ -491,7 +504,7 @@ def create_training_tiles(
 
             elapsed_time = time.time() - train_start
             logger.info(
-                f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.tif")))} of {num_train_tiles} training images completed in {int(elapsed_time / 60)} minutes')
+                f'  {len(glob.glob(os.path.join(big_tiles_path, file_pattern)))} of {num_train_tiles} training images completed in {int(elapsed_time / 60)} minutes')
 
             # Report usage statistics
             base_class_count = np.sum(annotation_percentages_original[:, :, 0], axis=0)
@@ -525,10 +538,10 @@ def create_training_tiles(
     validation_start_time = time.time()
     logger.info('Building validation tiles...')
 
-    if len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) >= num_validation_tiles:
+    if len(glob.glob(os.path.join(big_tiles_path, file_pattern))) >= num_validation_tiles:
         logger.info('  Already done.')
     else:
-        while len(glob.glob(os.path.join(big_tiles_path, 'HE*.tif'))) < num_validation_tiles:
+        while len(glob.glob(os.path.join(big_tiles_path, file_pattern))) < num_validation_tiles:
             current_annotations, annotation_percentages = combine_annotations_into_tiles(
                 annotations_array,
                 current_annotations,
@@ -537,12 +550,13 @@ def create_training_tiles(
                 num_classes,
                 model_path,
                 output_type,
-                tile_size
+                tile_size,
+                config
             )
 
             elapsed_time = time.time() - validation_start_time
             logger.info(
-                f'  {len(glob.glob(os.path.join(big_tiles_path, "HE*.tif")))} of {num_validation_tiles} validation images completed in {int(elapsed_time / 60)} minutes')
+                f'  {len(glob.glob(os.path.join(big_tiles_path, file_pattern)))} of {num_validation_tiles} validation images completed in {int(elapsed_time / 60)} minutes')
 
             # Report usage statistics
             base_class_count = np.sum(annotation_percentages_original[:, :, 0], axis=0)
@@ -562,3 +576,76 @@ def create_training_tiles(
     minutes, seconds = divmod(rem, 60)
     logger.info(f'  Elapsed time to create validation big tiles: {int(hours)}h {int(minutes)}m {int(seconds)}s')
     logger.info('')
+
+    # Update model metadata with tile format used
+    with open(os.path.join(model_path, 'net.pkl'), 'rb') as f:
+        data = pickle.load(f)
+
+    data['tile_format'] = config.file_format
+
+    with open(os.path.join(model_path, 'net.pkl'), 'wb') as f:
+        pickle.dump(data, f)
+
+    logger.debug(f'Updated model metadata with tile_format: {config.file_format}')
+
+
+def create_training_tiles_modern(
+    model_path: str,
+    annotations: np.ndarray,
+    image_list: Dict[str, List[str]],
+    create_new_tiles: bool
+) -> None:
+    """
+    Create training tiles using modern algorithm (CODAvision-style).
+
+    This mode has been empirically shown to produce better results for some datasets:
+    - Reduction factor: 10 (coarser placement optimization)
+    - Disk filter: Disabled
+    - Rotation cropping: Disabled (keeps expanded dimensions, reduces black pixels)
+    - Class rotation: Every 5th iteration
+    - Deterministic seed: 3 (reproducible results)
+    - Big tile size: 10240
+    - File format: PNG
+
+    Args:
+        model_path: Path to the directory containing model data
+        annotations: Array containing annotation pixel counts by class
+        image_list: Dictionary with lists of image tile paths and names
+        create_new_tiles: Flag indicating whether to create new tiles or use existing ones
+    """
+    from base.config import MODERN_CONFIG
+    return create_training_tiles(
+        model_path, annotations, image_list, create_new_tiles,
+        config=MODERN_CONFIG
+    )
+
+
+def create_training_tiles_legacy(
+    model_path: str,
+    annotations: np.ndarray,
+    image_list: Dict[str, List[str]],
+    create_new_tiles: bool
+) -> None:
+    """
+    Create training tiles using legacy algorithm (MATLAB-aligned).
+
+    This mode uses the sophisticated MATLAB-aligned implementation:
+    - Reduction factor: 5 (fine placement optimization)
+    - Disk filter: Enabled (disk convolution for placement)
+    - Rotation cropping: Enabled (MATLAB imrotate behavior)
+    - Class rotation: Every 3rd iteration
+    - Diverse random runs (no seed for increased variability)
+    - Big tile size: 10000
+    - File format: TIFF (lossless)
+
+    Args:
+        model_path: Path to the directory containing model data
+        annotations: Array containing annotation pixel counts by class
+        image_list: Dictionary with lists of image tile paths and names
+        create_new_tiles: Flag indicating whether to create new tiles or use existing ones
+    """
+    from base.config import LEGACY_CONFIG
+    return create_training_tiles(
+        model_path, annotations, image_list, create_new_tiles,
+        config=LEGACY_CONFIG
+    )
