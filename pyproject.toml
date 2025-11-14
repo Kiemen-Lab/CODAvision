@@ -8,56 +8,98 @@ version = "0.1.0"
 description = "CODAvision is an open-source Python package designed for medical image labeling."
 readme = "README.md"
 license = {file = "LICENSE.txt" }
-
 authors = [
     { name = "Valentina Matos-Romero", email = "vmatosr1@jh.edu" },
     { name = "Ashley Kiemen", email = "kiemen@jhmi.edu" }
 ]
-
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Topic :: Scientific/Engineering :: Image Recognition"
 ]
-
 keywords = ["medical imaging", "image labeling", "machine learning", "deep learning", "tissue labeling"]
-
 dependencies = [
-
     "numpy==1.23.5",
     "pillow==10.4.0",
-    "tensorflow==2.10.1",
-    "tensorflow-gpu==2.10.0",
-    "keras==2.10.0",
+
+    "tensorflow==2.10.1; sys_platform != 'darwin'",
+    "tensorflow==2.10.1; sys_platform == 'darwin' and platform_machine != 'arm64'",
+    "keras==2.10.0; sys_platform != 'darwin' or platform_machine != 'arm64'",
     "opencv-python==4.10.0.84",
     "matplotlib==3.9.2",
     "scipy==1.13.1",
-    "scikit-image==0.24.0",
-    "xmltodict==0.13.0",
     "pandas==2.2.2",
     "seaborn==0.13.2",
+    "scikit-image==0.24.0",
     "tifffile==2024.8.28",
+    "xmltodict==0.13.0",
+    "openpyxl==3.1.2",
+    "openslide-python",
+    "openslide-bin",
+    "pydicom",
+    "PySide6==6.5.1.1",
+    "GPUtil==1.4.0",
     "jupyter==1.1.1",
-    #"pip==24.2",
-    "attrs==24.2.0",
-    "wheel==0.43.0",
     "tornado==6.4.1",
     "jinja2==3.1.4",
+    "fpdf==1.7.2",
+
+    "attrs==24.2.0",
+    "wheel==0.43.0",
     "setuptools==72.1.0",
     "packaging==24.1",
     "zipp==3.20.1",
-    "openslide-python",
-    "openslide-bin",
-    "openpyxl==3.1.2",
-    "GPUtil==1.4.0",
-    "PySide6==6.5.1.1",
-    "pydicom",
-    "fpdf==1.7.2",
-    ]
+]
+requires-python = ">=3.9,<3.11"
 
-requires-python = ">=3.9,<3.10"
+[project.optional-dependencies]
+# Apple Silicon (M1/M2/M3/M4) GPU support
+# Requires Python 3.10+ for tensorflow-macos compatibility
+# Install with: pip install -e ".[macos-silicon]"
+macos-silicon = [
+    "tensorflow-macos",
+    "tensorflow-metal",
+]
+
+
+dev = [
+    # Testing framework
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-xdist>=3.3.0",
+    # GUI testing
+    "pytest-qt>=4.2.0",
+    "pytest-xvfb>=3.0.0; sys_platform == 'linux'",
+    # Mocking and fixtures
+    "pytest-mock>=3.11.0",
+    "factory-boy>=3.3.0",
+    "responses>=0.23.0",
+    # Test utilities and coverage
+    "coverage[toml]>=7.2.0",
+    # Code quality tools
+    "black>=23.7.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "pylint>=2.17.0",
+    "mypy>=1.4.0",
+    # Additional testing tools
+    "hypothesis>=6.82.0",
+    "pytest-benchmark>=4.0.0",
+    "freezegun>=1.2.2",
+]
+
+# Minimal testing dependencies (for CI pipelines)
+# Install with: pip install -e ".[test]"
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-qt>=4.2.0",
+    "pytest-xvfb>=3.0.0; sys_platform == 'linux'",
+]
 
 [project.urls]
 Homepage = "https://github.com/Kiemen-Lab/CODAvision"
