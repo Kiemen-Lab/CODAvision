@@ -16,13 +16,22 @@ The workflow:
 Usage:
     Run this script directly to execute the complete workflow
     python non-gui_workflow.py
+
+    Optional arguments:
+    --framework {tensorflow,pytorch}  Deep learning framework to use (default: tensorflow)
+
+    Examples:
+    python non-gui_workflow.py --framework pytorch
+    python non-gui_workflow.py --framework tensorflow
 """
 
 import os
 import numpy as np
 import logging
+import argparse
 from datetime import datetime
 
+from base.config import FrameworkConfig
 from base.models.utils import create_initial_model_metadata
 from base.data.annotation import load_annotation_data
 from base.data.tiles import create_training_tiles
@@ -31,6 +40,29 @@ from base.evaluation.testing import test_segmentation_model
 
 
 DEBUG_MODE = False
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(
+    description='Liver Tissue Segmentation Workflow',
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog="""
+Examples:
+  python non-gui_workflow.py --framework pytorch
+  python non-gui_workflow.py --framework tensorflow
+  python non-gui_workflow.py  # Uses tensorflow by default
+"""
+)
+parser.add_argument(
+    '--framework',
+    type=str,
+    choices=['tensorflow', 'pytorch'],
+    default='tensorflow',
+    help='Deep learning framework to use (default: tensorflow)'
+)
+args = parser.parse_args()
+
+# Set the framework configuration
+FrameworkConfig.set_framework(args.framework)
 
 # Create logs directory if it doesn't exist
 logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
@@ -55,6 +87,7 @@ else:
         handlers=[logging.FileHandler(log_filename)]
     )
 logging.info(f"Starting tissue segmentation workflow. Log level set to {'DEBUG' if DEBUG_MODE else 'INFO'}. Logging to {log_filename}")
+logging.info(f"Using deep learning framework: {args.framework}")
 
 # Set up data paths
 pth = '/path/to/liver_tissue_data'

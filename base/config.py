@@ -63,7 +63,20 @@ class ModelDefaults:
     VALIDATION_FREQUENCY = 128  # Number of iterations between validations
 
     # Tile Generation
-    TILE_GENERATION_MODE = "legacy"  # Default tile generation mode ("modern" or "legacy")
+    TILE_GENERATION_MODE = "modern"  # Default tile generation mode ("modern" or "legacy")
+
+    # ===== FRAMEWORK CONFIGURATION =====
+    DEFAULT_FRAMEWORK = "pytorch"  # or "tensorflow"
+
+    # PyTorch-specific settings
+    PYTORCH_DEVICE = "auto"  # auto, cuda, mps, cpu
+    PYTORCH_COMPILE = False  # torch.compile() optimization (PyTorch 2.0+)
+    PYTORCH_AMP = False  # Automatic Mixed Precision
+    GRADIENT_ACCUMULATION_STEPS = 1  # Gradient accumulation for larger effective batch size
+
+    # Model availability matrix
+    TENSORFLOW_MODELS = ["DeepLabV3_plus", "UNet"]
+    PYTORCH_MODELS = ["DeepLabV3_plus"]  # Start with DeepLabV3+
 
 
 class LoggingConfig:
@@ -251,3 +264,108 @@ def get_default_tile_config() -> TileGenerationConfig:
         return MODERN_CONFIG
     else:
         raise ValueError(f"Invalid TILE_GENERATION_MODE: '{mode}'. Must be 'modern' or 'legacy'.")
+
+
+def get_framework_config() -> dict:
+    """
+    Get framework configuration from environment or defaults.
+
+    Environment variables:
+        CODAVISION_FRAMEWORK: 'tensorflow' or 'pytorch'
+        CODAVISION_PYTORCH_DEVICE: 'auto', 'cuda', 'mps', 'cpu'
+        CODAVISION_PYTORCH_COMPILE: '1' or '0'
+        CODAVISION_PYTORCH_AMP: '1' or '0'
+        CODAVISION_GRADIENT_ACCUMULATION_STEPS: int (default: 1)
+
+    Returns:
+        Dictionary with framework configuration
+
+    Raises:
+        ValueError: If framework is not 'tensorflow' or 'pytorch'
+    """
+    framework = os.environ.get('CODAVISION_FRAMEWORK', ModelDefaults.DEFAULT_FRAMEWORK).lower()
+
+    if framework not in ['tensorflow', 'pytorch']:
+        raise ValueError(f"Invalid framework: {framework}. Must be 'tensorflow' or 'pytorch'")
+
+    return {
+        'framework': framework,
+        'pytorch_device': os.environ.get('CODAVISION_PYTORCH_DEVICE', ModelDefaults.PYTORCH_DEVICE),
+        'pytorch_compile': os.environ.get('CODAVISION_PYTORCH_COMPILE', '0') == '1',
+        'pytorch_amp': os.environ.get('CODAVISION_PYTORCH_AMP', '0') == '1',
+        'gradient_accumulation_steps': int(os.environ.get('CODAVISION_GRADIENT_ACCUMULATION_STEPS',
+                                                          str(ModelDefaults.GRADIENT_ACCUMULATION_STEPS))),
+    }
+
+class FrameworkConfig:
+    """
+    Framework configuration manager for PyTorch/TensorFlow switching.
+
+    Provides a unified API for getting and setting the deep learning framework.
+    """
+
+    @staticmethod
+    def get_framework() -> str:
+        """
+        Get the current framework ('pytorch' or 'tensorflow').
+
+        Returns:
+            Current framework name
+
+        Example:
+            >>> framework = FrameworkConfig.get_framework()
+            >>> print(framework)
+            'pytorch'
+        """
+        config = get_framework_config()
+        return config['framework']
+
+    @staticmethod
+    def set_framework(framework: str):
+        """
+        Set the framework by updating the environment variable.
+
+        Args:
+            framework: Framework name ('pytorch' or 'tensorflow')
+
+        Raises:
+            ValueError: If framework is not valid
+
+        Example:
+            >>> FrameworkConfig.set_framework('pytorch')
+            >>> assert FrameworkConfig.get_framework() == 'pytorch'
+        """
+        framework = framework.lower()
+        if framework not in ['tensorflow', 'pytorch']:
+            raise ValueError(f"Invalid framework: {framework}. Must be 'tensorflow' or 'pytorch'")
+
+        os.environ['CODAVISION_FRAMEWORK'] = framework
+
+    @staticmethod
+    def get_device() -> str:
+        """Get the PyTorch device setting."""
+        config = get_framework_config()
+        return config['pytorch_device']
+
+    @staticmethod
+    def is_pytorch_compile_enabled() -> bool:
+        """Check if PyTorch compilation is enabled."""
+        config = get_framework_config()
+        return config['pytorch_compile']
+
+    @staticmethod
+    def is_amp_enabled() -> bool:
+        """Check if Automatic Mixed Precision is enabled."""
+        config = get_framework_config()
+        return config['pytorch_amp']
+
+    @staticmethod
+    def get_gradient_accumulation_steps() -> int:
+        """Get gradient accumulation steps."""
+        config = get_framework_config()
+        return config['gradient_accumulation_steps']
+
+    @staticmethod
+    def get_all_config() -> dict:
+        """Get complete framework configuration."""
+        return get_framework_config()

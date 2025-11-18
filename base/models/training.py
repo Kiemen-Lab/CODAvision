@@ -222,6 +222,12 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
     This callback allows for more fine-grained monitoring of training progress,
     including running validation at specified intervals and implementing
     early stopping and learning rate reduction.
+
+    Warning:
+        This callback is TensorFlow/Keras-specific and is not compatible with
+        PyTorch models. For PyTorch training, use the PyTorchSegmentationTrainer
+        classes in base.models.training_pytorch, which implement their own
+        training loop with built-in validation, early stopping, and LR scheduling.
     """
 
     def __init__(
@@ -1180,12 +1186,21 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
     This function is the main entry point for model training. It loads model
     configuration, creates the appropriate trainer, and trains the model.
 
+    The function automatically detects the framework (TensorFlow or PyTorch) from
+    the CODAVISION_FRAMEWORK environment variable or base/config.py defaults.
+
     Args:
         pthDL: Path to the directory containing model data
         retrain_model: Whether to retrain an existing model
 
     Returns:
         None
+
+    Note:
+        - For PyTorch training, use PyTorchDeepLabV3PlusTrainer (in training_pytorch.py)
+        - For TensorFlow training, use DeepLabV3PlusTrainer or UNetTrainer
+        - PyTorch models use PyTorchKerasAdapter for Keras-compatible API
+        - TensorFlow callbacks (BatchAccuracyCallback) are not compatible with PyTorch
     """
     # Load model type from configuration
     try:
@@ -1206,22 +1221,41 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
     except Exception as e:
         raise ValueError(f"Failed to load model configuration: {e}")
 
+    # Determine framework
+    from base.config import get_framework_config
+    framework_config = get_framework_config()
+    framework = framework_config['framework']
+
     # Check if model already exists and should not be retrained
-    if os.path.isfile(os.path.join(pthDL, f'best_model_{model_type}.keras')) and not retrain_model:
+    from base.models.utils import get_model_paths
+    model_paths = get_model_paths(pthDL, model_type, framework=framework)
+    if os.path.isfile(model_paths['best_model']) and not retrain_model:
         module_logger.info(f'Model already trained with name {model_name}. Use retrain_model=True to retrain.')
         return
 
-    # Create and use the appropriate trainer
+    # Create and use the appropriate trainer based on framework
     try:
-        if model_type == "DeepLabV3_plus":
-            trainer = DeepLabV3PlusTrainer(pthDL)
-        else:  # model_type == "UNet"
-            trainer = UNetTrainer(pthDL)
+        if framework == 'pytorch':
+            # Use PyTorch trainer
+            if model_type == "DeepLabV3_plus":
+                from base.models.training_pytorch import PyTorchDeepLabV3PlusTrainer
+                trainer = PyTorchDeepLabV3PlusTrainer(pthDL)
+            else:
+                raise ValueError(
+                    f"PyTorch trainer for {model_type} not yet implemented. "
+                    f"Available PyTorch models: DeepLabV3_plus"
+                )
+        else:
+            # Use TensorFlow trainer
+            if model_type == "DeepLabV3_plus":
+                trainer = DeepLabV3PlusTrainer(pthDL)
+            else:  # model_type == "UNet"
+                trainer = UNetTrainer(pthDL)
 
         # Train the model
         trainer.train()
 
-        module_logger.info(f"Successfully trained {model_type} model.")
+        module_logger.info(f"Successfully trained {model_type} model with {framework} framework.")
 
     except Exception as e:
         module_logger.error(f"Error during model training: {e}")

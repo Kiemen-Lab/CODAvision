@@ -364,24 +364,34 @@ def calculate_class_weights(mask_list: List[str], num_classes: int) -> np.ndarra
     return class_weights.astype(np.float32)
 
 
-def get_model_paths(model_path: str, model_type: str) -> Dict[str, str]:
+def get_model_paths(model_path: str, model_type: str, framework: str = None) -> Dict[str, str]:
     """
     Get standard paths for model files.
-    
+
     Args:
         model_path: Base directory for the model
         model_type: Type of model (e.g., 'DeepLabV3_plus', 'UNet')
-        
+        framework: Framework to use ('tensorflow' or 'pytorch'). If None, uses configuration default.
+
     Returns:
-        Dictionary containing paths for model files
+        Dictionary containing paths for model files with framework-specific extensions
     """
     # Standardize model type format
     if '+' in model_type:
         model_type = model_type.replace('+', '_plus')
-    
+
+    # Determine framework and file extension
+    if framework is None:
+        from base.config import get_framework_config
+        config = get_framework_config()
+        framework = config['framework']
+
+    # Set file extension based on framework
+    ext = '.pth' if framework.lower() == 'pytorch' else '.keras'
+
     return {
-        'best_model': os.path.join(model_path, f'best_model_{model_type}.keras'),
-        'final_model': os.path.join(model_path, f'{model_type}.keras'),
+        'best_model': os.path.join(model_path, f'best_model_{model_type}{ext}'),
+        'final_model': os.path.join(model_path, f'{model_type}{ext}'),
         'logs': os.path.join(model_path, 'logs'),
         'metadata': os.path.join(model_path, 'net.pkl'),
         'train_data': os.path.join(model_path, 'training'),

@@ -2,12 +2,17 @@
 Semantic Segmentation Module
 
 This module provides the SemanticSegmenter class for performing semantic segmentation
-on images using trained deep learning models.
+on images using trained deep learning models. Supports both TensorFlow and PyTorch
+models through the framework adapter layer.
 """
 
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, Any
 import numpy as np
-import tensorflow as tf
+
+try:
+    import tensorflow as tf
+except ImportError:
+    tf = None
 
 from base.data.loaders import read_image
 
@@ -25,7 +30,7 @@ class SemanticSegmenter:
             image_input: Union[str, np.ndarray],
             image_size: int,
             mask: bool = False
-    ) -> Optional[tf.Tensor]:
+    ) -> Optional[Any]:
         """
         Read and preprocess an image for segmentation.
 
@@ -40,17 +45,30 @@ class SemanticSegmenter:
         return read_image(image_input, image_size, mask)
 
     @staticmethod
-    def infer(model: tf.keras.Model, image_tensor: tf.Tensor) -> np.ndarray:
+    def infer(model: Any, image_tensor: Any) -> np.ndarray:
         """
         Run inference on an image using a trained segmentation model.
 
+        Supports both TensorFlow and PyTorch models (with or without adapter).
+        If a raw PyTorch model without adapter is passed, it will be automatically wrapped.
+
         Args:
-            model: Trained TensorFlow/Keras segmentation model
+            model: Trained segmentation model (TensorFlow/Keras or PyTorch)
             image_tensor: Preprocessed image tensor to segment
 
         Returns:
             Segmentation mask as a 2D numpy array, where each pixel value corresponds to a class label
         """
+        # Check if it's a raw PyTorch model without adapter (needs wrapping)
+        try:
+            import torch.nn as nn
+            if isinstance(model, nn.Module) and not hasattr(model, 'predict'):
+                # Wrap raw PyTorch model with Keras-compatible adapter
+                from base.models.wrappers import PyTorchKerasAdapter
+                model = PyTorchKerasAdapter(model)
+        except ImportError:
+            pass
+
         predictions = model.predict(np.expand_dims(image_tensor, axis=0), verbose=0)
         predictions = np.squeeze(predictions)
         predictions = np.argmax(predictions, axis=2)
@@ -61,15 +79,17 @@ class SemanticSegmenter:
             cls,
             image_input: Union[str, np.ndarray],
             image_size: int,
-            model: tf.keras.Model
+            model: Any
     ) -> np.ndarray:
         """
         Perform semantic segmentation on an input image using a pre-trained model.
 
+        Supports both TensorFlow and PyTorch models (with adapter).
+
         Args:
             image_input: Either a file path to an image or a numpy array containing image data
             image_size: Size to which the input image should be resized (assumes square images)
-            model: Pre-trained TensorFlow/Keras model for semantic segmentation
+            model: Pre-trained segmentation model (TensorFlow/Keras or PyTorch with adapter)
 
         Returns:
             2D array representing the segmentation mask, where each pixel value corresponds to a class label
@@ -83,14 +103,16 @@ class SemanticSegmenter:
         return prediction_mask
 
 
-def semantic_seg(image_path: Union[str, np.ndarray], image_size: int, model: tf.keras.Model) -> np.ndarray:
+def semantic_seg(image_path: Union[str, np.ndarray], image_size: int, model: Any) -> np.ndarray:
     """
     Perform semantic segmentation on an input image using a pre-trained model.
+
+    Supports both TensorFlow and PyTorch models (with adapter).
 
     Args:
         image_path: Path to the input image file or numpy array containing image data
         image_size: Size to which the input image should be resized
-        model: Pre-trained TensorFlow/Keras model for semantic segmentation
+        model: Pre-trained segmentation model (TensorFlow/Keras or PyTorch with adapter)
 
     Returns:
         2D array representing the segmentation mask, where each pixel value corresponds to a class label

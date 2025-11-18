@@ -291,3 +291,142 @@ requires_gpu = pytest.mark.skipif(
     not any(os.path.exists(f"/dev/nvidia{i}") for i in range(8)),
     reason="Requires GPU"
 )
+
+
+# PyTorch-specific fixtures
+@pytest.fixture
+def pytorch_device():
+    """Get the best available PyTorch device (CUDA > MPS > CPU)."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return 'cuda'
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            return 'mps'
+        else:
+            return 'cpu'
+    except ImportError:
+        pytest.skip("PyTorch not available")
+
+
+@pytest.fixture
+def pytorch_model():
+    """Create a PyTorch DeepLabV3+ model for testing."""
+    try:
+        from base.models.backbones_pytorch import PyTorchDeepLabV3Plus
+    except ImportError:
+        pytest.skip("PyTorch model components not available")
+
+    model_builder = PyTorchDeepLabV3Plus(
+        input_size=512,
+        num_classes=5,
+        l2_regularization_weight=0
+    )
+
+    model = model_builder.build_model()
+    yield model
+
+
+@pytest.fixture
+def sample_batch():
+    """Generate a sample batch of images and masks for testing."""
+    batch_size = 4
+    image_size = 512
+    num_classes = 5
+
+    # Create synthetic images (NHWC format)
+    images = np.random.rand(batch_size, image_size, image_size, 3).astype(np.float32) * 255
+
+    # Create synthetic masks (class indices)
+    masks = np.random.randint(0, num_classes, size=(batch_size, image_size, image_size)).astype(np.int64)
+
+    yield images, masks
+
+
+@pytest.fixture
+def temp_model_dir(temp_dir):
+    """Create a temporary directory for model saves."""
+    model_dir = os.path.join(temp_dir, 'models')
+    os.makedirs(model_dir, exist_ok=True)
+    yield model_dir
+
+
+@pytest.fixture
+def synthetic_training_data(temp_dir):
+    """
+    Create synthetic training data for PyTorch training tests.
+
+    Returns:
+        tuple: (model_path, annotations, image_list)
+    """
+    import pickle
+    from PIL import Image
+
+    model_path = os.path.join(temp_dir, 'test_model')
+    num_samples = 20
+    num_classes = 3
+    image_size = 256
+
+    # Create directories
+    os.makedirs(model_path, exist_ok=True)
+    os.makedirs(os.path.join(model_path, 'training', 'big_tiles'), exist_ok=True)
+    os.makedirs(os.path.join(model_path, 'training', 'im'), exist_ok=True)
+
+    # Create net.pkl file
+    net_data = {
+        'classNames': [f'class_{i}' for i in range(num_classes)],
+        'sxy': image_size,
+        'nblack': 0,
+        'nwhite': 0,
+        'model_type': 'DeepLabV3_plus',
+        'num_classes': num_classes,
+        'image_size': image_size
+    }
+
+    with open(os.path.join(model_path, 'net.pkl'), 'wb') as f:
+        pickle.dump(net_data, f)
+
+    # Create metadata.pkl
+    metadata = {
+        'class_names': [f'class_{i}' for i in range(num_classes)],
+        'num_classes': num_classes,
+        'image_size': image_size
+    }
+
+    with open(os.path.join(model_path, 'metadata.pkl'), 'wb') as f:
+        pickle.dump(metadata, f)
+
+    # Create annotations and images
+    annotations = {}
+    image_list = []
+
+    for i in range(num_samples):
+        image_id = f'sample_{i:03d}'
+        image_list.append(image_id)
+
+        # Create random image (RGB)
+        image = np.random.randint(0, 256, size=(image_size, image_size, 3), dtype=np.uint8)
+
+        # Create random annotation mask
+        mask = np.random.randint(0, num_classes, size=(image_size, image_size), dtype=np.uint8)
+
+        # Save image
+        image_pil = Image.fromarray(image)
+        image_pil.save(os.path.join(model_path, 'training', 'im', f'{image_id}.png'))
+
+        # Save mask
+        mask_pil = Image.fromarray(mask)
+        mask_pil.save(os.path.join(model_path, 'training', 'big_tiles', f'{image_id}.png'))
+
+        annotations[image_id] = mask
+
+    # Save annotations
+    with open(os.path.join(model_path, 'annotations.pkl'), 'wb') as f:
+        pickle.dump(annotations, f)
+
+    # Save train list
+    with open(os.path.join(model_path, 'train_list.pkl'), 'wb') as f:
+        pickle.dump(image_list, f)
+
+    yield model_path, annotations, image_list

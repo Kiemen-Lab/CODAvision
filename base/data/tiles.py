@@ -588,6 +588,33 @@ def create_training_tiles(
 
     logger.debug(f'Updated model metadata with tile_format: {config.file_format}')
 
+    # ========== Generate Metadata for PyTorch Training ==========
+    # PyTorch training requires annotations.pkl and train_list.pkl
+    # TensorFlow uses glob-based discovery and doesn't need these files
+    logger.info('Generating training metadata for PyTorch compatibility...')
+
+    # 1. Build training image list from generated tiles
+    training_image_dir = os.path.join(model_path, 'training', 'im')
+    image_files = sorted(glob.glob(os.path.join(training_image_dir, f'*.{config.file_format}')))
+    train_image_list = [os.path.splitext(os.path.basename(f))[0] for f in image_files]
+
+    # 2. Create annotations dictionary (lightweight: just map ID -> ID)
+    # PyTorch create_dataloaders() only uses dict keys, not values
+    # So we use a lightweight mapping instead of loading full masks
+    annotations_dict = {image_id: image_id for image_id in train_image_list}
+
+    # 3. Save annotations.pkl
+    annotations_pkl_path = os.path.join(model_path, 'annotations.pkl')
+    with open(annotations_pkl_path, 'wb') as f:
+        pickle.dump(annotations_dict, f)
+    logger.info(f'Saved annotations metadata: {annotations_pkl_path} ({len(annotations_dict)} entries)')
+
+    # 4. Save train_list.pkl
+    train_list_pkl_path = os.path.join(model_path, 'train_list.pkl')
+    with open(train_list_pkl_path, 'wb') as f:
+        pickle.dump(train_image_list, f)
+    logger.info(f'Saved training image list: {train_list_pkl_path} ({len(train_image_list)} images)')
+
 
 def create_training_tiles_modern(
     model_path: str,
