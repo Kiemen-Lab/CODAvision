@@ -5,7 +5,7 @@ CODAvision uses a flexible plugin architecture that allows seamless integration 
 
 **Framework Support:**
 - **TensorFlow 2.10.x** - Original implementation with 2 models (DeepLabV3+, UNet)
-- **PyTorch 2.x** - Production-ready implementation with full Keras API compatibility via adapter layer
+- **PyTorch 2.x** - Implementation with full Keras API compatibility via adapter layer
 - **Performance**: PyTorch achieves **11.7x faster inference** (82.33 img/s vs 7.03 img/s on Apple M3 Max)
 - **Interoperability**: Seamless framework switching with zero code changes for inference
 
@@ -122,7 +122,7 @@ The abstract interface enables interoperability, which is further enhanced by:
 2. **Factory functions** (Section 5) - Provide unified model creation: `model_call('DeepLabV3_plus', ...)`
 3. **FrameworkConfig** (Section 8) - Manages framework selection at runtime
 
-## 2. TensorFlow Implementation (Current)
+## 2. TensorFlow Implementation
 
 ```python
 # base/models/backbones.py (continued)
@@ -174,7 +174,7 @@ class DeepLabV3Plus(BaseSegmentationModel):
         return x
 ```
 
-## 3. PyTorch Implementation (Production-Ready)
+## 3. PyTorch Implementation
 
 The PyTorch implementation uses a **builder pattern** that separates model construction from the actual neural network module. This provides clean separation of concerns and enables flexible model instantiation.
 
@@ -202,7 +202,7 @@ from torchvision import models
 
 class PyTorchDeepLabV3Plus(PyTorchBaseSegmentationModel):
     """
-    Builder class for DeepLabV3+ (production-ready).
+    Builder class for DeepLabV3+.
 
     Features:
     - ResNet50 encoder (ImageNet pretrained)
@@ -523,7 +523,6 @@ class DeepLabV3PlusModel(nn.Module):
 - **Exact TensorFlow Match**: Preprocessing, architecture, and outputs match TensorFlow implementation
 - **Multi-Device**: Auto-detects CUDA > MPS > CPU via `get_pytorch_device()`
 - **Performance**: 9x faster inference (64 img/s vs 7 img/s on Apple M3 Max)
-- **Production-Ready**: Fully tested with 71+ tests across unit and integration suites
 
 ## 4. Framework Adapter Layer (PyTorch ↔ Keras Compatibility)
 
@@ -1462,7 +1461,7 @@ python CODAvision.py  # Now uses PyTorch by default
 
 ## 6. PyTorch Training System
 
-The PyTorch training system provides a complete, production-ready training pipeline with advanced features for medical image segmentation.
+The PyTorch training system provides a complete training pipeline with advanced features for medical image segmentation.
 
 ### 6.1 Core Training Classes
 
@@ -2731,4 +2730,4 @@ predictions = model.predict(images)
 
 ---
 
-This architecture ensures robust multi-framework support with minimal code changes, maximum performance, and comprehensive testing. The PyTorch implementation is production-ready and delivers significant performance improvements over the TensorFlow baseline.
+This architecture ensures robust multi-framework support with minimal code changes, maximum performance, and comprehensive testing. The PyTorch implementation delivers significant performance improv\ements over the TensorFlow baseline.
