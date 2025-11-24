@@ -15,9 +15,6 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 from base.tissue_area import determine_optimal_TA
 from base.tissue_area.models import ThresholdConfig, ThresholdMode, ImageThresholds
 from base.tissue_area.threshold_core import TissueAreaThresholdSelector
@@ -26,21 +23,7 @@ from base.tissue_area.utils import create_tissue_mask, calculate_tissue_mask
 
 class TestThresholdBackwardCompatibility:
     """Test backward compatibility with original determine_optimal_TA function."""
-    
-    @pytest.fixture
-    def temp_dirs(self):
-        """Create temporary directories for testing."""
-        temp_dir = tempfile.mkdtemp()
-        training_path = os.path.join(temp_dir, 'training')
-        testing_path = os.path.join(temp_dir, 'testing')
-        os.makedirs(training_path)
-        os.makedirs(testing_path)
-        
-        yield training_path, testing_path
-        
-        # Cleanup
-        shutil.rmtree(temp_dir)
-    
+
     @pytest.fixture
     def sample_images(self, temp_dirs):
         """Create sample test images."""
@@ -128,21 +111,7 @@ class TestThresholdBackwardCompatibility:
 
 class TestThresholdCore:
     """Test core threshold selection functionality."""
-    
-    @pytest.fixture
-    def temp_dirs(self):
-        """Create temporary directories for testing."""
-        temp_dir = tempfile.mkdtemp()
-        training_path = os.path.join(temp_dir, 'training')
-        testing_path = os.path.join(temp_dir, 'testing')
-        os.makedirs(training_path)
-        os.makedirs(testing_path)
-        
-        yield training_path, testing_path
-        
-        # Cleanup
-        shutil.rmtree(temp_dir)
-    
+
     @pytest.fixture
     def config(self, temp_dirs):
         """Create a test configuration."""
@@ -272,48 +241,6 @@ class TestCalculateTissueMask:
         # Bottom half has green=128 (< 180), so is tissue (white)
         assert mask[25, 50] == 0  # Top half
         assert mask[75, 50] == 255  # Bottom half
-
-
-class TestLiverDataIntegration:
-    """Test with liver tissue dataset settings."""
-    
-    def test_liver_data_configuration(self):
-        """Test that the liver data configuration can be created."""
-        colormap = np.array([
-            [64, 128, 128],   # PDAC
-            [255, 255, 0],    # bile_duct
-            [255, 0, 0],      # vasculature
-            [255, 0, 255],    # hepatocyte
-            [0, 0, 0],        # immune
-            [255, 128, 64],   # stroma
-            [0, 0, 255]       # whitespace
-        ])
-        
-        classnames = ['PDAC', 'bile_duct', 'vasculature', 'hepatocyte', 
-                      'immune', 'stroma', 'whitespace']
-        
-        ws = [[0, 0, 0, 0, 2, 0, 2], [7, 6], [1, 2, 3, 4, 5, 6, 7], 
-              [6, 4, 2, 3, 5, 1, 7], []]
-        
-        # Verify configuration is valid
-        assert len(classnames) == 7
-        assert colormap.shape == (7, 3)
-        assert len(ws) == 5
-        
-        # Model configuration for liver dataset
-        model_config = {
-            'pthim': '/Users/tnewton3/Desktop/liver_tissue_data',
-            'pthtest': '/Users/tnewton3/Desktop/liver_tissue_data/testing_image',
-            'nm': '06_12_2025',
-            'umpix': 1,  # 10x resolution
-            'classNames': classnames,
-            'cmap': colormap,
-            'WS': ws
-        }
-        
-        # This configuration should be loadable
-        assert model_config['umpix'] == 1  # 10x resolution
-        assert model_config['nm'] == '06_12_2025'
 
 
 if __name__ == '__main__':

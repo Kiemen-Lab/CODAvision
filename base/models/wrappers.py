@@ -297,7 +297,7 @@ class PyTorchKerasAdapter:
         # Set up loss function
         if loss is not None:
             if isinstance(loss, str):
-                if loss.lower() in ['crossentropy', 'categorical_crossentropy']:
+                if loss.lower() in ['crossentropy', 'categorical_crossentropy', 'sparse_categorical_crossentropy']:
                     self._loss_fn = nn.CrossEntropyLoss()
                 elif loss.lower() in ['bce', 'binary_crossentropy']:
                     self._loss_fn = nn.BCEWithLogitsLoss()

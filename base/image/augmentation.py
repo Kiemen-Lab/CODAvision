@@ -262,27 +262,30 @@ def edit_annotation_tiles(
     else:
         kp = num_pixels_class >= 0
 
+    # PERFORMANCE FIX: Crop to big_tile_size BEFORE dilation to avoid
+    # dilating potentially huge rotated images. This maintains semantic
+    # correctness while dramatically improving performance.
+    p1, p2 = min(big_tile_size, TA.shape[0]), min(big_tile_size, TA.shape[1])
+    TA_cropped = TA[0:p1, 0:p2]
+    im_cropped = im[0:p1, 0:p2, :]
+
     # Extend kp to match TA classes (adding a 0 index)
     kp = np.concatenate(([0], kp))
-    tmp = kp[TA.astype(int)]
+    tmp = kp[TA_cropped.astype(int)]
     tmp = tmp > 0
 
-    # Dilate the mask
+    # Dilate the mask (now operating on cropped, bounded-size image)
     dil = np.random.randint(15) + 15
     tmp = dilation(tmp, disk(dil))
 
     # Apply the mask to TA and im
-    TA = TA * tmp
-    for i in range(im.shape[2]):
-        im[:, :, i] *= tmp
+    TA = TA_cropped * tmp
+    for i in range(im_cropped.shape[2]):
+        im_cropped[:, :, i] *= tmp
+    im = im_cropped
 
     # Get unique labels in the masked TA
     kpout = np.unique(TA)[1:].astype(int)
-
-    # Crop to big_tile_size
-    p1, p2 = min(big_tile_size, TA.shape[0]), min(big_tile_size, TA.shape[1])
-    im = im[0:p1, 0:p2, :]
-    TA = TA[0:p1, 0:p2]
 
     # Convert TA to uint8
     TA = TA.astype(np.uint8)

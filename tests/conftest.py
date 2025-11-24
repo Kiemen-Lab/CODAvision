@@ -370,8 +370,9 @@ def synthetic_training_data(temp_dir):
 
     # Create directories
     os.makedirs(model_path, exist_ok=True)
-    os.makedirs(os.path.join(model_path, 'training', 'big_tiles'), exist_ok=True)
+    os.makedirs(os.path.join(model_path, 'training', 'label'), exist_ok=True)
     os.makedirs(os.path.join(model_path, 'training', 'im'), exist_ok=True)
+    os.makedirs(os.path.join(model_path, 'training', 'big_tiles'), exist_ok=True)  # Keep for compatibility
 
     # Create net.pkl file
     net_data = {
@@ -415,9 +416,9 @@ def synthetic_training_data(temp_dir):
         image_pil = Image.fromarray(image)
         image_pil.save(os.path.join(model_path, 'training', 'im', f'{image_id}.png'))
 
-        # Save mask
+        # Save mask to label directory (PyTorch trainer expects masks here)
         mask_pil = Image.fromarray(mask)
-        mask_pil.save(os.path.join(model_path, 'training', 'big_tiles', f'{image_id}.png'))
+        mask_pil.save(os.path.join(model_path, 'training', 'label', f'{image_id}.png'))
 
         annotations[image_id] = mask
 

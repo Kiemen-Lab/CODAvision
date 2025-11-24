@@ -25,6 +25,176 @@ import gc
 import logging
 logger = logging.getLogger(__name__)
 
+# Constants for loop safeguards
+MAX_ITERATIONS = 10000
+MAX_CONSECUTIVE_FAILURES = 10
+
+
+def validate_image_list_structure(
+    image_list: Dict[str, List[str]],
+    model_path: str
+) -> None:
+    """
+    Validate that image_list has the correct directory structure.
+
+    Checks that:
+    1. Image files exist at the specified paths
+    2. Corresponding label directory exists alongside im/ directory
+    3. Corresponding label files exist for each image
+
+    Args:
+        image_list: Dictionary with 'tile_name' and 'tile_pth' lists
+        model_path: Path to the model directory (for error messages)
+
+    Raises:
+        FileNotFoundError: If required files or directories are missing
+        ValueError: If image_list structure is invalid
+
+    The expected directory structure is:
+        parent_dir/
+            im/          <- Images directory (pointed to by tile_pth)
+                image.png
+            label/       <- Annotation masks directory
+                image.png
+    """
+    if 'tile_name' not in image_list or 'tile_pth' not in image_list:
+        raise ValueError(
+            "image_list must contain 'tile_name' and 'tile_pth' keys"
+        )
+
+    if len(image_list['tile_name']) != len(image_list['tile_pth']):
+        raise ValueError(
+            f"image_list 'tile_name' and 'tile_pth' must have same length "
+            f"(got {len(image_list['tile_name'])} names and {len(image_list['tile_pth'])} paths)"
+        )
+
+    if len(image_list['tile_name']) == 0:
+        raise ValueError("image_list must contain at least one tile")
+
+    for i, (tile_name, tile_pth) in enumerate(zip(image_list['tile_name'], image_list['tile_pth'])):
+        # Check image exists
+        image_path = os.path.join(tile_pth, tile_name)
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(
+                f"Image file not found: {image_path}\n"
+                f"Check that image_list['tile_pth'][{i}] points to the correct directory."
+            )
+
+        # Check label directory exists
+        # Expected structure: parent_dir/im/ and parent_dir/label/
+        parent_dir = os.path.dirname(tile_pth)
+        label_dir = os.path.join(parent_dir, 'label')
+
+        if not os.path.exists(label_dir):
+            raise FileNotFoundError(
+                f"Label directory not found: {label_dir}\n"
+                f"Expected directory structure:\n"
+                f"  {parent_dir}/\n"
+                f"    im/          <- Images directory\n"
+                f"      {tile_name}\n"
+                f"    label/       <- Annotation masks directory\n"
+                f"      {tile_name}\n"
+                f"\n"
+                f"Current structure has 'im/' directory but missing 'label/' directory.\n"
+                f"Please create the label directory and add annotation masks."
+            )
+
+        # Check label file exists
+        label_path = os.path.join(label_dir, tile_name)
+        if not os.path.exists(label_path):
+            raise FileNotFoundError(
+                f"Label file not found: {label_path}\n"
+                f"Image exists at: {image_path}\n"
+                f"But corresponding annotation mask is missing.\n"
+                f"Please create annotation mask for this image in the label/ directory."
+            )
+
+    logger.info(f"✓ Validated image_list structure: {len(image_list['tile_name'])} tiles with corresponding labels")
+
+
+def validate_tile_config_compatibility(
+    image_shape: Tuple[int, int],
+    config: 'TileGenerationConfig',
+    model_path: str
+) -> None:
+    """
+    Validate that tile generation config is compatible with image size.
+
+    This function checks whether the combination of image size, reduction factor,
+    padding, and disk filter size will result in a valid distance transform for
+    tile placement. If the configuration is incompatible, it raises a ValueError
+    with clear explanation and actionable solutions.
+
+    Args:
+        image_shape: Tuple of (height, width) for the composite image
+        config: Tile generation configuration to validate
+        model_path: Path to the model directory (for error messages)
+
+    Raises:
+        ValueError: If configuration is incompatible with image size, with
+                   detailed explanation and suggested solutions
+
+    Example:
+        >>> validate_tile_config_compatibility(
+        ...     (512, 512),
+        ...     LEGACY_CONFIG,
+        ...     "path/to/model"
+        ... )
+        ValueError: Image size (512x512) is too small for tile generation config...
+    """
+    height, width = image_shape
+    min_dim = min(height, width)
+
+    # Calculate effective size after downsampling and padding
+    downsampled_size = min_dim / config.reduction_factor
+    padding = int(100 / config.reduction_factor)
+    effective_size = downsampled_size - 2 * padding
+
+    # Account for disk filter if enabled
+    disk_filter_size = 51 if config.use_disk_filter else 0
+    if config.use_disk_filter:
+        effective_size -= disk_filter_size
+
+    # Minimum effective size needed for valid distance transforms
+    MIN_EFFECTIVE_SIZE = 50
+
+    if effective_size < MIN_EFFECTIVE_SIZE:
+        # Calculate required minimum size
+        required_effective = MIN_EFFECTIVE_SIZE + disk_filter_size + 2 * padding
+        required_size = int(required_effective * config.reduction_factor)
+
+        # Calculate what reduction factor would work for this image
+        max_working_reduction = max(1, min_dim // (MIN_EFFECTIVE_SIZE + disk_filter_size + 2 * padding))
+
+        error_msg = (
+            f"Image size ({min_dim}x{min_dim}) is incompatible with tile generation config.\n"
+            f"\n"
+            f"Details:\n"
+            f"  Configuration mode: {config.mode}\n"
+            f"  Reduction factor: {config.reduction_factor}\n"
+            f"  Use disk filter: {config.use_disk_filter}\n"
+            f"  Disk filter size: {disk_filter_size if config.use_disk_filter else 'N/A'}\n"
+            f"  Padding: {padding}\n"
+            f"  Effective size after processing: {effective_size:.1f}x{effective_size:.1f}\n"
+            f"  Minimum required effective size: {MIN_EFFECTIVE_SIZE}x{MIN_EFFECTIVE_SIZE}\n"
+            f"\n"
+            f"Solutions (choose one):\n"
+            f"  1. Use larger images (minimum {required_size}x{required_size} pixels)\n"
+            f"  2. Use MODERN_CONFIG (reduction_factor=10, no disk filter)\n"
+            f"  3. Reduce reduction_factor to {max_working_reduction} or lower\n"
+            f"  4. Disable disk filter (set use_disk_filter=False)\n"
+            f"\n"
+            f"For testing with small images, use a scaled configuration.\n"
+            f"Example: TileGenerationConfig(reduction_factor=2, use_disk_filter=False, big_tile_size=1024)"
+        )
+
+        raise ValueError(error_msg)
+
+    # Log successful validation
+    logger.info(
+        f"✓ Validated tile config compatibility: {config.mode} mode with "
+        f"{min_dim}x{min_dim} images (effective size: {effective_size:.1f}x{effective_size:.1f})"
+    )
 
 
 def combine_annotations_into_tiles(
@@ -65,6 +235,9 @@ def combine_annotations_into_tiles(
         - Updated annotation percentage tracking array
     """
 
+    # Validate input structure (fail-fast if directory structure is wrong)
+    validate_image_list_structure(image_list, model_path)
+
     logger.debug(f"Starting combine_annotations_into_tiles with {len(image_list['tile_name'])} tiles")
     logger.debug(f"initial_annotations shape: {initial_annotations.shape}")
     logger.debug(f"current_annotations shape: {current_annotations.shape}")
@@ -94,6 +267,9 @@ def combine_annotations_into_tiles(
                              background_class, dtype=np.float64)
     composite_mask = np.zeros((big_tile_size_with_margin, big_tile_size_with_margin), dtype=np.uint8)
     total_pixels = composite_mask.size
+
+    # Validate that config is compatible with image size (fail-fast before processing)
+    validate_tile_config_compatibility(composite_mask.shape, config, model_path)
 
     # Track class balancing
     class_counts = np.zeros(current_annotations.shape[1])
@@ -125,10 +301,14 @@ def combine_annotations_into_tiles(
         disk_mask = (x_disk - center)**2 + (y_disk - center)**2 <= center**2
         h[disk_mask] = 1.0
 
-    # Main loop
-    iteration = 1
+    # Track whether we've warned about empty distance transforms (warn once only)
+    empty_distance_transform_warned = False
 
-    while fill_ratio < cutoff_threshold:
+    # Main loop with safeguards
+    iteration = 1
+    consecutive_failures = 0
+
+    while fill_ratio < cutoff_threshold and iteration < MAX_ITERATIONS:
         iteration_start_time = time.time()
 
         # Select which class to sample using configured rotation frequency
@@ -187,8 +367,30 @@ def combine_annotations_into_tiles(
         try:
             image = load_image_with_fallback(tile_path, 'RGB')
             annotation_mask = load_image_with_fallback(os.path.join(label_path, tile_name), 'L')
+            # Reset consecutive failures on successful load
+            consecutive_failures = 0
         except Exception as e:
-            logger.error(f"Failed to load tile {tile_path}: {e}")
+            consecutive_failures += 1
+            logger.error(
+                f"Failed to load tile {tile_path}: {e}\n"
+                f"  Consecutive failures: {consecutive_failures}/{MAX_CONSECUTIVE_FAILURES}"
+            )
+
+            # Fail fast if too many consecutive failures
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                raise RuntimeError(
+                    f"Failed to load tiles {consecutive_failures} times consecutively.\n"
+                    f"Last attempted path: {tile_path}\n"
+                    f"Label path: {os.path.join(label_path, tile_name)}\n"
+                    f"\n"
+                    f"This likely indicates a problem with:\n"
+                    f"  1. File paths in image_list are incorrect\n"
+                    f"  2. Image or label files are missing or corrupted\n"
+                    f"  3. File permissions prevent reading\n"
+                    f"\n"
+                    f"Check that all files exist and are readable."
+                ) from e
+
             count += 1
             iteration += 1
             continue
@@ -242,11 +444,32 @@ def combine_annotations_into_tiles(
         dist[-padding:, :] = 0
         dist[:, -padding:] = 0
 
-        # Find point with maximum distance from any occupied area
-        max_dist_points = np.where(dist == np.max(dist))
-        index = np.random.choice(len(max_dist_points[0]), size=1, replace=False)
-        x = int(max_dist_points[0][index[0]] * reduction_factor)
-        y = int(max_dist_points[1][index[0]] * reduction_factor)
+        # Validation: Check for pathological edge case where distance transform is empty
+        # This can happen when image is too small for the disk filter size and padding
+        max_dist = np.max(dist)
+        if max_dist == 0 or dist.size == 0:
+            # Warn only once to avoid flooding logs with hundreds of warnings
+            if not empty_distance_transform_warned:
+                disk_size = 51 if config.use_disk_filter else 0  # Hardcoded disk filter size
+                logger.warning(
+                    f"Distance transform is empty (max_dist={max_dist}, size={dist.shape}). "
+                    f"This may occur when image size ({composite_mask.shape}) is too small for "
+                    f"reduction_factor={reduction_factor}, padding={padding}, "
+                    f"and disk_filter_size={disk_size if config.use_disk_filter else 'N/A'}. "
+                    "Using random placement as fallback for this and subsequent placements."
+                )
+                empty_distance_transform_warned = True
+
+            # Fallback: use random placement to avoid stacking all tiles at the same location
+            # This provides better spatial distribution than always using the center
+            x = np.random.randint(padding, composite_mask.shape[0] - padding)
+            y = np.random.randint(padding, composite_mask.shape[1] - padding)
+        else:
+            # Find point with maximum distance from any occupied area
+            max_dist_points = np.where(dist == max_dist)
+            index = np.random.choice(len(max_dist_points[0]), size=1, replace=False)
+            x = int(max_dist_points[0][index[0]] * reduction_factor)
+            y = int(max_dist_points[1][index[0]] * reduction_factor)
 
         # Calculate placement position ensuring we stay in bounds
         annotation_size = np.array(annotation_mask.shape) - 1
@@ -331,6 +554,23 @@ def combine_annotations_into_tiles(
             logger.debug(f"Performed garbage collection after {count} tiles")
 
         elapsed_time = time.time() - iteration_start_time
+
+    # Check if we exited due to MAX_ITERATIONS
+    if iteration >= MAX_ITERATIONS:
+        raise RuntimeError(
+            f"Exceeded maximum iterations ({MAX_ITERATIONS}) without reaching fill threshold.\n"
+            f"Final fill_ratio: {fill_ratio:.4f}, target: {cutoff_threshold:.4f}\n"
+            f"\n"
+            f"This may indicate:\n"
+            f"  1. Insufficient training data (not enough annotated regions)\n"
+            f"  2. Annotation files are empty or contain mostly background\n"
+            f"  3. Threshold is set too high for available data\n"
+            f"\n"
+            f"Consider:\n"
+            f"  - Checking annotation quality and coverage\n"
+            f"  - Reducing cutoff_threshold (current: {cutoff_threshold})\n"
+            f"  - Adding more annotated training data"
+        )
 
     # Crop margins from the final composite
     composite_image = composite_image[100:-100, 100:-100, :].astype(np.float64)

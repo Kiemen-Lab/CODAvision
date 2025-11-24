@@ -135,6 +135,7 @@ dev = [
     "hypothesis>=6.82.0",
     "pytest-benchmark>=4.0.0",
     "freezegun>=1.2.2",
+    "pypdf>=3.0.0",  # PDF validation in tests
 ]
 
 # Minimal testing dependencies (for CI pipelines)

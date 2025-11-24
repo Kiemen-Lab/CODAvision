@@ -5,9 +5,16 @@ This module provides test cases for verifying the functionality of the PDF repor
 generation module, ensuring proper creation of evaluation reports with expected
 sections including confusion matrices, annotations, classifications, and metrics.
 
+Tests require pypdf for PDF validation.
+Install with: pip install pypdf>=3.0.0
+
 """
 
 import pytest
+
+# Require pypdf for these tests (skip if not available)
+pytest.importorskip("pypdf", minversion="3.0")
+
 import pickle
 import pandas as pd
 import numpy as np

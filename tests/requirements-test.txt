@@ -28,3 +28,4 @@ mypy>=1.4.0  # Type checking
 hypothesis>=6.82.0  # Property-based testing
 pytest-benchmark>=4.0.0  # Performance testing
 freezegun>=1.2.2  # Time mocking
+pypdf>=3.0.0  # PDF validation in tests

@@ -564,7 +564,32 @@ class PyTorchSegmentationTrainer:
 
         # Check if directory exists
         if not os.path.isdir(label_dir):
-            raise ValueError(f"Label directory not found: {label_dir}")
+            # Provide helpful diagnostic information
+            available_dirs = []
+            training_dir = os.path.join(self.model_path, 'training')
+            if os.path.exists(training_dir):
+                available_dirs = [d for d in os.listdir(training_dir)
+                                if os.path.isdir(os.path.join(training_dir, d))]
+
+            error_msg = (
+                f"Label directory not found: {label_dir}\n\n"
+                f"Expected directory structure:\n"
+                f"  {self.model_path}/training/label/  (label masks)\n"
+                f"  {self.model_path}/training/im/     (training images)\n"
+            )
+
+            if available_dirs:
+                error_msg += f"\nAvailable subdirectories in training/: {available_dirs}\n"
+                if 'big_tiles' in available_dirs:
+                    error_msg += (
+                        f"\n⚠️  Found 'big_tiles' directory instead of 'label'.\n"
+                        f"Did you forget to run tile generation?\n"
+                        f"Run: create_training_tiles(model_path, annotations, image_list, True)"
+                    )
+            else:
+                error_msg += f"\n⚠️  Training directory is empty or doesn't exist."
+
+            raise ValueError(error_msg)
 
         # Track pixel counts per class
         class_pixels = np.zeros(self.num_classes, dtype=np.int64)

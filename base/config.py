@@ -66,7 +66,7 @@ class ModelDefaults:
     TILE_GENERATION_MODE = "modern"  # Default tile generation mode ("modern" or "legacy")
 
     # ===== FRAMEWORK CONFIGURATION =====
-    DEFAULT_FRAMEWORK = "pytorch"  # or "tensorflow"
+    DEFAULT_FRAMEWORK = "pytorch"  # "pytorch" or "tensorflow"
 
     # PyTorch-specific settings
     PYTORCH_DEVICE = "auto"  # auto, cuda, mps, cpu
