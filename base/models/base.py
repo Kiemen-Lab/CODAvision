@@ -106,7 +106,7 @@ def detect_framework_availability() -> dict:
         availability['tensorflow'] = True
         availability['tensorflow_version'] = tf.__version__
         availability['tensorflow_gpu'] = len(tf.config.list_physical_devices('GPU')) > 0
-    except ImportError:
+    except (ImportError, OSError, RuntimeError):
         pass
 
     # Check PyTorch
@@ -117,7 +117,7 @@ def detect_framework_availability() -> dict:
         availability['pytorch_gpu'] = torch.cuda.is_available() or (
             hasattr(torch.backends, 'mps') and torch.backends.mps.is_available()
         )
-    except ImportError:
+    except (ImportError, OSError, RuntimeError):
         pass
 
     return availability

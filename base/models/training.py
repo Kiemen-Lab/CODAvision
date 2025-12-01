@@ -480,6 +480,16 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
             val_loss_avg = val_loss_total / num_batches
             val_accuracy_avg = val_accuracy_total / num_batches
 
+            # Check for NaN/Inf and terminate training if detected
+            if np.isnan(val_loss_avg) or np.isinf(val_loss_avg):
+                if self.logger:
+                    self.logger.logger.error(
+                        f"Validation loss is NaN/Inf at validation #{self.validation_counter}. "
+                        f"Terminating training. Check: learning rate, class weights, batch size."
+                    )
+                self._model.stop_training = True
+                return
+
             # Record validation metrics
             self.validation_losses.append(val_loss_avg)
             self.validation_accuracies.append(val_accuracy_avg)
@@ -665,9 +675,10 @@ class SegmentationModelTrainer:
         effective_batch_size = self.batch_size
         if self.strategy and self.num_gpus > 1:
             # The batch_size from config is the global batch size
-            # Each GPU gets batch_size // num_gpus
+            # Each GPU gets batch_size // num_gpus for training
             module_logger.info(f"Multi-GPU training: Global batch size {self.batch_size}, "
                              f"per-GPU batch size {self.batch_size // self.num_gpus}")
+            module_logger.info(f"Validation uses global batch size {self.batch_size} (single GPU)")
             effective_batch_size = self.batch_size // self.num_gpus
 
         # Create DataConfig for optimized data pipeline
@@ -691,11 +702,12 @@ class SegmentationModelTrainer:
         )
 
         # Create optimized validation dataset without shuffling
+        # Use global batch_size for validation since it runs on single GPU (not distributed)
         self.val_dataset = create_validation_dataset(
             val_images,
             val_masks,
             self.image_size,
-            effective_batch_size,
+            self.batch_size,  # Global batch size for non-distributed validation
             data_config=data_config,
             cache=cache_val
         )
@@ -714,10 +726,13 @@ class SegmentationModelTrainer:
         module_logger.info(f"Validation samples: {self.num_val_samples}, "
                          f"steps per epoch: {self.val_steps_per_epoch}")
 
-        # Distribute datasets across GPUs if using MirroredStrategy
+        # Distribute ONLY training dataset across GPUs if using MirroredStrategy
+        # Validation dataset remains non-distributed to avoid PerReplica issues
+        # in BatchAccuracyCallback.run_validation()
         if self.strategy and self.num_gpus > 1:
             self.train_dataset = self.strategy.experimental_distribute_dataset(self.train_dataset)
-            self.val_dataset = self.strategy.experimental_distribute_dataset(self.val_dataset)
+            # Note: val_dataset intentionally NOT distributed for simpler callback iteration
+            module_logger.info("Validation will run on single GPU (non-distributed) for callback compatibility")
 
         # Log the datasets if logger is available
         if self.logger:
@@ -816,6 +831,9 @@ class SegmentationModelTrainer:
         )
 
         callbacks = [batch_callback]
+
+        # Add NaN termination callback to stop training immediately on NaN loss
+        callbacks.append(keras.callbacks.TerminateOnNaN())
 
         # Add regularization loss monitoring if L2 regularization is enabled
         if self.l2_regularization_weight and self.l2_regularization_weight > 0:

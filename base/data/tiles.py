@@ -109,7 +109,7 @@ def validate_image_list_structure(
                 f"Please create annotation mask for this image in the label/ directory."
             )
 
-    logger.info(f"✓ Validated image_list structure: {len(image_list['tile_name'])} tiles with corresponding labels")
+    logger.info(f"[OK] Validated image_list structure: {len(image_list['tile_name'])} tiles with corresponding labels")
 
 
 def validate_tile_config_compatibility(
@@ -192,7 +192,7 @@ def validate_tile_config_compatibility(
 
     # Log successful validation
     logger.info(
-        f"✓ Validated tile config compatibility: {config.mode} mode with "
+        f"[OK] Validated tile config compatibility: {config.mode} mode with "
         f"{min_dim}x{min_dim} images (effective size: {effective_size:.1f}x{effective_size:.1f})"
     )
 

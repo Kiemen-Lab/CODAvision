@@ -158,7 +158,7 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
             os.path.join(output_dir, 'hyperparameter_plots.png'),
             show_individual_points=True
         )
-        logger.info("✓ Hyperparameter plots saved")
+        logger.info("[OK] Hyperparameter plots saved")
     except Exception as e:
         logger.error(f"Failed to generate hyperparameter plots: {str(e)}")
 
@@ -193,7 +193,7 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
             metric_to_color=color_metric,
             highlight_top_n=10  # Highlight top 10 experiments
         )
-        logger.info("✓ Parallel coordinates plot saved")
+        logger.info("[OK] Parallel coordinates plot saved")
     except Exception as e:
         logger.error(f"Failed to generate parallel coordinates plot: {str(e)}")
 
@@ -205,7 +205,7 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
             os.path.join(output_dir, 'correlation_heatmap.png'),
             figsize=(24, 20)
         )
-        logger.info("✓ Correlation heatmap saved")
+        logger.info("[OK] Correlation heatmap saved")
     except Exception as e:
         logger.error(f"Failed to generate correlation heatmap: {str(e)}")
 
@@ -218,7 +218,7 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
             method='correlation',
             figsize=(10, 6)
         )
-        logger.info("✓ Parameter importance plot saved")
+        logger.info("[OK] Parameter importance plot saved")
     except Exception as e:
         logger.error(f"Failed to generate parameter importance plot: {str(e)}")
 
@@ -231,7 +231,7 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
             top_n=5,
             figsize=(14, 8)
         )
-        logger.info("✓ Learning curves saved")
+        logger.info("[OK] Learning curves saved")
     except Exception as e:
         logger.warning(f"Failed to generate learning curves (likely no training history available): {str(e)}")
 
@@ -243,7 +243,7 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
             os.path.join(output_dir, 'summary_dashboard.png'),
             figsize=(20, 16)
         )
-        logger.info("✓ Summary dashboard saved")
+        logger.info("[OK] Summary dashboard saved")
     except Exception as e:
         logger.error(f"Failed to generate summary dashboard: {str(e)}")
 
@@ -254,7 +254,7 @@ def generate_all_figures(tracker: ExperimentTracker, output_dir: str):
             tracker,
             os.path.join(output_dir, 'summary_report.txt')
         )
-        logger.info("✓ Summary report saved")
+        logger.info("[OK] Summary report saved")
 
         # Print key findings
         print("\n" + "="*80)
@@ -571,13 +571,13 @@ def _write_figure_interpretations(f):
     f.write("• Solid lines: Training set performance\n")
     f.write("• Dashed lines: Validation set performance\n\n")
     f.write("HEALTHY PATTERNS:\n")
-    f.write("✓ Both curves improving smoothly\n")
-    f.write("✓ Small gap between training and validation\n")
-    f.write("✓ Curves plateau together (both stop improving at same time)\n\n")
+    f.write("[OK] Both curves improving smoothly\n")
+    f.write("[OK] Small gap between training and validation\n")
+    f.write("[OK] Curves plateau together (both stop improving at same time)\n\n")
     f.write("PROBLEM PATTERNS:\n")
-    f.write("✗ Large gap between train and val (overfitting)\n")
-    f.write("✗ Validation curve going up while train curve goes down (severe overfitting)\n")
-    f.write("✗ Jagged, unstable curves (learning rate too high)\n\n")
+    f.write("[X] Large gap between train and val (overfitting)\n")
+    f.write("[X] Validation curve going up while train curve goes down (severe overfitting)\n")
+    f.write("[X] Jagged, unstable curves (learning rate too high)\n\n")
     f.write("PRACTICAL USE:\n")
     f.write("• Verify early stopping worked correctly\n")
     f.write("• Diagnose overfitting (large train-val gap)\n")

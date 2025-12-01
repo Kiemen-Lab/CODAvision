@@ -66,7 +66,9 @@ class SemanticSegmenter:
                 # Wrap raw PyTorch model with Keras-compatible adapter
                 from base.models.wrappers import PyTorchKerasAdapter
                 model = PyTorchKerasAdapter(model)
-        except ImportError:
+        except (ImportError, OSError):
+            # ImportError: PyTorch not installed
+            # OSError: DLL loading issues (Windows) or library problems
             pass
 
         predictions = model.predict(np.expand_dims(image_tensor, axis=0), verbose=0)
