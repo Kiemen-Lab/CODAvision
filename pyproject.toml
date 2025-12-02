@@ -25,26 +25,29 @@ classifiers = [
 keywords = ["medical imaging", "image labeling", "machine learning", "deep learning", "tissue labeling"]
 
 dependencies = [
-    # Numerical computing (pinned for TensorFlow 2.10 compatibility)
-    "numpy==1.23.5",
+    # Numerical computing (compatible with TensorFlow 2.12)
+    "numpy>=1.23.5,<2.0",
 
     # Image processing
     "pillow==10.4.0",
 
     # Deep Learning - Platform-specific TensorFlow installation
-    # Windows and Linux use standard TensorFlow 2.10.1 (includes GPU support)
-    "tensorflow==2.10.1; sys_platform != 'darwin'",
-    # macOS Intel uses CPU-only TensorFlow 2.10.1
-    "tensorflow==2.10.1; sys_platform == 'darwin' and platform_machine != 'arm64'",
+    # Windows and Linux use standard TensorFlow 2.12.1 (includes GPU support)
+    "tensorflow==2.12.1; sys_platform != 'darwin'",
+    # macOS Intel uses CPU-only TensorFlow 2.12.1
+    "tensorflow==2.12.1; sys_platform == 'darwin' and platform_machine != 'arm64'",
     # Note: macOS Silicon (M1/M2/M3) requires TensorFlow 2.9+ installed via optional extra [macos-silicon]
 
-    "keras==2.10.0",
+    "keras==2.13.1",
 
-    # Protobuf - pinned for TensorFlow 2.10 compatibility
-    # TensorFlow 2.10.1 requires: protobuf >= 3.9.2, < 3.20
-    # Note: macOS Silicon uses TensorFlow 2.13+ which needs protobuf >= 3.20.3
-    "protobuf==3.19.6; sys_platform != 'darwin' or platform_machine != 'arm64'",
-    "protobuf>=3.20.3,<4.24; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    # PyTorch - Default deep learning framework
+    # Provides faster inference on Apple Silicon via MPS
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+
+    # Protobuf - TensorFlow 2.12+ requires protobuf >= 3.20.3
+    "protobuf>=3.20.3,<5; sys_platform != 'darwin' or platform_machine != 'arm64'",
+    "protobuf>=3.20.3,<5; sys_platform == 'darwin' and platform_machine == 'arm64'",
 
     "opencv-python==4.10.0.84",
 
@@ -77,8 +80,8 @@ dependencies = [
 
     # Jupyter support
     "jupyter==1.1.1",
-    "tornado==6.4.1",
-    "jinja2==3.1.4",
+    "tornado==6.5",
+    "jinja2==3.1.6",
 
     # PDF generation
     "fpdf==1.7.2",
@@ -87,7 +90,7 @@ dependencies = [
     #"pip==24.2",
     "attrs==24.2.0",
     "wheel==0.43.0",
-    "setuptools==72.1.0",
+    "setuptools==78.1.1",
     "packaging==24.1",
     "zipp==3.20.1",
     ]

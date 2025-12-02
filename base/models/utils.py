@@ -10,6 +10,7 @@ import pickle
 from typing import Dict, Any, List, Tuple
 import numpy as np
 import tensorflow as tf
+from PIL import Image
 
 # Set up logging
 import logging
@@ -327,11 +328,9 @@ def calculate_class_weights(mask_list: List[str], num_classes: int) -> np.ndarra
     epsilon = 1e-5  # Prevent division by zero
     
     for mask_path in mask_list:
-        # Load mask
-        mask = tf.keras.preprocessing.image.load_img(
-            mask_path, color_mode='grayscale')
-        mask = tf.keras.preprocessing.image.img_to_array(mask)
-        mask = mask.astype(int)
+        # Load mask using PIL (replacing deprecated tf.keras.preprocessing.image)
+        mask = Image.open(mask_path).convert('L')  # 'L' mode = grayscale
+        mask = np.array(mask, dtype=int)
         
         # Count pixels per class
         unique, counts = np.unique(mask, return_counts=True)

@@ -27,7 +27,7 @@ from base.config import DataConfig, ModelDefaults
 
 # Suppress warnings and TensorFlow logs
 warnings.filterwarnings('ignore')
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 
 # Setup a logger for the module level
@@ -1018,7 +1018,7 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
             else:
                 # AdamW provides weight decay (different from L2 regularization)
                 # weight_decay is typically similar to L2 regularization weight
-                optimizer = tf.keras.optimizers.experimental.AdamW(
+                optimizer = tf.keras.optimizers.AdamW(
                     learning_rate=0.0005,
                     weight_decay=self.l2_regularization_weight,
                     epsilon=ModelDefaults.OPTIMIZER_EPSILON
@@ -1116,7 +1116,7 @@ class UNetTrainer(SegmentationModelTrainer):
                 )
             else:
                 # AdamW provides weight decay (different from L2 regularization)
-                optimizer = tf.keras.optimizers.experimental.AdamW(
+                optimizer = tf.keras.optimizers.AdamW(
                     learning_rate=learning_rate,
                     weight_decay=self.l2_regularization_weight,
                     epsilon=ModelDefaults.OPTIMIZER_EPSILON

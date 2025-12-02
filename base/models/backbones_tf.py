@@ -11,7 +11,9 @@ to avoid serialization issues with Ellipsis objects that prevent model saving.
 """
 
 import os
+import logging
 from typing import Tuple
+import warnings
 import numpy as np
 
 import tensorflow as tf
@@ -20,11 +22,10 @@ from tensorflow.keras import layers, Model, applications
 from base.models.base import BaseSegmentationModelInterface, Framework
 
 # Configure TensorFlow to reduce verbosity
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
 
 # Suppress warnings
-import warnings
 warnings.filterwarnings('ignore')
 
 
