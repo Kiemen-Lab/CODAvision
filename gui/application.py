@@ -3,9 +3,6 @@ CODAvision GUI Application
 
 This module provides the main entry point for the CODAvision GUI application,
 orchestrating the workflow for model creation, training, and analysis.
-
-Author: Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-Updated: March 2025
 """
 
 import os
@@ -13,7 +10,11 @@ import sys
 import time
 import pickle
 import shutil
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
 
 # Import from base package
 from base import (
@@ -104,7 +105,7 @@ def CODAVision():
         scale_images = not(window.create_down)
         not_downsamp_annotated = window.downsamp_annotated_images
 
-        print(' ')
+        logger.info("Starting image downsampling process...")
         downsamp_time = time.time()
         if resolution == 'Custom':
             # Handle custom resolution image preparation
@@ -112,8 +113,8 @@ def CODAVision():
             test_img_type = window.test_img_type
             scale = float(window.scale)
             if not(not_downsamp_annotated):
-                WSI2tif(pth, resolution, umpix, train_img_type, scale, pth)
-                WSI2tif(pthtest, resolution, umpix, test_img_type, scale, pthtest)
+                WSI2tif(pth, resolution, umpix, train_img_type, scale, pth, image_set_type='training')
+                WSI2tif(pthtest, resolution, umpix, test_img_type, scale, pthtest, image_set_type='testing')
             else:
                 uncomp_pth = window.uncomp_train_pth
                 uncomp_test_pth = window.uncomp_test_pth
@@ -121,21 +122,28 @@ def CODAVision():
                     pthim = uncomp_pth
                     pthtestim = uncomp_test_pth
                 if scale_images:
-                    WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale, pth)
-                    WSI2tif(uncomp_test_pth, resolution, umpix, train_img_type, scale, pthtest)
+                    WSI2tif(uncomp_pth, resolution, umpix, train_img_type, scale, pth, image_set_type='training')
+                    WSI2tif(uncomp_test_pth, resolution, umpix, train_img_type, scale, pthtest, image_set_type='testing')
         else:
-            WSI2tif(pth, resolution, umpix)
-            WSI2tif(pthtest, resolution, umpix)
+            WSI2tif(pth, resolution, umpix, image_set_type='training')
+            WSI2tif(pthtest, resolution, umpix, image_set_type='testing')
         downsamp_time = time.time()-downsamp_time
 
         # Execute the model training pipeline
+        # determine_optimal_TA will handle showing the tissue mask dialog if needed
         determine_optimal_TA(pthim, pthtestim, nTA, redo)
         try:
             os.makedirs(os.path.join(pthtestim, 'TA'), exist_ok=True)
-            shutil.copy(os.path.join(pthim, 'TA', 'TA_cutoff.pkl'),
-                        os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl'))
-        except:
-            print('No TA cutoff file found, using default value')
+            # The TA file is saved in pthim/TA/, not in the parent directory
+            ta_source = os.path.join(pthim, 'TA', 'TA_cutoff.pkl')
+            ta_dest = os.path.join(pthtestim, 'TA', 'TA_cutoff.pkl')
+            if os.path.exists(ta_source):
+                shutil.copy(ta_source, ta_dest)
+                logger.debug(f'Copied TA cutoff file from {ta_source} to {ta_dest}')
+            else:
+                logger.debug(f'TA cutoff file not found at {ta_source}, will be created during processing')
+        except Exception as e:
+            logger.debug(f'Could not copy TA cutoff file: {e}')
         load_time = time.time()
         [ctlist0, numann0, create_new_tiles] = load_annotation_data(pthDL, pth, pthim)
         load_time = time.time()-load_time
@@ -153,7 +161,7 @@ def CODAVision():
             round(train_time % 60, 2))
 
         # Prepare and process test data
-        print(' ')
+        logger.info("Starting test data processing...")
         downsamp_time = str(int(downsamp_time // 3600)) + ':' + str(int((downsamp_time % 3600) // 60)) + ':' + str(
             round(downsamp_time % 60, 2))
         times['Downsampling images'] = downsamp_time
@@ -206,7 +214,7 @@ def CODAVision():
             if not os.path.isfile(os.path.join(quantpath, classNames[tissue - 1] + '_count_analysis.csv')):
                 quantify_objects(pthDL, quantpath, tissue)
             else:
-                print(f'Object quantification already done for {classNames[tissue - 1]}')
+                logger.info(f'Object quantification already done for {classNames[tissue - 1]}')
         comp_time = time.time()-comp_time
         comp_time = str(int(comp_time // 3600)) + ':' + str(int((comp_time % 3600) // 60)) + ':' + str(
             round(comp_time % 60, 2))
@@ -232,4 +240,4 @@ def CODAVision():
     hours, remainder = divmod(execution_time, 3600)
     minutes, seconds = divmod(remainder, 60)
 
-    print(f"Execution time: {int(hours)} hours, {int(minutes)} minutes, and {seconds:.2f} seconds")
+    logger.info(f"Execution time: {int(hours)} hours, {int(minutes)} minutes, and {seconds:.2f} seconds")

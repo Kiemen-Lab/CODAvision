@@ -3,12 +3,6 @@ Confusion Matrix Visualization for Semantic Segmentation Models
 
 This module provides classes and functions for creating, visualizing, and analyzing
 confusion matrices for semantic segmentation model evaluation.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated March 13, 2025
 """
 
 import os
@@ -19,6 +13,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Rectangle
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 class ConfusionMatrixVisualizer:
@@ -205,21 +203,21 @@ class ConfusionMatrixVisualizer:
             if save_fig:
                 output_path = os.path.join(self.output_dir, f'confusion_matrix_{self.model_name}.png')
                 plt.savefig(output_path)
-                print(f"\nConfusion matrix saved to {output_path}")
+                logger.info(f"\nConfusion matrix saved to {output_path}")
 
             # Show figure if requested
             if show_fig:
-                plt.show()
+                plt.show(block=False)
             else:
                 plt.close()
 
             # Print overall accuracy
-            print(f"Overall Accuracy: {accuracy}%")
+            logger.info(f"Overall Accuracy: {accuracy}%")
 
             return confusion_with_metrics
 
         except Exception as e:
-            print(f"Error visualizing confusion matrix: {str(e)}")
+            logging.error(f"Error visualizing confusion matrix: {str(e)}")
             raise
 
 

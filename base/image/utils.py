@@ -3,23 +3,144 @@ Image Utilities for Semantic Segmentation
 
 This module provides common image processing utilities used across the semantic
 segmentation pipeline, including loading, preprocessing, visualization, and overlay creation.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: April 2025
 """
 
 from typing import Optional, Tuple, Union, List, Any
 
 import os
+os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))  # Set max image size for OpenCV to 2^40 pixels
+
 import numpy as np
 import tensorflow as tf
 import keras
 import cv2
-import tifffile
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
+
+
+def normalize_path_for_windows(path: str) -> str:
+    """
+    Normalize a path for Windows, handling UNC paths properly.
+    
+    Args:
+        path: The path to normalize
+        
+    Returns:
+        Normalized path suitable for Windows
+    """
+    import platform
+    
+    if platform.system() != 'Windows':
+        return path
+    
+    # Handle UNC paths
+    if path.startswith('\\\\'):
+        # Ensure all slashes are backslashes for UNC paths
+        path = path.replace('/', '\\')
+        # Remove any duplicate backslashes (except at the start)
+        parts = path[2:].split('\\')
+        parts = [p for p in parts if p]  # Remove empty parts
+        path = '\\\\' + '\\'.join(parts)
+    else:
+        # For regular paths, just normalize slashes
+        path = path.replace('/', '\\')
+    
+    return path
+
+
+def load_image_with_fallback(image_path: str, mode: str = "RGB") -> np.ndarray:
+    """
+    Attempts to load an image using OpenCV. If it fails, falls back to Pillow.
+
+    Args:
+        image_path: Path to the image file.
+        mode: Mode to convert the image to when using Pillow (default: "RGB").
+
+    Returns:
+        The loaded image as a NumPy array.
+    """
+    # Handle Windows UNC paths by using raw file operations
+    import platform
+    import gc
+    
+    # Store original path for error messages
+    original_path = image_path
+    
+    # Normalize path for Windows
+    image_path = normalize_path_for_windows(image_path)
+    
+    try:
+        # Try OpenCV first
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE if mode == "L" else cv2.IMREAD_COLOR)
+        if image is None:
+            raise ValueError("Failed to load image with OpenCV")
+        if mode == "RGB" and len(image.shape) == 3:  # Convert BGR to RGB
+            image = image[:, :, ::-1]
+        return image
+    except cv2.error as e:
+        # OpenCV error (e.g., image too large), fall back to PIL
+        logger.debug(f"OpenCV failed to load {original_path}: {e}. Falling back to PIL.")
+        
+        # For UNC paths on Windows, use direct file reading
+        if platform.system() == 'Windows' and image_path.startswith('\\\\'):
+            try:
+                # Read file directly to avoid os.path.realpath issues
+                with open(image_path, 'rb') as f:
+                    image_data = f.read()
+                
+                import io
+                with Image.open(io.BytesIO(image_data)) as img:
+                    result = np.array(img.convert(mode))
+                
+                # Explicitly clean up
+                del image_data
+                gc.collect()
+                return result
+            except Exception as direct_error:
+                logger.error(f"Direct file reading also failed for {original_path}: {direct_error}")
+                raise
+        else:
+            # Standard PIL approach for non-UNC paths
+            try:
+                with Image.open(image_path) as img:
+                    result = np.array(img.convert(mode))
+                return result
+            except Exception as pil_error:
+                logger.error(f"PIL failed to load {original_path}: {pil_error}")
+                raise
+    except Exception as e:
+        # Other errors, try PIL with same UNC handling
+        logger.debug(f"Error loading {original_path} with OpenCV: {e}. Trying PIL.")
+        
+        if platform.system() == 'Windows' and image_path.startswith('\\\\'):
+            try:
+                # Read file directly for UNC paths
+                with open(image_path, 'rb') as f:
+                    image_data = f.read()
+                
+                import io
+                with Image.open(io.BytesIO(image_data)) as img:
+                    result = np.array(img.convert(mode))
+                
+                # Explicitly clean up
+                del image_data
+                gc.collect()
+                return result
+            except Exception as direct_error:
+                logger.error(f"Failed to load image {original_path}: {direct_error}")
+                raise
+        else:
+            try:
+                with Image.open(image_path) as img:
+                    result = np.array(img.convert(mode))
+                return result
+            except Exception as pil_error:
+                logger.error(f"Failed to load image {original_path} with both OpenCV and PIL: {pil_error}")
+                raise
 
 
 def decode_segmentation_masks(mask: np.ndarray, colormap: np.ndarray, n_classes: int) -> np.ndarray:
@@ -87,45 +208,51 @@ def read_image_overlay(image_input: Union[str, np.ndarray]) -> Optional[tf.Tenso
             # If it's already a numpy array, just convert to tensor
             image = tf.convert_to_tensor(image_input)
         else:
-            # Otherwise, read from file
-            image = tf.io.read_file(image_input)
-            image = tf.image.decode_png(image, channels=3)
-            image.set_shape([None, None, 3])
+            # Check if it's a TIFF file - use PIL since TensorFlow doesn't support TIFF
+            if image_input.lower().endswith(('.tiff', '.tif')):
+                # Use PIL to load TIFF files
+                image_array = load_image_with_fallback(image_input, mode="RGB")
+                image = tf.convert_to_tensor(image_array)
+            else:
+                # For other formats, use TensorFlow's built-in decoder
+                image = tf.io.read_file(image_input)
+                # Auto-detect format (PNG, JPEG, GIF, BMP)
+                image = tf.io.decode_image(image, channels=3, expand_animations=False)
+                image.set_shape([None, None, 3])
         return image
     except Exception as e:
-        print(f"Error reading image {image_input}: {e}")
+        logger.error(f"Error reading image {image_input}: {e}")
         return None
 
 
-def convert_to_array(image_path: str, prediction_mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def convert_to_array(image_path: str, prediction_mask: np.ndarray, resize_factor: int = 4) -> Tuple[np.ndarray, np.ndarray]:
     """
     Convert image and prediction mask to numpy arrays with consistent dimensions.
 
     Args:
         image_path: Path to the image file
         prediction_mask: Prediction mask as numpy array
+        resize_factor: Factor to resize large images by (default: 4)
 
     Returns:
         Tuple of (image array, prediction mask array)
     """
-    # Read the image
-    try:
-        image = cv2.imread(image_path)
-        image = image[:, :, ::-1]  # Convert BGR to RGB
-    except:
-        image = tifffile.imread(image_path)
+    # Read the image using the fallback loader
+    image = load_image_with_fallback(image_path)
 
-    # Handle large images by resizing
+    # Handle large images by resizing to avoid memory issues
     if image.shape[0] > 20000 or image.shape[1] > 20000:
         # Convert to PIL image for resizing
         image_pil = Image.fromarray(image)
         # Resize while maintaining aspect ratio
-        image_pil = image_pil.resize((image_pil.width // 4, image_pil.height // 4), Image.LANCZOS)
+        new_width = image_pil.width // resize_factor
+        new_height = image_pil.height // resize_factor
+        image_pil = image_pil.resize((new_width, new_height), Image.LANCZOS)
         image = np.array(image_pil)
 
         # Resize prediction mask to match
         prediction_mask_pil = Image.fromarray(prediction_mask)
-        prediction_mask_pil = prediction_mask_pil.resize((prediction_mask_pil.width // 4, prediction_mask_pil.height // 4), Image.LANCZOS)
+        prediction_mask_pil = prediction_mask_pil.resize((new_width, new_height), Image.LANCZOS)
         prediction_mask = np.array(prediction_mask_pil)
 
     return image, prediction_mask

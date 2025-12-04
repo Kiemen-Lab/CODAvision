@@ -3,13 +3,6 @@ Image Augmentation Utilities for CODAvision
 
 This module provides functions for augmenting images and masks during training to
 improve model generalization through data diversity.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Jaime Gomez (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: April 2025
 """
 
 from typing import Tuple, Optional, Union
@@ -30,7 +23,8 @@ def augment_image(
     scaling: bool = True,
     hue_shift: bool = True,
     blur: bool = False,
-    resize: bool = False
+    resize: bool = False,
+    crop_rotations: bool = False
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Apply random augmentations to an image and its mask.
@@ -46,6 +40,8 @@ def augment_image(
         hue_shift: Whether to apply random hue adjustment
         blur: Whether to apply random Gaussian blur
         resize: Whether to resize images after scaling augmentation
+        crop_rotations: If True, crop rotated images back to original size (legacy/MATLAB behavior).
+                       If False, keep expanded dimensions (modern/CODAvision behavior). Default: False.
 
     Returns:
         Tuple containing:
@@ -65,6 +61,10 @@ def augment_image(
         angles = np.arange(0, 360, 5)
         angle = np.random.choice(angles)
         height, width = augmented_image.shape[:2]
+
+        # Store original dimensions for cropping (MATLAB behavior)
+        original_height, original_width = height, width
+
         rotation_matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1)
 
         # Calculate new dimensions after rotation
@@ -93,10 +93,38 @@ def augment_image(
             flags=cv2.INTER_NEAREST
         )
 
+        # Optionally crop back to original size (legacy/MATLAB behavior)
+        if crop_rotations and (new_height != original_height or new_width != original_width):
+            # Calculate center crop coordinates
+            center_y = new_height // 2
+            center_x = new_width // 2
+            half_height = original_height // 2
+            half_width = original_width // 2
+
+            # Crop to original dimensions
+            y_start = max(0, center_y - half_height)
+            y_end = min(new_height, center_y + half_height)
+            x_start = max(0, center_x - half_width)
+            x_end = min(new_width, center_x + half_width)
+
+            augmented_image = augmented_image[y_start:y_end, x_start:x_end, :]
+            augmented_mask = augmented_mask[y_start:y_end, x_start:x_end]
+
+            # Ensure exact original size (handle odd dimensions)
+            if augmented_image.shape[0] != original_height or augmented_image.shape[1] != original_width:
+                augmented_image = cv2.resize(augmented_image, (original_width, original_height))
+                augmented_mask = cv2.resize(augmented_mask, (original_width, original_height),
+                                           interpolation=cv2.INTER_NEAREST)
+
     # Scaling augmentation
     if scaling:
-        # Random scaling between 0.6x and 1.4x
-        scales = np.concatenate((np.arange(0.6, 0.96, 0.01), np.arange(1.1, 1.41, 0.01)))
+        # Match MATLAB exactly: [0.6:0.01:0.95, 1.1:0.01:1.4]
+        # Using explicit upper bounds (0.951, 1.401) to ensure endpoints are included
+        # and guard against floating-point edge cases
+        scales = np.concatenate((
+            np.arange(0.6, 0.951, 0.01),  # Include 0.95 (numpy is exclusive on upper bound)
+            np.arange(1.1, 1.401, 0.01)   # Include 1.4 (numpy is exclusive on upper bound)
+        ))
         scale_factor = np.random.choice(scales)
 
         augmented_image = cv2.resize(
@@ -192,7 +220,8 @@ def edit_annotation_tiles(
     class_id: int,
     num_pixels_class: np.ndarray,
     big_tile_size: int,
-    kpall: int
+    kpall: int,
+    crop_rotations: bool = False
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Edit annotation tiles by performing augmentation and adjusting class distribution.
@@ -208,6 +237,8 @@ def edit_annotation_tiles(
         num_pixels_class: Array containing the pixel counts for each class
         big_tile_size: Size of the big tile
         kpall: Flag indicating whether to keep all classes (1) or not (0)
+        crop_rotations: If True, crop rotated images back to original size (legacy).
+                       If False, keep expanded dimensions (modern). Default: False.
 
     Returns:
         Tuple containing:
@@ -220,9 +251,9 @@ def edit_annotation_tiles(
 
     # Apply appropriate augmentation based on the flag
     if do_augmentation:
-        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=True, blur=True)
+        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=True, blur=True, crop_rotations=crop_rotations)
     else:
-        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=False, blur=False)
+        im, TA = augment_image(im, TA, rotation=True, scaling=True, hue_shift=False, blur=False, crop_rotations=crop_rotations)
 
     # Filter classes based on kpall flag
     if kpall == 0:
@@ -231,27 +262,30 @@ def edit_annotation_tiles(
     else:
         kp = num_pixels_class >= 0
 
+    # PERFORMANCE FIX: Crop to big_tile_size BEFORE dilation to avoid
+    # dilating potentially huge rotated images. This maintains semantic
+    # correctness while dramatically improving performance.
+    p1, p2 = min(big_tile_size, TA.shape[0]), min(big_tile_size, TA.shape[1])
+    TA_cropped = TA[0:p1, 0:p2]
+    im_cropped = im[0:p1, 0:p2, :]
+
     # Extend kp to match TA classes (adding a 0 index)
     kp = np.concatenate(([0], kp))
-    tmp = kp[TA.astype(int)]
+    tmp = kp[TA_cropped.astype(int)]
     tmp = tmp > 0
 
-    # Dilate the mask
+    # Dilate the mask (now operating on cropped, bounded-size image)
     dil = np.random.randint(15) + 15
     tmp = dilation(tmp, disk(dil))
 
     # Apply the mask to TA and im
-    TA = TA * tmp
-    for i in range(im.shape[2]):
-        im[:, :, i] *= tmp
+    TA = TA_cropped * tmp
+    for i in range(im_cropped.shape[2]):
+        im_cropped[:, :, i] *= tmp
+    im = im_cropped
 
     # Get unique labels in the masked TA
     kpout = np.unique(TA)[1:].astype(int)
-
-    # Crop to big_tile_size
-    p1, p2 = min(big_tile_size, TA.shape[0]), min(big_tile_size, TA.shape[1])
-    im = im[0:p1, 0:p2, :]
-    TA = TA[0:p1, 0:p2]
 
     # Convert TA to uint8
     TA = TA.astype(np.uint8)

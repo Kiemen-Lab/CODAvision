@@ -17,18 +17,21 @@ Usage:
     Run this script directly to execute the complete workflow
     python non-gui_workflow.py
 
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
+    Optional arguments:
+    --framework {tensorflow,pytorch}  Deep learning framework to use (default: tensorflow)
 
-Updated: May 2025
+    Examples:
+    python non-gui_workflow.py --framework pytorch
+    python non-gui_workflow.py --framework tensorflow
 """
 
 import os
 import numpy as np
 import logging
+import argparse
 from datetime import datetime
 
+from base.config import FrameworkConfig
 from base.models.utils import create_initial_model_metadata
 from base.data.annotation import load_annotation_data
 from base.data.tiles import create_training_tiles
@@ -37,6 +40,29 @@ from base.evaluation.testing import test_segmentation_model
 
 
 DEBUG_MODE = False
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(
+    description='Liver Tissue Segmentation Workflow',
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog="""
+Examples:
+  python non-gui_workflow.py --framework pytorch
+  python non-gui_workflow.py --framework tensorflow
+  python non-gui_workflow.py  # Uses tensorflow by default
+"""
+)
+parser.add_argument(
+    '--framework',
+    type=str,
+    choices=['tensorflow', 'pytorch'],
+    default='tensorflow',
+    help='Deep learning framework to use (default: tensorflow)'
+)
+args = parser.parse_args()
+
+# Set the framework configuration
+FrameworkConfig.set_framework(args.framework)
 
 # Create logs directory if it doesn't exist
 logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
@@ -48,7 +74,7 @@ log_filename = os.path.join(logs_dir, f'{datetime.now().strftime("%Y%m%d_%H%M%S"
 if DEBUG_MODE:
     logging.basicConfig(
         level=logging.DEBUG,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - [%(name)s:%(funcName)s:%(lineno)d] - %(message)s',
         handlers=[
             logging.FileHandler(log_filename),
             logging.StreamHandler()  # Console output
@@ -57,14 +83,14 @@ if DEBUG_MODE:
 else:
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(levelname)s - [%(name)s] - %(message)s',
         handlers=[logging.FileHandler(log_filename)]
     )
-logger = logging.getLogger(__name__)
-logger.info(f"Starting tissue segmentation workflow with debug logging to {log_filename}")
+logging.info(f"Starting tissue segmentation workflow. Log level set to {'DEBUG' if DEBUG_MODE else 'INFO'}. Logging to {log_filename}")
+logging.info(f"Using deep learning framework: {args.framework}")
 
 # Set up data paths
-pth = '/Users/tnewton3/Desktop/liver_tissue_data'
+pth = '/path/to/liver_tissue_data'
 pthim = os.path.join(pth, '10x')  # Path to 10x magnification images
 umpix = 1  # Microns per pixel
 pthtest = os.path.join(pth, 'testing_image')  # Path to test dataset
@@ -154,4 +180,4 @@ create_training_tiles(pthDL, numann0, ctlist0, create_new_tiles)
 train_segmentation_model_cnns(pthDL, retrain_model=True)
 
 # Step 5: Test the trained model on separate test images
-test_segmentation_model(pthDL, pthtest, pthtestim)
+test_segmentation_model(pthDL, pthtest, pthtestim, show_fig=False)

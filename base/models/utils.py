@@ -3,20 +3,18 @@ Model Utilities for Semantic Segmentation
 
 This module provides common utilities for loading, saving, and managing 
 semantic segmentation models and their metadata.
-
-Authors:
-    Valentina Matos (Johns Hopkins - Wirtz/Kiemen Lab)
-    Tyler Newton (JHU - DSAI)
-
-Updated: March 2025
 """
 
 import os
 import pickle
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 import numpy as np
 import tensorflow as tf
-from base.evaluation.visualize import plot_cmap_legend
+from PIL import Image
+
+# Set up logging
+import logging
+logger = logging.getLogger(__name__)
 
 
 def save_model_metadata(model_path: str, metadata: Dict[str, Any]) -> None:
@@ -38,10 +36,10 @@ def save_model_metadata(model_path: str, metadata: Dict[str, Any]) -> None:
             with open(data_file, 'rb') as f:
                 existing_data = pickle.load(f)
         except EOFError:
-            print(f"Warning: EOFError reading existing metadata file {data_file}. Starting with provided metadata.")
+            logger.error(f"Warning: EOFError reading existing metadata file {data_file}. Starting with provided metadata.")
             existing_data = {}  # Or initialize with metadata if update implies base exists
         except Exception as e:
-            print(f"Warning: Failed to load existing metadata file {data_file}: {e}. Starting with provided metadata.")
+            logger.error(f"Warning: Failed to load existing metadata file {data_file}: {e}. Starting with provided metadata.")
             existing_data = {}
 
     existing_data.update(metadata)
@@ -50,7 +48,7 @@ def save_model_metadata(model_path: str, metadata: Dict[str, Any]) -> None:
         with open(data_file, 'wb') as f:
             pickle.dump(existing_data, f)
     except Exception as e:
-        print(f"Critical Error: Failed to save metadata to {data_file}: {e}")
+        logger.error(f"Critical Error: Failed to save metadata to {data_file}: {e}")
         # Optionally, re-raise or handle more gracefully
         raise
 
@@ -68,13 +66,14 @@ def create_initial_model_metadata(
         nvalidate: int,
         model_type: str = "DeepLabV3_plus",  # Default from GUI
         batch_size: int = 3,  # Default from GUI/training
+        tile_format: str = 'tif',  # Default file format for backward compatibility
         pthtest: str = None,
         nTA: int = None,
         final_df: Any = None,
         combined_df: Any = None,
         uncomp_train_pth: str = '',
         uncomp_test_pth: str = '',
-        scale: Any = '',
+        scale: Any = 1.0,
         create_down: bool = False,
         downsamp_annotated: bool = False
 ) -> None:
@@ -83,10 +82,13 @@ def create_initial_model_metadata(
     This function incorporates logic from the original base/save_model_metadata.py
     and can handle additional parameters typically set by the GUI.
     """
+    # avoid circular import issues
+    from base.evaluation.visualize import plot_cmap_legend
+
     if not os.path.isdir(pthDL):
         os.makedirs(pthDL)
 
-    print('Preparing initial model metadata and classification colormap...')
+    logger.info('Preparing initial model metadata and classification colormap...')
 
     # Make copies for manipulation if necessary, especially for classNames and WS
     _classNames = list(classNames)
@@ -136,20 +138,20 @@ def create_initial_model_metadata(
                 isinstance(_WS[2][original_whitespace_layer_idx - 1], int)):
             nwhite = _WS[2][original_whitespace_layer_idx - 1]
         else:
-            print(
+            logger.warning(
                 f"Warning: WS[2] seems not correctly formatted or index out of bounds for nwhite calculation. WS[1][0]={original_whitespace_layer_idx}, WS[2]={_WS[2]}")
 
     if nwhite == -1:  # Fallback if calculation failed
-        print("Warning: Could not determine nwhite from WS. Attempting to find 'whitespace' in classNames.")
+        logger.warning("Warning: Could not determine nwhite from WS. Attempting to find 'whitespace' in classNames.")
         try:
             # classNames here should be the list of semantic classes (before "black" is appended)
             nwhite = _classNames.index("whitespace") + 1  # Find 1-based index
         except ValueError:
             if _classNames:  # Default to last semantic class if "whitespace" not found.
-                print(f"Warning: 'whitespace' not in classNames. Defaulting nwhite to last class: {len(_classNames)}")
+                logger.warning(f"Warning: 'whitespace' not in classNames. Defaulting nwhite to last class: {len(_classNames)}")
                 nwhite = len(_classNames)
             else:  # No classes, problematic.
-                print("Warning: No classNames provided. Defaulting nwhite to 1.")
+                logger.warning("Warning: No classNames provided. Defaulting nwhite to 1.")
                 nwhite = 1
 
     # Prepare final_class_names for saving (conventionally with "black" as the last one for model output)
@@ -174,7 +176,8 @@ def create_initial_model_metadata(
         "nwhite": nwhite,  # Index within the semantic classes (usually 1 to N, not including black)
         "nvalidate": nvalidate,
         "model_type": model_type,
-        "batch_size": batch_size
+        "batch_size": batch_size,
+        "tile_format": tile_format  # File format for training tiles (tif/png/jpg)
     }
 
     if pthtest is not None: metadata_dict["pthtest"] = pthtest
@@ -200,8 +203,62 @@ def create_initial_model_metadata(
     # Pass _classNames (semantic names) and corresponding cmap. plot_cmap_legend handles if len(titles) == len(cmap)+1.
     plot_cmap_legend(cmap, _classNames, save_path=plot_save_path)
 
-    print(f"Initial model metadata saved to {os.path.join(pthDL, 'net.pkl')}")
-    print(f"Color map legend saved to {plot_save_path}")
+    logger.info(f"Initial model metadata saved to {os.path.join(pthDL, 'net.pkl')}")
+    logger.info(f"Color map legend saved to {plot_save_path}")
+
+
+def create_distribution_strategy() -> Tuple[Any, int]:
+    """
+    Create a distribution strategy for multi-GPU training.
+    
+    Automatically detects the operating system and uses the appropriate
+    cross-device communication backend:
+    - Linux/Mac: Uses NCCL (default, optimal performance)
+    - Windows: Uses HierarchicalCopyAllReduce (NCCL not supported on Windows)
+    
+    Returns:
+        Tuple of (strategy, number_of_gpus)
+    """
+    import platform
+    
+    physical_devices = tf.config.list_physical_devices('GPU')
+    
+    if len(physical_devices) > 1:
+        logger.info(f"Found {len(physical_devices)} GPUs. Using MirroredStrategy for multi-GPU training.")
+        try:
+            # Set memory growth for all GPUs
+            for device in physical_devices:
+                tf.config.experimental.set_memory_growth(device, True)
+            
+            # Create MirroredStrategy with appropriate cross-device ops
+            if platform.system() == 'Windows':
+                # NCCL is not supported on Windows, use HierarchicalCopyAllReduce instead
+                logger.info("Windows detected: Using HierarchicalCopyAllReduce for multi-GPU communication")
+                logger.info("Note: NCCL is not supported on Windows. Using HierarchicalCopyAllReduce which may have different performance characteristics.")
+                strategy = tf.distribute.MirroredStrategy(
+                    cross_device_ops=tf.distribute.HierarchicalCopyAllReduce()
+                )
+            else:
+                # Linux/Mac can use default NCCL
+                logger.info("Using default NCCL for multi-GPU communication")
+                strategy = tf.distribute.MirroredStrategy()
+            
+            num_gpus = strategy.num_replicas_in_sync
+            logger.info(f"Created MirroredStrategy with {num_gpus} GPUs")
+            return strategy, num_gpus
+        except Exception as e:
+            logger.error(f"Failed to create MirroredStrategy: {e}")
+            logger.info("Falling back to single GPU/CPU training")
+    
+    # Fallback to single GPU or CPU
+    if physical_devices:
+        logger.info("Using single GPU training")
+        # Set memory growth for single GPU
+        tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        return None, 1
+    else:
+        logger.info("No GPUs available. Using CPU training")
+        return None, 0
 
 
 def setup_gpu() -> Dict[str, Any]:
@@ -220,34 +277,37 @@ def setup_gpu() -> Dict[str, Any]:
             for device in physical_devices:
                 tf.config.experimental.set_memory_growth(device, True)
             
-            # Use only the first GPU
-            tf.config.set_visible_devices(physical_devices[0], 'GPU')
+            # Use all available GPUs (removed single GPU limitation)
             logical_devices = tf.config.list_logical_devices('GPU')
-            print(f"TensorFlow is using the following GPU: {logical_devices[0]}")
+            logger.info(f"TensorFlow is using {len(logical_devices)} GPU(s): {[str(d) for d in logical_devices]}")
             
             # Get GPU memory info if possible
             try:
                 import GPUtil
                 gpus = GPUtil.getGPUs()
                 if gpus:
-                    gpu = gpus[0]  # First GPU
                     gpu_info = {
-                        'device': gpu.id,
-                        'name': gpu.name,
-                        'total_memory': f"{gpu.memoryTotal:.1f} MB",
-                        'free_memory': f"{gpu.memoryFree:.1f} MB",
-                        'used_memory': f"{gpu.memoryUsed:.1f} MB",
-                        'utilization': f"{gpu.load * 100:.1f}%"
+                        'num_gpus': len(gpus),
+                        'gpus': []
                     }
+                    for i, gpu in enumerate(gpus):
+                        gpu_info['gpus'].append({
+                            'device': gpu.id,
+                            'name': gpu.name,
+                            'total_memory': f"{gpu.memoryTotal:.1f} MB",
+                            'free_memory': f"{gpu.memoryFree:.1f} MB",
+                            'used_memory': f"{gpu.memoryUsed:.1f} MB",
+                            'utilization': f"{gpu.load * 100:.1f}%"
+                        })
             except ImportError:
-                print("GPUtil not available - limited GPU information will be displayed")
-                gpu_info = {'device': 'GPU available but detailed info unavailable'}
+                logger.error("GPUtil not available - limited GPU information will be displayed")
+                gpu_info = {'num_gpus': len(logical_devices), 'device': 'GPU available but detailed info unavailable'}
                 
         except RuntimeError as e:
-            print(f"GPU setup error: {e}")
+            logger.error(f"GPU setup error: {e}")
     else:
-        print("No GPU available. Operations will proceed on the CPU.")
-        print("Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
+        logger.warning("No GPU available. Operations will proceed on the CPU.")
+        logger.warning("Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
     
     return gpu_info
 
@@ -268,11 +328,9 @@ def calculate_class_weights(mask_list: List[str], num_classes: int) -> np.ndarra
     epsilon = 1e-5  # Prevent division by zero
     
     for mask_path in mask_list:
-        # Load mask
-        mask = tf.keras.preprocessing.image.load_img(
-            mask_path, color_mode='grayscale')
-        mask = tf.keras.preprocessing.image.img_to_array(mask)
-        mask = mask.astype(int)
+        # Load mask using PIL (replacing deprecated tf.keras.preprocessing.image)
+        mask = Image.open(mask_path).convert('L')  # 'L' mode = grayscale
+        mask = np.array(mask, dtype=int)
         
         # Count pixels per class
         unique, counts = np.unique(mask, return_counts=True)
@@ -294,35 +352,45 @@ def calculate_class_weights(mask_list: List[str], num_classes: int) -> np.ndarra
     class_weights = median_freq / (freq + epsilon)
     
     # Print class distribution information
-    print("\nClass frequencies:")
+    logger.info("\nClass frequencies:")
     for i, f in enumerate(freq):
-        print(f"Class {i}: {f:.4f}")
+        logger.info(f"Class {i}: {f:.4f}")
     
-    print("\nClass weights:")
+    logger.info("\nClass weights:")
     for i, w in enumerate(class_weights):
-        print(f"Class {i}: {w:.4f}")
+        logger.info(f"Class {i}: {w:.4f}")
     
     return class_weights.astype(np.float32)
 
 
-def get_model_paths(model_path: str, model_type: str) -> Dict[str, str]:
+def get_model_paths(model_path: str, model_type: str, framework: str = None) -> Dict[str, str]:
     """
     Get standard paths for model files.
-    
+
     Args:
         model_path: Base directory for the model
         model_type: Type of model (e.g., 'DeepLabV3_plus', 'UNet')
-        
+        framework: Framework to use ('tensorflow' or 'pytorch'). If None, uses configuration default.
+
     Returns:
-        Dictionary containing paths for model files
+        Dictionary containing paths for model files with framework-specific extensions
     """
     # Standardize model type format
     if '+' in model_type:
         model_type = model_type.replace('+', '_plus')
-    
+
+    # Determine framework and file extension
+    if framework is None:
+        from base.config import get_framework_config
+        config = get_framework_config()
+        framework = config['framework']
+
+    # Set file extension based on framework
+    ext = '.pth' if framework.lower() == 'pytorch' else '.keras'
+
     return {
-        'best_model': os.path.join(model_path, f'best_model_{model_type}.keras'),
-        'final_model': os.path.join(model_path, f'{model_type}.keras'),
+        'best_model': os.path.join(model_path, f'best_model_{model_type}{ext}'),
+        'final_model': os.path.join(model_path, f'{model_type}{ext}'),
         'logs': os.path.join(model_path, 'logs'),
         'metadata': os.path.join(model_path, 'net.pkl'),
         'train_data': os.path.join(model_path, 'training'),

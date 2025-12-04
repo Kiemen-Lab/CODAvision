@@ -1,374 +1,160 @@
 """
-Semantic Segmentation Model Architectures
+Model factory and framework router for semantic segmentation.
 
-This module provides implementations of popular semantic segmentation architectures
-including DeepLabV3+ and UNet. It includes classes and functions for creating,
-configuring, and manipulating these models.
-
-The implementations follow object-oriented design principles and modern Python
-coding standards while maintaining backward compatibility with the rest of the
-CODAvision codebase.
+This module provides a unified interface for creating models across
+different frameworks (TensorFlow, PyTorch).
 
 Original DeepLabV3+ implementation based on: https://keras.io/examples/vision/deeplabv3_plus/
-
-Authors:
-    Valentina Matos (Johns Hopkins - Kiemen/Wirtz Lab)
-    Tyler Newton (JHU - DSAI)
-    Arrun Sivasubramanian (Johns Hopkins - Kiemen Lab)
-
-Updated: March 12, 2025
 """
 
-import os
-from abc import ABC, abstractmethod
-from typing import Optional, Tuple, Union
+from typing import Any
 
-import tensorflow as tf
-from tensorflow.keras import layers, Model, applications
+from base.config import get_framework_config, ModelDefaults
+from base.models.base import Framework, detect_framework_availability
 
-# Configure TensorFlow to reduce verbosity
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-os.environ["TF_CPP_MIN_VLOG_LEVEL"] = "2"
-
-# Suppress warnings
-import warnings
-warnings.filterwarnings('ignore')
+# Backward compatibility: re-export TensorFlow implementations
+# This allows existing code to import directly from backbones module
+from base.models.backbones_tf import (
+    DeepLabV3Plus,
+    UNet,
+    BaseSegmentationModel
+)
 
 
-class BaseSegmentationModel(ABC):
+def model_call(
+    name: str,
+    IMAGE_SIZE: int,
+    NUM_CLASSES: int,
+    l2_regularization_weight: float = 0,
+    framework: str = None,
+    wrap_with_adapter: bool = True
+) -> Any:
     """
-    Abstract base class for semantic segmentation models.
-
-    This class defines the common interface for all segmentation models
-    in the codebase, ensuring consistent usage patterns.
-
-    Attributes:
-        input_size (int): Size of the input images (assumes square images)
-        num_classes (int): Number of segmentation classes
-    """
-
-    def __init__(self, input_size: int, num_classes: int):
-        """
-        Initialize the segmentation model.
-
-        Args:
-            input_size: Size of the input images (assumes square images)
-            num_classes: Number of segmentation classes
-        """
-        self.input_size = input_size
-        self.num_classes = num_classes
-
-    @abstractmethod
-    def build_model(self) -> Model:
-        """
-        Build and return the segmentation model.
-
-        Returns:
-            A compiled Keras model ready for training or inference
-        """
-        pass
-
-
-class DeepLabV3Plus(BaseSegmentationModel):
-    """
-    Implementation of the DeepLabV3+ architecture for semantic segmentation.
-
-    DeepLabV3+ combines a powerful encoder backbone (ResNet50) with
-    atrous spatial pyramid pooling and an effective decoder module for
-    detailed segmentation results.
-
-    Attributes:
-        input_size (int): Size of the input images (assumes square images)
-        num_classes (int): Number of segmentation classes
-    """
-
-    def convolution_block(
-        self,
-        block_input: tf.Tensor,
-        num_filters: int = 256,
-        kernel_size: int = 3,
-        dilation_rate: int = 1,
-        use_bias: bool = False
-    ) -> tf.Tensor:
-        """
-        Create a convolution block with batch normalization and ReLU activation.
-
-        Args:
-            block_input: Input tensor
-            num_filters: Number of convolution filters
-            kernel_size: Size of the convolution kernel
-            dilation_rate: Dilation rate for atrous convolution
-            use_bias: Whether to use bias in convolution
-
-        Returns:
-            Output tensor after convolution, batch normalization, and activation
-        """
-        x = layers.Conv2D(
-            num_filters,
-            kernel_size=kernel_size,
-            dilation_rate=dilation_rate,
-            padding="same",
-            use_bias=use_bias,
-            kernel_initializer=tf.keras.initializers.HeNormal(),
-        )(block_input)
-        x = layers.BatchNormalization()(x)
-        x = layers.Activation('relu')(x)
-        return x
-
-    def dilated_spatial_pyramid_pooling(self, dspp_input: tf.Tensor) -> tf.Tensor:
-        """
-        Create a dilated spatial pyramid pooling module.
-
-        This module uses multiple parallel atrous convolutions with different
-        dilation rates to capture multi-scale context information.
-
-        Args:
-            dspp_input: Input tensor
-
-        Returns:
-            Output tensor after DSPP processing
-        """
-        dims = dspp_input.shape
-
-        # Global average pooling branch
-        x = layers.AveragePooling2D(pool_size=(dims[-3], dims[-2]))(dspp_input)
-        x = self.convolution_block(x, kernel_size=1, use_bias=True)
-        out_pool = layers.UpSampling2D(
-            size=(dims[-3], dims[-2]),
-            interpolation="bilinear",
-        )(x)
-
-        # Multiple atrous convolution branches with different dilation rates
-        out_1 = self.convolution_block(dspp_input, kernel_size=1, dilation_rate=1)
-        out_6 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=6)
-        out_12 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=12)
-        out_18 = self.convolution_block(dspp_input, kernel_size=3, dilation_rate=18)
-
-        # Concatenate all branches and apply final convolution
-        x = layers.Concatenate(axis=-1)([out_pool, out_1, out_6, out_12, out_18])
-        output = self.convolution_block(x, kernel_size=1)
-        return output
-
-    def build_model(self) -> Model:
-        """
-        Build and return the DeepLabV3+ model.
-
-        The model uses ResNet50 as the encoder backbone, followed by
-        dilated spatial pyramid pooling and a decoder that combines
-        features from different levels of the encoder.
-
-        Returns:
-            Compiled DeepLabV3+ model
-        """
-        # Input layer
-        model_input = tf.keras.Input(shape=(self.input_size, self.input_size, 3))
-        preprocessed = applications.resnet50.preprocess_input(model_input)
-
-        # Encoder (ResNet50 backbone)
-        resnet50 = applications.ResNet50(
-            weights="imagenet",
-            include_top=False,
-            input_tensor=preprocessed
-        )
-
-        # Get intermediate feature maps for skip connections
-        x = resnet50.get_layer("conv4_block6_2_relu").output
-
-        # Apply dilated spatial pyramid pooling
-        x = self.dilated_spatial_pyramid_pooling(x)
-
-        # Upsampling and skip connection with earlier feature maps
-        input_a = layers.UpSampling2D(
-            size=(4, 4),
-            interpolation="bilinear",
-        )(x)
-
-        input_b = resnet50.get_layer("conv2_block3_2_relu").output
-        input_b = self.convolution_block(input_b, num_filters=48, kernel_size=1)
-
-        # Combine feature maps and apply convolutions
-        x = layers.Concatenate(axis=-1)([input_a, input_b])
-        x = self.convolution_block(x)
-        x = self.convolution_block(x)
-
-        # Final upsampling to original resolution
-        x = layers.UpSampling2D(
-            size=(4, 4),
-            interpolation="bilinear",
-        )(x)
-
-        # Output segmentation map
-        outputs = layers.Conv2D(self.num_classes, kernel_size=(1, 1), padding="same")(x)
-
-        # Create and return model
-        model = Model(model_input, outputs, name='DeepLabV3_plus')
-        return model
-
-
-class UNet(BaseSegmentationModel):
-    """
-    Implementation of the UNet architecture for semantic segmentation.
-
-    UNet is a popular encoder-decoder architecture with skip connections
-    between encoder and decoder at corresponding resolutions, which helps
-    preserve spatial information.
-
-    This implementation uses ResNet50 as the encoder backbone.
-
-    Attributes:
-        input_size (int): Size of the input images (assumes square images)
-        num_classes (int): Number of segmentation classes
-    """
-
-    def conv_block(self, inputs: tf.Tensor, num_filters: int, kernel_size: int = 3) -> tf.Tensor:
-        """
-        Create a convolutional block with batch normalization and ReLU activation.
-
-        Args:
-            inputs: Input tensor
-            num_filters: Number of convolution filters
-            kernel_size: Size of the convolution kernel
-
-        Returns:
-            Output tensor after convolutions, batch normalization, and activation
-        """
-        x = layers.Conv2D(num_filters, kernel_size, padding="same")(inputs)
-        x = layers.BatchNormalization()(x)
-        x = layers.Activation("relu")(x)
-
-        x = layers.Conv2D(num_filters, kernel_size, padding="same")(x)
-        x = layers.BatchNormalization()(x)
-        x = layers.Activation("relu")(x)
-        return x
-
-    def decoder_block(
-        self,
-        inputs: tf.Tensor,
-        skip_features: tf.Tensor,
-        num_filters: int
-    ) -> tf.Tensor:
-        """
-        Create a decoder block with transposed convolution and skip connections.
-
-        Args:
-            inputs: Input tensor from previous layer
-            skip_features: Skip connection features from encoder
-            num_filters: Number of convolution filters
-
-        Returns:
-            Output tensor after processing
-        """
-        x = layers.Conv2DTranspose(num_filters, (2, 2), strides=2, padding="same")(inputs)
-        x = layers.Concatenate()([x, skip_features])
-        x = self.conv_block(x, num_filters)
-        return x
-
-    def build_unet_resnet50(self, input_shape: Tuple[int, int, int], num_classes: int) -> Model:
-        """
-        Build a UNet model with ResNet50 encoder.
-
-        Args:
-            input_shape: Shape of input images (height, width, channels)
-            num_classes: Number of segmentation classes
-
-        Returns:
-            UNet model with ResNet50 encoder
-        """
-        # Input layer
-        inputs = layers.Input(input_shape)
-
-        # Apply preprocessing for ResNet50
-        preprocessed = applications.resnet50.preprocess_input(inputs)
-
-        # Encoder (ResNet50 backbone)
-        resnet50 = applications.ResNet50(
-            include_top=False,
-            weights="imagenet",
-            input_tensor=preprocessed,
-        )
-
-        # Extract skip connection features from different layers
-        s1 = resnet50.get_layer("conv1_relu").output
-        s2 = resnet50.get_layer("conv2_block3_out").output
-        s3 = resnet50.get_layer("conv3_block4_out").output
-        s4 = resnet50.get_layer("conv4_block6_out").output
-
-        # Bridge/bottleneck
-        b1 = resnet50.get_layer("conv5_block3_out").output
-
-        # Decoder with skip connections
-        d1 = self.decoder_block(b1, s4, 512)
-        d2 = self.decoder_block(d1, s3, 256)
-        d3 = self.decoder_block(d2, s2, 128)
-        d4 = self.decoder_block(d3, s1, 64)
-
-        # Final upsampling and output layer
-        outputs = layers.Conv2DTranspose(
-            num_classes,
-            (2, 2),
-            strides=2,
-            padding="same",
-            activation="softmax"
-        )(d4)
-
-        # Create and return model
-        model = Model(inputs, outputs, name="UNetResNet50")
-        return model
-
-    def build_model(self) -> Model:
-        """
-        Build and return the UNet model.
-
-        Returns:
-            UNet model with frozen encoder layers
-        """
-        input_shape = (self.input_size, self.input_size, 3)
-        model = self.build_unet_resnet50(input_shape, self.num_classes)
-
-        # Freeze encoder layers (ResNet50 backbone)
-        for layer in model.layers:
-            if hasattr(layer, 'kernel_initializer') and 'resnet' in layer.name:
-                layer.trainable = False
-
-        return model
-
-
-def unfreeze_model(model: Model) -> Model:
-    """
-    Unfreeze the encoder layers of a model for fine-tuning.
-
-    Args:
-        model: The model with frozen encoder layers
-
-    Returns:
-        Model with unfrozen encoder layers
-    """
-    for layer in model.layers:
-        if hasattr(layer, 'kernel_initializer') and 'resnet' in layer.name:
-            layer.trainable = True
-    return model
-
-
-def model_call(name: str, IMAGE_SIZE: int, NUM_CLASSES: int) -> Model:
-    """
-    Factory function to create a segmentation model of the specified type.
+    Factory function to create a segmentation model.
 
     Args:
         name: Model type ('UNet' or 'DeepLabV3_plus')
-        IMAGE_SIZE: Size of input images (assumes square images)
+        IMAGE_SIZE: Size of input images
         NUM_CLASSES: Number of segmentation classes
+        l2_regularization_weight: L2 regularization weight (default: 0)
+        framework: Framework to use ('tensorflow' or 'pytorch').
+                  If None, uses configuration default.
+        wrap_with_adapter: For PyTorch models, whether to wrap with PyTorchKerasAdapter.
+                          True (default): Returns adapter with Keras-compatible API for inference.
+                          False: Returns raw nn.Module for PyTorch-native training.
 
     Returns:
-        The requested segmentation model
+        Model instance (TensorFlow, PyTorch, or PyTorchKerasAdapter)
 
     Raises:
-        ValueError: If an invalid model name is provided
+        ValueError: If model name or framework is invalid
+        ImportError: If requested framework is not available
     """
-    if name == "UNet":
-        model = UNet(IMAGE_SIZE, NUM_CLASSES).build_model()
-    elif name == "DeepLabV3_plus":
-        model = DeepLabV3Plus(input_size=IMAGE_SIZE, num_classes=NUM_CLASSES).build_model()
-    else:
-        raise ValueError(f'Incorrect Model Name / Pretrained model of {name} does not exist')
+    # Determine framework
+    if framework is None:
+        config = get_framework_config()
+        framework = config['framework']
 
-    return model
+    framework = framework.lower()
+
+    # Check availability
+    avail = detect_framework_availability()
+
+    if framework == 'tensorflow':
+        if not avail['tensorflow']:
+            raise ImportError(
+                "TensorFlow framework requested but not installed. "
+                "Install with: pip install -e . "
+                "Or switch to PyTorch with: export CODAVISION_FRAMEWORK=pytorch"
+            )
+
+        from base.models.backbones_tf import DeepLabV3Plus as TFDeepLabV3Plus
+        from base.models.backbones_tf import UNet as TFUNet
+
+        if name == "UNet":
+            return TFUNet(IMAGE_SIZE, NUM_CLASSES, l2_regularization_weight).build_model()
+        elif name == "DeepLabV3_plus":
+            return TFDeepLabV3Plus(IMAGE_SIZE, NUM_CLASSES, l2_regularization_weight).build_model()
+        else:
+            raise ValueError(f'Invalid model name: {name}')
+
+    elif framework == 'pytorch':
+        if not avail['pytorch']:
+            raise ImportError(
+                "PyTorch framework requested but not installed. "
+                "Install with: pip install -e '.[pytorch]' "
+                "Or switch to TensorFlow with: export CODAVISION_FRAMEWORK=tensorflow"
+            )
+
+        # Check model availability in PyTorch
+        if name not in ModelDefaults.PYTORCH_MODELS:
+            raise ValueError(
+                f"Model '{name}' not yet implemented in PyTorch. "
+                f"Available: {ModelDefaults.PYTORCH_MODELS}"
+            )
+
+        from base.models.backbones_pytorch import PyTorchDeepLabV3Plus
+
+        if name == "DeepLabV3_plus":
+            pytorch_model = PyTorchDeepLabV3Plus(IMAGE_SIZE, NUM_CLASSES, l2_regularization_weight).build_model()
+
+            # Conditionally wrap based on use case
+            if wrap_with_adapter:
+                # For TensorFlow-style inference (Keras API compatibility)
+                from base.models.wrappers import PyTorchKerasAdapter
+                return PyTorchKerasAdapter(pytorch_model)
+            else:
+                # For PyTorch-native training (raw nn.Module with .to(), .train(), etc.)
+                return pytorch_model
+        else:
+            raise ValueError(f'PyTorch implementation for {name} not available')
+
+    else:
+        raise ValueError(f"Invalid framework: {framework}. Must be 'tensorflow' or 'pytorch'")
+
+
+def unfreeze_model(model):
+    """
+    Unfreeze encoder layers for fine-tuning.
+    Framework-agnostic wrapper.
+
+    Args:
+        model: The model to unfreeze (TensorFlow, PyTorch, or PyTorchKerasAdapter)
+
+    Returns:
+        Model with unfrozen encoder layers
+
+    Raises:
+        ValueError: If model framework cannot be determined
+    """
+    # Check for PyTorchKerasAdapter first (must come before nn.Module check)
+    try:
+        from base.models.wrappers import PyTorchKerasAdapter
+        if isinstance(model, PyTorchKerasAdapter):
+            from base.models.backbones_pytorch import unfreeze_model as torch_unfreeze
+            # Unfreeze the wrapped PyTorch model
+            torch_unfreeze(model.model)
+            # Return the adapter (not the unwrapped model)
+            return model
+    except ImportError:
+        pass
+
+    # Check for TensorFlow model
+    try:
+        import tensorflow as tf
+        if isinstance(model, tf.keras.Model):
+            from base.models.backbones_tf import unfreeze_model as tf_unfreeze
+            return tf_unfreeze(model)
+    except ImportError:
+        pass
+
+    # Check for raw PyTorch model (without adapter)
+    try:
+        import torch
+        if isinstance(model, torch.nn.Module):
+            from base.models.backbones_pytorch import unfreeze_model as torch_unfreeze
+            return torch_unfreeze(model)
+    except ImportError:
+        pass
+
+    raise ValueError("Could not determine model framework")

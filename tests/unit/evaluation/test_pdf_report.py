@@ -5,15 +5,23 @@ This module provides test cases for verifying the functionality of the PDF repor
 generation module, ensuring proper creation of evaluation reports with expected
 sections including confusion matrices, annotations, classifications, and metrics.
 
+Tests require pypdf for PDF validation.
+Install with: pip install pypdf>=3.0.0
+
 """
 
 import pytest
+
+# Require pypdf for these tests (skip if not available)
+pytest.importorskip("pypdf", minversion="3.0")
+
 import pickle
 import pandas as pd
 import numpy as np
 from PIL import Image
 from pathlib import Path
-import PyPDF2
+import pypdf
+from unittest.mock import patch, MagicMock
 
 from base.evaluation.pdf_report import create_output_pdf
 
@@ -151,7 +159,7 @@ def test_create_output_pdf_generates_valid_pdf(tmp_path):
     # More advanced check: Is the PDF readable and contains key sections?
     try:
         with open(output_pdf_path, 'rb') as f:
-            reader = PyPDF2.PdfReader(f)
+            reader = pypdf.PdfReader(f)
             assert len(reader.pages) > 5, f"Expected more than 5 pages, found {len(reader.pages)}" # Check page count
 
             # Extract text from first few pages to check for headers
@@ -191,7 +199,7 @@ def test_create_output_pdf_generates_valid_pdf(tmp_path):
             assert "ClassB TC(%)" in extracted_text, "Quantification header 'ClassB TC(%)' not found."
 
 
-    except PyPDF2.errors.PdfReadError as e:
+    except pypdf.errors.PdfReadError as e:
         pytest.fail(f"Generated PDF is invalid or unreadable: {e}")
     except Exception as e:
          pytest.fail(f"An error occurred during PDF content verification: {e}")
