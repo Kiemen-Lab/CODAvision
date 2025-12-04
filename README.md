@@ -68,13 +68,41 @@ Download and install Miniconda by following the instructions provided [here](htt
   conda activate CODAvision
 ```
 
-### 🔧 Step 3: Install CUDA Toolkit and cuDNN
+### 🔧 Step 3: GPU Setup (Optional but Recommended)
 
-Ensure that the CUDA drivers are installed as per the instructions [here](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html). Then, install the CUDA Toolkit and cuDNN:
+CODAvision supports both **PyTorch** and **TensorFlow** deep learning frameworks with GPU acceleration.
 
+#### Option A: PyTorch with NVIDIA GPU (Recommended)
+
+**Check your CUDA version first:**
 ```bash
-  conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+python scripts/check_cuda_version.py
 ```
+
+This helper script will detect your GPU, identify your CUDA version, and provide specific installation commands.
+
+**Or install manually** (choose your CUDA version):
+```bash
+# For CUDA 11.8 (most compatible - works with CUDA 11.x, 12.x, 13.x drivers)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# For CUDA 12.1
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# For CUDA 12.4 (latest)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+```
+
+#### Option B: TensorFlow with NVIDIA GPU
+
+Install CUDA toolkit and cuDNN for TensorFlow GPU support:
+```bash
+conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+```
+
+#### Option C: CPU-Only (No GPU)
+
+Skip this step if you don't have an NVIDIA GPU or want to use CPU only.
 
 ### 📦 Step 4: Install CODAvision
 
@@ -91,58 +119,73 @@ Install the CODAvision package using pip:
 ```bash
   conda activate CODAvision
 ```
-> ⚠️ ### ⚠️ **Important Notice for macOS Users**  
 
-TensorFlow GPU is not natively supported on macOS as it is on Windows or Linux. However, for macOS systems with Apple Silicon chips (M1, M2, M3), you can leverage GPU acceleration by installing `tensorflow-macos` and `tensorflow-metal`. Follow one of the two options below based on your setup:
+#### Verify GPU Support
 
----
+After installation, verify that GPU acceleration is working:
 
-#### ✅ **Option 1: Using Apple Silicon (M1/M2/M3) with GPU Support**
-If you're on an Apple Silicon Mac and want to enable GPU acceleration via Metal:
+```bash
+# Check PyTorch GPU support
+python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
 
-1. **Remove version constraints** from the `pyproject.toml` file:  
-   Change lines like:
-   ```
-   "tensorflow==2.10.1"
-   "keras==2.10.0"
-   ```
-   to:
-   ```
-   "tensorflow"
-   "keras"
-   ```
+# Check TensorFlow GPU support
+python -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
 
-2. **Comment out any `tensorflow-gpu` entries**, for example:
-   ```toml
-   # "tensorflow-gpu==2.10.0",
-   ```
+# Or use the helper script for comprehensive status
+python scripts/check_cuda_version.py
+```
 
-3. **Install the required Apple-specific TensorFlow packages manually**:
-   ```bash
-   pip install tensorflow-macos tensorflow-metal
-   ```
+**Expected output with GPU**: `CUDA available: True` (PyTorch) or list of GPU devices (TensorFlow)
 
-4. **Install remaining dependencies**:
-   ```bash
-   pip install -e .
-   ```
-   > 💡 *Make sure to run this from the directory containing the `CODAvision` package.*
+> ### ⚠️ **macOS Users**
 
----
+#### Apple Silicon (M1/M2/M3/M4) with GPU Support
 
-#### 🚫 **Option 2: Intel Mac or CPU-only Setup**
-If you are using an Intel-based Mac or do not require GPU acceleration:
+For Apple Silicon Macs with Metal GPU acceleration:
 
-1. Follow steps 1–2 from above to remove version constraints and comment out `tensorflow-gpu`.
+**PyTorch** (recommended - GPU support works automatically):
+```bash
+pip install -e git+https://github.com/Kiemen-Lab/CODAvision.git#egg=CODAvision
+```
 
-2. Simply install the package dependencies:
-   ```bash
-   pip install -e .
-   ```
+**TensorFlow with Metal GPU**:
+```bash
+pip install -e "git+https://github.com/Kiemen-Lab/CODAvision.git#egg=CODAvision[macos-silicon]"
+```
 
----
+#### Intel Mac or CPU-Only
 
-After completing the steps under your chosen option, you should be able to run `CODAvision.py` successfully on macOS.
+Standard installation works for Intel Macs or CPU-only setup:
+```bash
+pip install -e git+https://github.com/Kiemen-Lab/CODAvision.git#egg=CODAvision
+```
+
+> 💡 **Note**: PyTorch automatically detects and uses MPS (Metal Performance Shaders) for GPU acceleration on Apple Silicon.
+
+### 🔄 Framework Selection
+
+CODAvision supports both PyTorch and TensorFlow. By default, PyTorch is used if available.
+
+**To switch frameworks:**
+
+```bash
+# Use PyTorch (default)
+export CODAVISION_FRAMEWORK=pytorch
+
+# Use TensorFlow
+export CODAVISION_FRAMEWORK=tensorflow
+
+# On Windows (PowerShell)
+$env:CODAVISION_FRAMEWORK="pytorch"
+```
+
+**Framework features:**
+- Both support DeepLabV3+ and UNet architectures
+- PyTorch: Faster training on some systems, better Apple Silicon support
+- TensorFlow: More mature, longer development history
+- Models trained with one framework cannot be used with the other
+
+For detailed configuration options, see [CLAUDE.md](CLAUDE.md).
 
 ### 🖼️ Step 5: Launch CODAvision GUI
 

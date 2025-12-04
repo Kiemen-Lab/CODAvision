@@ -38,10 +38,14 @@ dependencies = [
     "tensorflow==2.12.1; sys_platform == 'darwin' and platform_machine != 'arm64'",
     # Note: macOS Silicon (M1/M2/M3) requires TensorFlow 2.9+ installed via optional extra [macos-silicon]
 
-    "keras==2.13.1",
+    "keras==2.12.0",
 
     # PyTorch - Default deep learning framework
-    # Provides faster inference on Apple Silicon via MPS
+    # Note: Default installation installs CPU-only version
+    # For CUDA GPU support, install PyTorch first:
+    #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+    # Then: pip install -e .
+    # Or use: python scripts/check_cuda_version.py for guided installation
     "torch>=2.0.0",
     "torchvision>=0.15.0",
 
@@ -104,6 +108,44 @@ requires-python = ">=3.9,<3.10"
 macos-silicon = [
     "tensorflow-macos>=2.9.0",
     "tensorflow-metal>=0.5.0",
+]
+
+# ===== PyTorch GPU Support =====
+# Due to pip limitations, CUDA-enabled PyTorch must be installed separately
+# Use the helper script: python scripts/check_cuda_version.py
+# Or install manually before pip install -e .
+
+# PyTorch with CUDA 11.8 (most compatible, works with CUDA 11.x, 12.x, 13.x)
+# Install: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 && pip install -e .
+pytorch-cuda118 = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+]
+
+# PyTorch with CUDA 12.1
+# Install: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121 && pip install -e .
+pytorch-cuda121 = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+]
+
+# PyTorch with CUDA 12.4 (latest)
+# Install: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124 && pip install -e .
+pytorch-cuda124 = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+]
+
+# Generic CUDA support (defaults to CUDA 11.8 - most compatible)
+pytorch-cuda = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+]
+
+# CPU-only PyTorch (explicit)
+pytorch-cpu = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
 ]
 
 # Development dependencies (includes all test and code quality tools)
