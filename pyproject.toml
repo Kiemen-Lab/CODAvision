@@ -99,7 +99,7 @@ dependencies = [
     "zipp==3.20.1",
     ]
 
-requires-python = ">=3.9,<3.10"
+requires-python = ">=3.9,<3.11"
 
 [project.optional-dependencies]
 # Apple Silicon (M1/M2/M3/M4) GPU support
