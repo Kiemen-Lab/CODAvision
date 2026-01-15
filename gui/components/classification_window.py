@@ -15,6 +15,7 @@ from PySide6 import QtWidgets, QtCore
 from PySide6.QtGui import QColor, QStandardItemModel, QStandardItem, QBrush, QImage, QPixmap, QMouseEvent, QFont
 from PySide6.QtWidgets import QColorDialog, QHeaderView, QDialog, QPushButton, QLabel, QVBoxLayout, QProgressBar, QProgressDialog, QGraphicsPixmapItem
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject
+from pathlib import Path #edit by Paul Gensbigler
 
 # Set up logging
 import logging
@@ -39,10 +40,9 @@ class MainWindowClassify(QtWidgets.QMainWindow):
         super(MainWindowClassify,self).__init__() 
         self.ui = Ui_classify_im()
         self.ui.setupUi(self) 
-        self.setCentralWidget(self.ui.centralwidget) 
-        if len(train_fold)==0:
-            for element in train_im_fold.split(os.sep)[:-1]:
-                train_fold = os.path.join(train_fold, element)
+        self.setCentralWidget(self.ui.centralwidget)
+        if not train_fold:
+            train_fold = str(Path(train_im_fold).parent) #edit by Paul Gensbigler
         self.train_fold = train_fold
         with open(os.path.join(train_fold,nm,'net.pkl'), 'rb') as f:
             self.data = pickle.load(f)
