@@ -253,14 +253,19 @@ class PyTorchSegmentationTrainer:
             'val_iterations': []  # Track which iterations had validation
         }
 
-        # Training settings (can be overridden)
+        # Training settings - read from metadata with fallbacks for backward compatibility
+        # These can be overridden by environment variables or train() parameters
+        self.learning_rate = self.metadata.get('learning_rate', ModelDefaults.LEARNING_RATE)
+        self.epochs = self.metadata.get('epochs', ModelDefaults.EPOCHS)
+        self.batch_size = self.metadata.get('batch_size', ModelDefaults.BATCH_SIZE)
         self.validation_frequency = int(
-            os.getenv('CODAVISION_VALIDATION_FREQUENCY', ModelDefaults.VALIDATION_FREQUENCY)
+            os.getenv('CODAVISION_VALIDATION_FREQUENCY',
+                      self.metadata.get('validation_frequency', ModelDefaults.VALIDATION_FREQUENCY))
         )
-        self.early_stopping_patience = 6  # validations, not epochs
-        self.lr_reduction_patience = 1  # validations
-        self.lr_reduction_factor = 0.5
-        self.min_lr = 1e-7
+        self.early_stopping_patience = self.metadata.get('es_patience', 6)
+        self.lr_reduction_patience = self.metadata.get('lr_patience', 1)
+        self.lr_reduction_factor = self.metadata.get('lr_factor', 0.5)
+        self.min_lr = self.metadata.get('min_lr', 1e-7)
 
         # Advanced optimization settings
         self.use_amp = os.getenv('CODAVISION_PYTORCH_AMP', 'false').lower() == 'true' or \
@@ -808,9 +813,9 @@ class PyTorchSegmentationTrainer:
 
     def train(
         self,
-        epochs: int = 100,
-        batch_size: int = 4,
-        learning_rate: float = 0.001,
+        epochs: int = None,
+        batch_size: int = None,
+        learning_rate: float = None,
         validation_split: float = 0.2,
         num_workers: int = 4,
         resume_from_checkpoint: Optional[str] = None
@@ -819,9 +824,9 @@ class PyTorchSegmentationTrainer:
         Main training method with full feature set.
 
         Args:
-            epochs: Number of epochs to train
-            batch_size: Batch size for training
-            learning_rate: Initial learning rate
+            epochs: Number of epochs to train (defaults to self.epochs from metadata)
+            batch_size: Batch size for training (defaults to self.batch_size from metadata)
+            learning_rate: Initial learning rate (defaults to self.learning_rate from metadata)
             validation_split: Fraction of data for validation
             num_workers: Number of data loading workers
             resume_from_checkpoint: Optional path to checkpoint to resume from
@@ -829,9 +834,18 @@ class PyTorchSegmentationTrainer:
         Returns:
             Training history dictionary
         """
+        # Use instance variables (from metadata) as defaults
+        if epochs is None:
+            epochs = self.epochs
+        if batch_size is None:
+            batch_size = self.batch_size
+        if learning_rate is None:
+            learning_rate = self.learning_rate
+
         self.logger.logger.info("=" * 50)
         self.logger.logger.info("Starting PyTorch Training")
         self.logger.logger.info("=" * 50)
+        self.logger.logger.info(f"Training parameters: epochs={epochs}, batch_size={batch_size}, learning_rate={learning_rate}")
 
         # Load data
         annotations, image_list = self._load_model_data()
@@ -1024,9 +1038,9 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
 
     def train(
         self,
-        epochs: int = 100,
-        batch_size: int = 4,
-        learning_rate: float = 0.001,
+        epochs: int = None,
+        batch_size: int = None,
+        learning_rate: float = None,
         validation_split: float = 0.2,
         num_workers: int = 4,
         resume_from_checkpoint: Optional[str] = None,
@@ -1036,9 +1050,9 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
         Train DeepLabV3+ model with specific configuration.
 
         Args:
-            epochs: Number of epochs to train
-            batch_size: Batch size for training
-            learning_rate: Initial learning rate
+            epochs: Number of epochs to train (defaults to self.epochs from metadata)
+            batch_size: Batch size for training (defaults to self.batch_size from metadata)
+            learning_rate: Initial learning rate (defaults to self.learning_rate from metadata)
             validation_split: Fraction of data for validation
             num_workers: Number of data loading workers
             resume_from_checkpoint: Optional path to checkpoint to resume from
@@ -1056,7 +1070,7 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
             self.model.freeze_encoder()
             self.logger.logger.info("Encoder weights frozen (transfer learning)")
 
-        # Call parent train method
+        # Call parent train method (which will use instance variables if None)
         return super().train(
             epochs=epochs,
             batch_size=batch_size,

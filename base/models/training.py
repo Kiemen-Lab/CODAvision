@@ -612,6 +612,15 @@ class SegmentationModelTrainer:
             self.l2_regularization_weight = self.model_data.get('l2_regularization_weight', 0)  # Default 0 to match MATLAB (no regularization)
             self.use_adamw_optimizer = self.model_data.get('use_adamw_optimizer', False)
 
+            # Extract training hyperparameters with defaults for backward compatibility
+            self.learning_rate = self.model_data.get('learning_rate', ModelDefaults.LEARNING_RATE)
+            self.epochs = self.model_data.get('epochs', ModelDefaults.EPOCHS)
+            self.es_patience = self.model_data.get('es_patience', ModelDefaults.ES_PATIENCE)
+            self.lr_patience = self.model_data.get('lr_patience', ModelDefaults.LR_PATIENCE)
+            self.lr_factor = self.model_data.get('lr_factor', ModelDefaults.LR_FACTOR)
+            self.validation_frequency = self.model_data.get('validation_frequency', ModelDefaults.VALIDATION_FREQUENCY)
+            self.optimizer_epsilon = self.model_data.get('optimizer_epsilon', ModelDefaults.OPTIMIZER_EPSILON)
+
             # Validate L2 regularization weight
             if self.l2_regularization_weight > 1e-3:
                 module_logger.warning(f"L2 regularization weight {self.l2_regularization_weight} is very high and may cause training instability")
@@ -818,13 +827,13 @@ class SegmentationModelTrainer:
             val_data=self.val_dataset,
             loss_function=self.loss_function,
             logger=self.logger,
-            validation_frequency=ModelDefaults.VALIDATION_FREQUENCY,
+            validation_frequency=self.validation_frequency,
             early_stopping=True,
             reduce_lr_on_plateau=True,
             monitor='val_accuracy',
-            es_patience=6,       # Stop after 6 epochs without improvement
-            lr_patience=1,       # Reduce LR after 1 epoch without improvement
-            lr_factor=0.75,      # Reduce LR to 75% of current value
+            es_patience=self.es_patience,
+            lr_patience=self.lr_patience,
+            lr_factor=self.lr_factor,
             verbose=1,
             save_best_model=True,
             filepath=best_model_path
@@ -1012,22 +1021,22 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
             if is_metal:
                 module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
                 optimizer = keras.optimizers.Adam(
-                    learning_rate=0.0005,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    learning_rate=self.learning_rate,
+                    epsilon=self.optimizer_epsilon
                 )
             else:
                 # AdamW provides weight decay (different from L2 regularization)
                 # weight_decay is typically similar to L2 regularization weight
                 optimizer = tf.keras.optimizers.AdamW(
-                    learning_rate=0.0005,
+                    learning_rate=self.learning_rate,
                     weight_decay=self.l2_regularization_weight,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    epsilon=self.optimizer_epsilon
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
             optimizer = keras.optimizers.Adam(
-                learning_rate=0.0005,
-                epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                learning_rate=self.learning_rate,
+                epsilon=self.optimizer_epsilon
             )
 
         model.compile(
@@ -1059,7 +1068,7 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
             validation_steps=self.val_steps_per_epoch,
             callbacks=callbacks,
             verbose=1,
-            epochs=8  # Train for 8 epochs
+            epochs=self.epochs
         )
 
         return history
@@ -1094,14 +1103,17 @@ class UNetTrainer(SegmentationModelTrainer):
 
         return model
 
-    def _compile_model(self, model: keras.Model, learning_rate: float = 0.001):
+    def _compile_model(self, model: keras.Model, learning_rate: float = None):
         """
         Compile the UNet model.
 
         Args:
             model: The model to compile
-            learning_rate: Learning rate for the optimizer
+            learning_rate: Learning rate for the optimizer (defaults to self.learning_rate)
         """
+        if learning_rate is None:
+            learning_rate = self.learning_rate
+
         # Use AdamW for weight decay or regular Adam with kernel regularizers
         if self.use_adamw_optimizer:
             # Check for Metal device (AdamW has issues on Apple Silicon)
@@ -1112,20 +1124,20 @@ class UNetTrainer(SegmentationModelTrainer):
                 module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
                 optimizer = keras.optimizers.Adam(
                     learning_rate=learning_rate,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    epsilon=self.optimizer_epsilon
                 )
             else:
                 # AdamW provides weight decay (different from L2 regularization)
                 optimizer = tf.keras.optimizers.AdamW(
                     learning_rate=learning_rate,
                     weight_decay=self.l2_regularization_weight,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    epsilon=self.optimizer_epsilon
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
             optimizer = keras.optimizers.Adam(
                 learning_rate=learning_rate,
-                epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                epsilon=self.optimizer_epsilon
             )
 
         model.compile(
@@ -1148,16 +1160,18 @@ class UNetTrainer(SegmentationModelTrainer):
         Returns:
             Training history from the final phase
         """
+        # Split total epochs between transfer learning phases
+        initial_epochs = max(1, self.epochs // 2)
+        total_epochs = self.epochs
+
         if self.logger:
             self.logger.logger.info('Starting UNet model training...')
-            self.logger.logger.info('Phase 1: Training with frozen encoder layers...')
+            self.logger.logger.info(f'Phase 1: Training with frozen encoder layers ({initial_epochs} epochs)...')
         else:
             module_logger.info('Starting UNet model training...')
-            module_logger.info('Phase 1: Training with frozen encoder layers...')
+            module_logger.info(f'Phase 1: Training with frozen encoder layers ({initial_epochs} epochs)...')
 
         # Initial training phase with frozen encoder
-        initial_epochs = 5
-
         history_initial = model.fit(
             self.train_dataset,
             validation_data=self.val_dataset,
@@ -1169,21 +1183,22 @@ class UNetTrainer(SegmentationModelTrainer):
         )
 
         # Fine-tuning phase with unfrozen encoder
+        fine_tune_epochs = total_epochs - initial_epochs
         if self.logger:
-            self.logger.logger.info('Phase 2: Fine-tuning with unfrozen encoder layers...')
+            self.logger.logger.info(f'Phase 2: Fine-tuning with unfrozen encoder layers ({fine_tune_epochs} more epochs)...')
         else:
-            module_logger.info('Phase 2: Fine-tuning with unfrozen encoder layers...')
+            module_logger.info(f'Phase 2: Fine-tuning with unfrozen encoder layers ({fine_tune_epochs} more epochs)...')
         model = unfreeze_model(model)
 
-        # Recompile with lower learning rate
+        # Recompile with lower learning rate (1/10th of initial)
         # Note: No need to wrap in strategy scope as model was already created within scope
-        self._compile_model(model, learning_rate=0.0001)
+        self._compile_model(model, learning_rate=self.learning_rate / 10)
 
         # Continue training from where we left off
         history_fine_tuning = model.fit(
             self.train_dataset,
             validation_data=self.val_dataset,
-            epochs=10,  # Train for additional epochs
+            epochs=total_epochs,
             initial_epoch=initial_epochs,
             steps_per_epoch=self.train_steps_per_epoch,
             validation_steps=self.val_steps_per_epoch,
