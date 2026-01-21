@@ -66,7 +66,7 @@ class ModelDefaults:
     TILE_GENERATION_MODE = "modern"  # Default tile generation mode ("modern" or "legacy")
 
     # ===== FRAMEWORK CONFIGURATION =====
-    DEFAULT_FRAMEWORK = "pytorch"  # "pytorch" or "tensorflow"
+    DEFAULT_FRAMEWORK = "tensorflow"  # "pytorch" or "tensorflow"
 
     # PyTorch-specific settings
     PYTORCH_DEVICE = "auto"  # auto, cuda, mps, cpu
@@ -168,7 +168,7 @@ MODERN_CONFIG = TileGenerationConfig(
     use_disk_filter=False,
     crop_rotations=False,
     class_rotation_frequency=5,
-    deterministic_seed=3,
+    deterministic_seed=None,
     big_tile_size=10240,
     file_format="png"
 )
