@@ -68,7 +68,7 @@ Download and install Miniconda by following the instructions provided [here](htt
 
 **For Windows and Linux:**
 ```bash
-conda create -n CODAvision python=3.9.19
+conda create -n CODAvision python=3.9
 conda activate CODAvision
 ```
 
@@ -124,6 +124,13 @@ conda activate CODAvision
 > git clone https://github.com/Kiemen-Lab/CODAvision.git
 > cd CODAvision
 > pip install -e .
+
+> 💡 **PyTorch GPU Support (Optional):**
+> PyTorch is installed automatically with CPU support. For NVIDIA GPU acceleration with PyTorch, install CUDA-enabled PyTorch *before* installing CODAvision:
+> ```bash
+> pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+> pip install -e .
+> ```
 ---
 
 ### 🖼️ Step 5: Launch CODAvision GUI
@@ -166,13 +173,14 @@ CODAvision uses a flexible plugin-based architecture that allows you to easily i
 
 To add your own model architecture:
 
-1. Review the comprehensive guide in [MODEL_PLUGIN_ARCHITECTURE.md](MODEL_PLUGIN_ARCHITECTURE.md)
+1. Review the comprehensive guide in [MODEL_PLUGIN_ARCHITECTURE.md](docs/MODEL_PLUGIN_ARCHITECTURE.md)
 2. Follow the abstract base class pattern to ensure compatibility
 3. Register your model in the factory function
 4. Your model will automatically appear in the GUI and training pipeline
 
 The plugin architecture supports:
-- TensorFlow/Keras models (current) (PyTorch support coming soon...)
+- TensorFlow/Keras models (DeepLabV3+, UNet)
+- PyTorch models (DeepLabV3+) with Keras-compatible adapter
 - Multi-framework model registry
 - Seamless integration with existing workflows
 
