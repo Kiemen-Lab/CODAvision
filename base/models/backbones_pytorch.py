@@ -225,10 +225,12 @@ class ASPPModule(nn.Module):
         super().__init__()
 
         # Global average pooling branch
+        # Note: No BatchNorm here because after AdaptiveAvgPool2d((1,1)) the spatial
+        # dimensions are 1x1, which causes BatchNorm2d to crash with batch_size=1.
+        # The subsequent project layer (after concatenation) already applies BatchNorm.
         self.global_avg_pool = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=True),
-            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
 
@@ -530,6 +532,18 @@ class DeepLabV3PlusModel(nn.Module):
             torch.tensor([103.939, 116.779, 123.68]).view(1, 3, 1, 1)
         )
 
+        # Gradient checkpointing flag (reduces memory usage at cost of compute)
+        self.gradient_checkpointing = False
+
+    def enable_gradient_checkpointing(self):
+        """
+        Enable gradient checkpointing for encoder layers to reduce memory usage.
+
+        Trades compute for memory by not storing intermediate activations in the
+        encoder during the forward pass. Can reduce memory usage by ~40-60%.
+        """
+        self.gradient_checkpointing = True
+
     def preprocess(self, x: torch.Tensor) -> torch.Tensor:
         """
         Preprocess input: RGB → BGR and subtract ImageNet mean.
@@ -547,6 +561,12 @@ class DeepLabV3PlusModel(nn.Module):
         x = x - self.imagenet_mean_bgr
 
         return x
+
+    def _run_encoder_layer(self, layer, x):
+        """Run a single encoder layer with optional gradient checkpointing."""
+        if self.gradient_checkpointing and self.training:
+            return torch.utils.checkpoint.checkpoint(layer, x, use_reentrant=False)
+        return layer(x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -569,10 +589,10 @@ class DeepLabV3PlusModel(nn.Module):
         x = self.encoder_relu(x)
         x = self.encoder_maxpool(x)
 
-        x = self.encoder_layer1(x)
-        low_level_feat = self.encoder_layer2(x)  # Stride 4, channels: 512
-        x = self.encoder_layer3(low_level_feat)
-        high_level_feat = self.encoder_layer4(x)  # Stride 16, channels: 2048
+        x = self._run_encoder_layer(self.encoder_layer1, x)
+        low_level_feat = self._run_encoder_layer(self.encoder_layer2, x)  # Stride 4, channels: 512
+        x = self._run_encoder_layer(self.encoder_layer3, low_level_feat)
+        high_level_feat = self._run_encoder_layer(self.encoder_layer4, x)  # Stride 16, channels: 2048
 
         # ASPP
         aspp_out = self.aspp(high_level_feat)  # Stride 16, channels: 256

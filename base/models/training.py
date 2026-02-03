@@ -1293,3 +1293,4 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
     except Exception as e:
         module_logger.error(f"Error during model training: {e}")
         module_logger.error(f"Traceback:\n{traceback.format_exc()}")
+        raise

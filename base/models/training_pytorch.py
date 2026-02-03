@@ -1065,6 +1065,11 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
         if self.model is None:
             self.build_model(architecture='DeepLabV3_plus')
 
+        # Enable gradient checkpointing on CPU to reduce memory usage
+        if self.device.type == 'cpu' and hasattr(self.model, 'enable_gradient_checkpointing'):
+            self.model.enable_gradient_checkpointing()
+            self.logger.logger.info("Gradient checkpointing enabled (CPU training, reduces memory usage)")
+
         # Optionally freeze encoder
         if freeze_encoder and hasattr(self.model, 'freeze_encoder'):
             self.model.freeze_encoder()
