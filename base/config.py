@@ -167,7 +167,7 @@ MODERN_CONFIG = TileGenerationConfig(
     use_disk_filter=False,
     crop_rotations=False,
     class_rotation_frequency=5,
-    deterministic_seed=None,
+    deterministic_seed=3,
     big_tile_size=10240,
     file_format="png"
 )
