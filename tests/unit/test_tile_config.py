@@ -198,43 +198,23 @@ class TestConfigModeComparison:
         assert MODERN_CONFIG.file_format == "png"
 
 
-class TestEnvironmentVariableSupport:
-    """Test environment variable override functionality."""
+class TestDefaultTileConfig:
+    """Test default tile configuration from ModelDefaults."""
 
-    def test_default_mode_from_config(self, monkeypatch):
-        """Test that default comes from ModelDefaults when no env var is set."""
-        # Ensure environment variable is not set
-        monkeypatch.delenv('CODAVISION_TILE_GENERATION_MODE', raising=False)
-
+    def test_default_mode_from_config(self):
+        """Test that default comes from ModelDefaults."""
         config = get_default_tile_config()
         assert config.mode == ModelDefaults.TILE_GENERATION_MODE
 
-    def test_environment_variable_modern(self, monkeypatch):
-        """Test that environment variable can set modern mode."""
-        monkeypatch.setenv('CODAVISION_TILE_GENERATION_MODE', 'modern')
-
+    def test_default_returns_modern_config(self):
+        """Test that default mode returns modern config."""
         config = get_default_tile_config()
         assert config.mode == 'modern'
         assert config.reduction_factor == 10
 
-    def test_environment_variable_legacy(self, monkeypatch):
-        """Test that environment variable can set legacy mode."""
-        monkeypatch.setenv('CODAVISION_TILE_GENERATION_MODE', 'legacy')
-
-        config = get_default_tile_config()
-        assert config.mode == 'legacy'
-        assert config.reduction_factor == 5
-
-    def test_environment_variable_case_insensitive(self, monkeypatch):
-        """Test that environment variable is case insensitive."""
-        monkeypatch.setenv('CODAVISION_TILE_GENERATION_MODE', 'LEGACY')
-
-        config = get_default_tile_config()
-        assert config.mode == 'legacy'
-
-    def test_environment_variable_invalid_raises_error(self, monkeypatch):
-        """Test that invalid values raise ValueError."""
-        monkeypatch.setenv('CODAVISION_TILE_GENERATION_MODE', 'invalid')
+    def test_invalid_mode_raises_error(self, monkeypatch):
+        """Test that invalid mode values raise ValueError."""
+        monkeypatch.setattr(ModelDefaults, 'TILE_GENERATION_MODE', 'invalid')
 
         with pytest.raises(ValueError, match="Invalid TILE_GENERATION_MODE"):
             get_default_tile_config()

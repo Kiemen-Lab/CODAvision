@@ -8,7 +8,6 @@ it matches MATLAB's ValidationFrequency behavior.
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 import warnings
-import os
 import numpy as np
 import tensorflow as tf
 from base.models.training import BatchAccuracyCallback
@@ -25,15 +24,7 @@ class TestValidationFrequency:
         self.mock_loss = Mock()
         self.mock_logger = Mock()
 
-        # Clear any environment variables that might affect tests
-        if 'CODAVISION_VALIDATION_FREQUENCY' in os.environ:
-            del os.environ['CODAVISION_VALIDATION_FREQUENCY']
-
         yield
-
-        # Cleanup after test
-        if 'CODAVISION_VALIDATION_FREQUENCY' in os.environ:
-            del os.environ['CODAVISION_VALIDATION_FREQUENCY']
 
     def test_validation_frequency_initialization(self):
         """Test that validation_frequency is properly initialized."""
@@ -141,23 +132,6 @@ class TestValidationFrequency:
             # Should be converted to approximately validation_frequency=50
             # (150 estimated steps per epoch / 3)
             assert callback.validation_frequency == 50
-
-    def test_environment_variable_override(self):
-        """Test that environment variable can override validation frequency."""
-        os.environ['CODAVISION_VALIDATION_FREQUENCY'] = '256'
-
-        callback = BatchAccuracyCallback(
-            model=self.mock_model,
-            val_data=self.mock_val_data,
-            loss_function=self.mock_loss,
-            logger=self.mock_logger,
-            validation_frequency=128  # Should be overridden
-        )
-
-        assert callback.validation_frequency == 256
-
-        # Clean up
-        del os.environ['CODAVISION_VALIDATION_FREQUENCY']
 
     def test_global_step_tracking(self):
         """Test that global_step tracks iterations across epochs."""
@@ -291,24 +265,15 @@ class TestValidationFrequency:
         callback.on_train_end()
         assert callback.run_validation.call_count == 1  # Still 1
 
-    def test_invalid_environment_variable(self):
-        """Test handling of invalid environment variable value."""
-        os.environ['CODAVISION_VALIDATION_FREQUENCY'] = 'invalid'
-
-        # Should use default value and log warning
+    def test_validation_frequency_uses_provided_value(self):
+        """Test that validation frequency uses the value passed to constructor."""
         callback = BatchAccuracyCallback(
             model=self.mock_model,
             val_data=self.mock_val_data,
             loss_function=self.mock_loss,
             logger=self.mock_logger,
-            validation_frequency=128
+            validation_frequency=256
         )
 
-        # Should fall back to provided value
-        assert callback.validation_frequency == 128
-
-        # Check that warning was logged
-        self.mock_logger.warning.assert_called_once()
-
-        # Clean up
-        del os.environ['CODAVISION_VALIDATION_FREQUENCY']
+        # Should use the provided value directly
+        assert callback.validation_frequency == 256

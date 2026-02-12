@@ -14,7 +14,6 @@ Key features:
 
 from abc import abstractmethod
 from typing import Optional, Tuple
-import os
 
 import numpy as np
 
@@ -34,8 +33,10 @@ def get_pytorch_device() -> str:
     """
     Auto-detect the best available PyTorch device.
 
-    Checks in order: CUDA → MPS (Apple Silicon) → CPU
-    Can be overridden with CODAVISION_PYTORCH_DEVICE environment variable.
+    Checks ModelDefaults.PYTORCH_DEVICE first. If set to 'auto' (the default),
+    detects in order: CUDA → MPS (Apple Silicon) → CPU.
+
+    To change the device, set ModelDefaults.PYTORCH_DEVICE in base/config.py.
 
     Returns:
         str: Device string ('cuda', 'mps', or 'cpu')
@@ -43,16 +44,17 @@ def get_pytorch_device() -> str:
     if not PYTORCH_AVAILABLE:
         raise ImportError("PyTorch is not installed. Install with: pip install torch torchvision")
 
-    # Check for environment variable override
-    env_device = os.getenv('CODAVISION_PYTORCH_DEVICE', '').lower()
-    if env_device in ['cuda', 'mps', 'cpu']:
-        if env_device == 'cuda' and not torch.cuda.is_available():
+    from base.config import ModelDefaults
+
+    device_setting = ModelDefaults.PYTORCH_DEVICE.lower()
+    if device_setting in ['cuda', 'mps', 'cpu']:
+        if device_setting == 'cuda' and not torch.cuda.is_available():
             print(f"Warning: CUDA requested but not available, falling back to CPU")
             return 'cpu'
-        if env_device == 'mps' and not torch.backends.mps.is_available():
+        if device_setting == 'mps' and not torch.backends.mps.is_available():
             print(f"Warning: MPS requested but not available, falling back to CPU")
             return 'cpu'
-        return env_device
+        return device_setting
 
     # Auto-detect
     if torch.cuda.is_available():

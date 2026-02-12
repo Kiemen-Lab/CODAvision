@@ -286,21 +286,6 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
             )
             validation_frequency = new_freq
 
-        # Check for environment variable override
-        env_freq = os.environ.get('CODAVISION_VALIDATION_FREQUENCY')
-        if env_freq:
-            try:
-                validation_frequency = int(env_freq)
-                if logger:
-                    logger.info(
-                        f"Using validation frequency {env_freq} from environment variable"
-                    )
-            except ValueError:
-                if logger:
-                    logger.warning(
-                        f"Invalid CODAVISION_VALIDATION_FREQUENCY value: {env_freq}"
-                    )
-
         super(BatchAccuracyCallback, self).__init__()
         self.logger = logger
         self._model = model
@@ -1220,7 +1205,7 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
     configuration, creates the appropriate trainer, and trains the model.
 
     The function automatically detects the framework (TensorFlow or PyTorch) from
-    the CODAVISION_FRAMEWORK environment variable or base/config.py defaults.
+    the DEFAULT_FRAMEWORK setting in base/config.py.
 
     Args:
         pthDL: Path to the directory containing model data

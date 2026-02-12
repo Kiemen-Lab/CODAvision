@@ -10,7 +10,6 @@ Date: 2025-11-12
 
 import pytest
 import numpy as np
-import os
 import importlib.util
 
 # Skip entire module if PyTorch not available
@@ -126,32 +125,21 @@ class TestPyTorchDeepLabV3Plus:
         assert max_diff < tolerance, \
             f"Preprocessing difference {max_diff:.2e} exceeds tolerance {tolerance:.2e}"
 
-    @pytest.mark.parametrize("device_name", ["cpu"])
-    def test_device_compatibility(self, device_name, pytorch_device):
-        """Test that model works on specified device (CPU, CUDA, MPS)."""
+    def test_device_compatibility(self):
+        """Test that model works on CPU device."""
         from base.models.backbones_pytorch import PyTorchDeepLabV3Plus
 
-        # Set device via environment
-        prev_device = os.environ.get('CODAVISION_PYTORCH_DEVICE')
-        os.environ['CODAVISION_PYTORCH_DEVICE'] = device_name
+        model_builder = PyTorchDeepLabV3Plus(256, 3, 0)
+        # Force CPU for this test
+        model_builder.device = 'cpu'
+        model = model_builder.build_model()
 
-        try:
-            model_builder = PyTorchDeepLabV3Plus(256, 3, 0)
-            model = model_builder.build_model()
+        # Test with dummy data
+        x_test = np.random.randn(1, 256, 256, 3).astype(np.float32) * 255.0
+        output = model_builder.predict(x_test)
 
-            # Test with dummy data
-            x_test = np.random.randn(1, 256, 256, 3).astype(np.float32) * 255.0
-            output = model_builder.predict(x_test)
-
-            assert output.shape == (1, 256, 256, 3), \
-                f"Expected shape (1, 256, 256, 3), got {output.shape}"
-
-        finally:
-            # Restore previous device setting
-            if prev_device is None:
-                os.environ.pop('CODAVISION_PYTORCH_DEVICE', None)
-            else:
-                os.environ['CODAVISION_PYTORCH_DEVICE'] = prev_device
+        assert output.shape == (1, 256, 256, 3), \
+            f"Expected shape (1, 256, 256, 3), got {output.shape}"
 
 
 class TestPyTorchTensorFlowEquivalence:

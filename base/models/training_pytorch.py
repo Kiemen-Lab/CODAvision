@@ -224,8 +224,8 @@ class PyTorchSegmentationTrainer:
         self.num_classes = len(self.class_names)
         self.image_size = self.metadata.get('image_size') or self.metadata.get('sxy')
 
-        # Get device from config or environment
-        device_str = os.getenv('CODAVISION_PYTORCH_DEVICE', ModelDefaults.PYTORCH_DEVICE)
+        # Get device from config
+        device_str = ModelDefaults.PYTORCH_DEVICE
         if device_str == 'auto':
             if torch.cuda.is_available():
                 self.device = torch.device('cuda')
@@ -262,13 +262,11 @@ class PyTorchSegmentationTrainer:
         }
 
         # Training settings - read from metadata with fallbacks for backward compatibility
-        # These can be overridden by environment variables or train() parameters
         self.learning_rate = self.metadata.get('learning_rate', ModelDefaults.LEARNING_RATE)
         self.epochs = self.metadata.get('epochs', ModelDefaults.EPOCHS)
         self.batch_size = self.metadata.get('batch_size', ModelDefaults.BATCH_SIZE)
         self.validation_frequency = int(
-            os.getenv('CODAVISION_VALIDATION_FREQUENCY',
-                      self.metadata.get('validation_frequency', ModelDefaults.VALIDATION_FREQUENCY))
+            self.metadata.get('validation_frequency', ModelDefaults.VALIDATION_FREQUENCY)
         )
         self.early_stopping_patience = self.metadata.get('es_patience', 6)
         self.lr_reduction_patience = self.metadata.get('lr_patience', 1)
@@ -276,14 +274,9 @@ class PyTorchSegmentationTrainer:
         self.min_lr = self.metadata.get('min_lr', 1e-7)
 
         # Advanced optimization settings
-        self.use_amp = os.getenv('CODAVISION_PYTORCH_AMP', 'false').lower() == 'true' or \
-                       ModelDefaults.PYTORCH_AMP
-        self.use_compile = os.getenv('CODAVISION_PYTORCH_COMPILE', 'false').lower() == 'true' or \
-                          ModelDefaults.PYTORCH_COMPILE
-        self.gradient_accumulation_steps = int(
-            os.getenv('CODAVISION_GRADIENT_ACCUMULATION_STEPS',
-                     getattr(ModelDefaults, 'GRADIENT_ACCUMULATION_STEPS', 1))
-        )
+        self.use_amp = ModelDefaults.PYTORCH_AMP
+        self.use_compile = ModelDefaults.PYTORCH_COMPILE
+        self.gradient_accumulation_steps = ModelDefaults.GRADIENT_ACCUMULATION_STEPS
 
         # AMP scaler (only if using AMP and CUDA)
         self.scaler = None

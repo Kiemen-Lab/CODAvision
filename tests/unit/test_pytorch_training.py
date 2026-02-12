@@ -183,38 +183,36 @@ class TestValidationFrequency:
 
         model_path, annotations, image_list = synthetic_training_data
 
-        # Set custom validation frequency
+        # Set custom validation frequency via metadata
         validation_frequency = 5
-        prev_freq = os.environ.get('CODAVISION_VALIDATION_FREQUENCY')
-        os.environ['CODAVISION_VALIDATION_FREQUENCY'] = str(validation_frequency)
 
-        try:
-            trainer = PyTorchDeepLabV3PlusTrainer(model_path)
+        # Update the metadata to include validation_frequency
+        metadata_path = os.path.join(model_path, 'net.pkl')
+        with open(metadata_path, 'rb') as f:
+            metadata = pickle.load(f)
+        metadata['validation_frequency'] = validation_frequency
+        with open(metadata_path, 'wb') as f:
+            pickle.dump(metadata, f)
 
-            history = trainer.train(
-                epochs=1,
-                batch_size=2,
-                learning_rate=0.001,
-                validation_split=0.2,
-                num_workers=0
-            )
+        trainer = PyTorchDeepLabV3PlusTrainer(model_path)
 
-            # Check validation iterations
-            val_iterations = history['val_iterations']
+        history = trainer.train(
+            epochs=1,
+            batch_size=2,
+            learning_rate=0.001,
+            validation_split=0.2,
+            num_workers=0
+        )
 
-            assert len(val_iterations) >= 1, "At least one validation should have occurred"
+        # Check validation iterations
+        val_iterations = history['val_iterations']
 
-            # Check that validations occurred at multiples of validation_frequency
-            for it in val_iterations[:-1]:  # Exclude last iteration (end of epoch)
-                assert it % validation_frequency == 0, \
-                    f"Validation at iteration {it} not at multiple of {validation_frequency}"
+        assert len(val_iterations) >= 1, "At least one validation should have occurred"
 
-        finally:
-            # Restore previous setting
-            if prev_freq is None:
-                os.environ.pop('CODAVISION_VALIDATION_FREQUENCY', None)
-            else:
-                os.environ['CODAVISION_VALIDATION_FREQUENCY'] = prev_freq
+        # Check that validations occurred at multiples of validation_frequency
+        for it in val_iterations[:-1]:  # Exclude last iteration (end of epoch)
+            assert it % validation_frequency == 0, \
+                f"Validation at iteration {it} not at multiple of {validation_frequency}"
 
 
 class TestModelCheckpointing:

@@ -325,7 +325,7 @@ def model_call(
         NUM_CLASSES: Number of segmentation classes
         l2_regularization_weight: L2 regularization weight (default: 0)
         framework: Framework to use ('tensorflow' or 'pytorch').
-                   If None, uses configuration default from CODAVISION_FRAMEWORK env var.
+                   If None, uses configuration default from ModelDefaults.DEFAULT_FRAMEWORK.
         wrap_with_adapter: For PyTorch models, whether to wrap with PyTorchKerasAdapter.
                            True (default): Returns adapter with Keras-compatible API.
                            False: Returns raw nn.Module for PyTorch-native training.
@@ -384,9 +384,10 @@ class ModelDefaults:
     PYTORCH_MODELS = ["DeepLabV3_plus"]
 ```
 
-The framework can be switched via environment variable:
-```bash
-export CODAVISION_FRAMEWORK=pytorch  # or tensorflow
+The framework is configured via `ModelDefaults.DEFAULT_FRAMEWORK` in `base/config.py`:
+```python
+class ModelDefaults:
+    DEFAULT_FRAMEWORK = "pytorch"  # or "tensorflow"
 ```
 
 ## 7. Usage Examples
