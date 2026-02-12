@@ -384,11 +384,15 @@ class DecoderModule(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
 
+        # Classification before upsampling to reduce peak memory.
+        # 1x1 conv is a per-pixel linear transform that commutes with bilinear
+        # interpolation, so this is mathematically equivalent. Reduces the
+        # upsampled tensor from 256 channels to num_classes (~5-10), cutting
+        # peak memory ~30x (e.g., 2GB -> 64MB at batch=2, 1024x1024).
+        x = self.classifier(x)
+
         # Final upsampling to original resolution
         x = F.interpolate(x, size=input_size, mode='bilinear', align_corners=False)
-
-        # Classification
-        x = self.classifier(x)
 
         return x
 

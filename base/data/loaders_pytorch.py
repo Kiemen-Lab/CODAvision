@@ -8,6 +8,7 @@ of the TensorFlow data pipeline while using PyTorch's native data loading.
 
 from typing import List, Optional, Tuple, Callable, Dict, Any
 import os
+import sys
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -19,6 +20,12 @@ import torchvision.transforms.functional as TF
 # Set up logging
 import logging
 logger = logging.getLogger(__name__)
+
+# Platform-aware default for num_workers.
+# Windows uses 'spawn' for multiprocessing which copies the entire process,
+# causing high memory usage with multiple workers. Use 0 (main process loading)
+# on Windows to avoid this.
+_DEFAULT_NUM_WORKERS = 0 if sys.platform == 'win32' else 4
 
 
 class PyTorchSegmentationDataset(Dataset):
@@ -276,7 +283,7 @@ def create_pytorch_dataloader(
     batch_size: int,
     shuffle: bool = True,
     augment: bool = False,
-    num_workers: int = 4,
+    num_workers: int = _DEFAULT_NUM_WORKERS,
     pin_memory: bool = True,
     seed: Optional[int] = None,
     drop_last: bool = True
@@ -366,7 +373,7 @@ def create_training_dataloader(
     mask_paths: List[str],
     image_size: int,
     batch_size: int,
-    num_workers: int = 4,
+    num_workers: int = _DEFAULT_NUM_WORKERS,
     seed: Optional[int] = None
 ) -> DataLoader:
     """
@@ -409,7 +416,7 @@ def create_validation_dataloader(
     mask_paths: List[str],
     image_size: int,
     batch_size: int,
-    num_workers: int = 4
+    num_workers: int = _DEFAULT_NUM_WORKERS
 ) -> DataLoader:
     """
     Create an optimized PyTorch DataLoader for validation.

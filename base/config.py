@@ -48,7 +48,7 @@ class ModelDefaults:
     # Training defaults
     BATCH_SIZE = 8  # Default batch size for training
     LEARNING_RATE = 1e-4  # Default initial learning rate
-    EPOCHS = 100  # Default number of training epochs
+    EPOCHS = 8  # Default number of training epochs
 
     # Optimizer defaults
     OPTIMIZER_EPSILON = 1e-8  # Epsilon value for Adam and AdamW optimizers (for numerical stability)
@@ -66,7 +66,7 @@ class ModelDefaults:
     TILE_GENERATION_MODE = "modern"  # Default tile generation mode ("modern" or "legacy")
 
     # ===== FRAMEWORK CONFIGURATION =====
-    DEFAULT_FRAMEWORK = "tensorflow"  # "pytorch" or "tensorflow"
+    DEFAULT_FRAMEWORK = "pytorch"  # "pytorch" or "tensorflow"
 
     # PyTorch-specific settings
     PYTORCH_DEVICE = "auto"  # auto, cuda, mps, cpu
@@ -117,8 +117,8 @@ class RuntimeConfig:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
-        if self.num_workers < 1:
-            raise ValueError("num_workers must be at least 1")
+        if self.num_workers < 0:
+            raise ValueError("num_workers must be non-negative")
         if self.seed < 0:
             raise ValueError("seed must be non-negative")
 

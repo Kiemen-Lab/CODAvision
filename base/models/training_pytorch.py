@@ -19,6 +19,7 @@ Date: 2025-11-12
 """
 
 import os
+import sys
 import time
 import pickle
 import logging
@@ -235,7 +236,14 @@ class PyTorchSegmentationTrainer:
         else:
             self.device = torch.device(device_str)
 
-        self.logger.logger.info(f"Using device: {self.device}")
+        # Log device info with GPU name (if available) or CPU fallback warning
+        if self.device.type == 'cuda':
+            gpu_name = torch.cuda.get_device_name(0)
+            self.logger.logger.info(f"Using device: cuda ({gpu_name})")
+        elif self.device.type == 'mps':
+            self.logger.logger.info(f"Using device: mps (Apple Silicon GPU)")
+        else:
+            self._log_cpu_fallback_warning()
 
         # Training state
         self.model = None
@@ -286,6 +294,41 @@ class PyTorchSegmentationTrainer:
         self.logger.logger.info(f"Validation frequency: {self.validation_frequency} iterations")
         self.logger.logger.info(f"Early stopping patience: {self.early_stopping_patience} validations")
         self.logger.logger.info(f"LR reduction patience: {self.lr_reduction_patience} validations")
+
+    def _log_cpu_fallback_warning(self):
+        """Log a warning when training falls back to CPU with actionable guidance."""
+        self.logger.logger.warning("=" * 60)
+        self.logger.logger.warning("WARNING: Using device: cpu")
+        self.logger.logger.warning("Training on CPU is significantly slower than GPU.")
+
+        # Distinguish between "CPU-only PyTorch" and "CUDA drivers missing"
+        has_cuda_build = hasattr(torch.version, 'cuda') and torch.version.cuda is not None
+        if not has_cuda_build:
+            self.logger.logger.warning("")
+            self.logger.logger.warning("CAUSE: CPU-only PyTorch is installed (no CUDA support).")
+            self.logger.logger.warning("FIX: Install CUDA-enabled PyTorch:")
+            self.logger.logger.warning("  pip uninstall torch torchvision -y")
+            self.logger.logger.warning("  pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118")
+            self.logger.logger.warning("")
+            self.logger.logger.warning("Or run 'python scripts/check_cuda_version.py' for guidance.")
+        else:
+            self.logger.logger.warning("")
+            self.logger.logger.warning(f"CAUSE: PyTorch was built with CUDA {torch.version.cuda},")
+            self.logger.logger.warning("but no compatible GPU/driver was detected.")
+            self.logger.logger.warning("Check that NVIDIA drivers are installed: nvidia-smi")
+
+        self.logger.logger.warning("=" * 60)
+
+    @staticmethod
+    def _get_default_num_workers() -> int:
+        """
+        Get the platform-appropriate default for DataLoader num_workers.
+
+        Windows uses 'spawn' for multiprocessing, which copies the entire
+        process memory for each worker. This causes high memory pressure,
+        so we default to 0 (main-process data loading) on Windows.
+        """
+        return 0 if sys.platform == 'win32' else 4
 
     def _load_model_data(self) -> Tuple[Dict, List[str]]:
         """
@@ -455,7 +498,7 @@ class PyTorchSegmentationTrainer:
         annotations: Dict,
         image_list: List[str],
         batch_size: int = 4,
-        num_workers: int = 4,
+        num_workers: Optional[int] = None,
         validation_split: float = 0.2
     ) -> Tuple[DataLoader, DataLoader]:
         """
@@ -465,12 +508,17 @@ class PyTorchSegmentationTrainer:
             annotations: Dictionary of annotations
             image_list: List of image identifiers
             batch_size: Batch size for training
-            num_workers: Number of worker processes for data loading
+            num_workers: Number of worker processes for data loading.
+                If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
             validation_split: Fraction of data for validation
 
         Returns:
             Tuple of (train_dataloader, val_dataloader)
         """
+        # Resolve None to platform-aware default
+        if num_workers is None:
+            num_workers = self._get_default_num_workers()
+
         # Split into train and validation
         np.random.seed(42)  # For reproducibility
         shuffled_indices = np.random.permutation(len(image_list))
@@ -817,7 +865,7 @@ class PyTorchSegmentationTrainer:
         batch_size: int = None,
         learning_rate: float = None,
         validation_split: float = 0.2,
-        num_workers: int = 4,
+        num_workers: Optional[int] = None,
         resume_from_checkpoint: Optional[str] = None
     ) -> Dict:
         """
@@ -828,7 +876,8 @@ class PyTorchSegmentationTrainer:
             batch_size: Batch size for training (defaults to self.batch_size from metadata)
             learning_rate: Initial learning rate (defaults to self.learning_rate from metadata)
             validation_split: Fraction of data for validation
-            num_workers: Number of data loading workers
+            num_workers: Number of data loading workers.
+                If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
             resume_from_checkpoint: Optional path to checkpoint to resume from
 
         Returns:
@@ -1042,7 +1091,7 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
         batch_size: int = None,
         learning_rate: float = None,
         validation_split: float = 0.2,
-        num_workers: int = 4,
+        num_workers: Optional[int] = None,
         resume_from_checkpoint: Optional[str] = None,
         freeze_encoder: bool = True
     ) -> Dict:
@@ -1054,7 +1103,8 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
             batch_size: Batch size for training (defaults to self.batch_size from metadata)
             learning_rate: Initial learning rate (defaults to self.learning_rate from metadata)
             validation_split: Fraction of data for validation
-            num_workers: Number of data loading workers
+            num_workers: Number of data loading workers.
+                If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
             resume_from_checkpoint: Optional path to checkpoint to resume from
             freeze_encoder: Whether to freeze encoder weights (default: True)
 
