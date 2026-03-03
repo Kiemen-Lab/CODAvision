@@ -65,7 +65,8 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         class_weights: Union[List[float], np.ndarray],
         from_logits: bool = True,
         reduction: str = 'sum_over_batch_size',
-        name: Optional[str] = None
+        name: Optional[str] = None,
+        num_replicas: int = 1
     ):
         """
         Initialize the weighted sparse categorical crossentropy loss.
@@ -75,6 +76,10 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
             from_logits: Whether the predictions are logits
             reduction: Type of reduction to apply to the loss
             name: Name of the loss function
+            num_replicas: Number of replicas in distributed training. When using
+                MirroredStrategy, per-replica losses are summed. This parameter
+                divides the loss to compensate, keeping the effective loss scale
+                consistent regardless of GPU count.
         """
         super().__init__(reduction=reduction, name=name)
 
@@ -84,6 +89,7 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         self.class_weights = weights / weights_sum
 
         self.from_logits = from_logits
+        self.num_replicas = num_replicas
 
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """
@@ -140,7 +146,13 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         )
 
         # Sum all class contributions (MATLAB-style: sum not mean)
-        return tf.reduce_sum(class_losses)
+        total_loss = tf.reduce_sum(class_losses)
+
+        # Compensate for MirroredStrategy summing per-replica losses
+        if self.num_replicas > 1:
+            total_loss = total_loss / tf.cast(self.num_replicas, tf.float32)
+
+        return total_loss
 
     def get_config(self) -> Dict[str, Any]:
         """Get configuration for serialization."""
@@ -148,6 +160,7 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         config.update({
             "class_weights": self.class_weights.numpy().tolist(),
             "from_logits": self.from_logits,
+            "num_replicas": self.num_replicas,
         })
         return config
 
@@ -570,11 +583,16 @@ class SegmentationModelTrainer:
         # GPU information for logging
         self.gpu_info = self._setup_gpu()
 
-        # Initialize distribution strategy for multi-GPU training
-        self.strategy, self.num_gpus = create_distribution_strategy()
-
-        # Initialize model data and parameters
+        # Load model data FIRST so batch_size is available for strategy decision
         self._load_model_data()
+
+        # Initialize distribution strategy for multi-GPU training
+        # Pass batch_size so the strategy can fall back to single-GPU
+        # if per-GPU batch size would be too small for BatchNorm stability
+        self.strategy, self.num_gpus = create_distribution_strategy(
+            batch_size=self.batch_size,
+            min_per_gpu_batch_size=2
+        )
 
     def _setup_gpu(self):
         """
@@ -765,10 +783,12 @@ class SegmentationModelTrainer:
         self.class_weights = self._calculate_class_weights(train_masks)
 
         # Create the loss function
+        # Pass num_replicas to compensate for MirroredStrategy summing per-replica losses
         self.loss_function = WeightedSparseCategoricalCrossentropy(
             class_weights=self.class_weights,
             from_logits=True,
-            reduction='sum_over_batch_size'
+            reduction='sum_over_batch_size',
+            num_replicas=self.num_gpus if self.num_gpus > 1 else 1
         )
 
     def _create_model(self) -> keras.Model:
