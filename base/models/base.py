@@ -8,7 +8,11 @@ and PyTorch implementations, ensuring a consistent interface.
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
+import logging
+import sys
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class Framework(Enum):
@@ -106,6 +110,20 @@ def detect_framework_availability() -> dict:
         availability['tensorflow'] = True
         availability['tensorflow_version'] = tf.__version__
         availability['tensorflow_gpu'] = len(tf.config.list_physical_devices('GPU')) > 0
+
+        # Warn if TF > 2.10 on Windows (GPU support removed in TF 2.11+)
+        if sys.platform == 'win32' and not availability['tensorflow_gpu']:
+            try:
+                tf_ver = tuple(int(x) for x in tf.__version__.split('.')[:2])
+                if tf_ver > (2, 10):
+                    msg = (
+                        f"TensorFlow {tf.__version__} does not support GPU on "
+                        f"native Windows. Downgrade to 2.10.1 for GPU support."
+                    )
+                    availability['tensorflow_windows_gpu_warning'] = msg
+                    logger.warning(msg)
+            except (ValueError, IndexError):
+                pass
     except (ImportError, OSError, RuntimeError):
         pass
 
