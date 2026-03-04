@@ -439,7 +439,7 @@ class PyTorchSegmentationTrainer:
         self.model = model
         return model
 
-    def setup_optimizer(self, learning_rate: float = 0.001, weight_decay: float = 0.0001):
+    def setup_optimizer(self, learning_rate: float = 0.001, weight_decay: float = 0.0):
         """
         Setup optimizer (Adam with weight decay for L2 regularization).
 
@@ -921,7 +921,8 @@ class PyTorchSegmentationTrainer:
             self.build_model()
 
         # Setup training components
-        self.setup_optimizer(learning_rate=learning_rate)
+        l2_weight = self.metadata.get('l2_regularization_weight', 0.0)
+        self.setup_optimizer(learning_rate=learning_rate, weight_decay=l2_weight)
         self.setup_loss(class_weights=class_weights)
         self.setup_scheduler(mode='min', factor=self.lr_reduction_factor,
                            patience=self.lr_reduction_patience)
