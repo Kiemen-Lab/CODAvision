@@ -332,6 +332,22 @@ class FrameworkConfig:
         return config['gradient_accumulation_steps']
 
     @staticmethod
+    def set_framework(framework: str) -> None:
+        """
+        Set the active deep learning framework.
+
+        Args:
+            framework: Framework name ('pytorch' or 'tensorflow')
+
+        Raises:
+            ValueError: If framework is not 'tensorflow' or 'pytorch'
+        """
+        framework = framework.lower()
+        if framework not in ['tensorflow', 'pytorch']:
+            raise ValueError(f"Invalid framework: {framework}. Must be 'tensorflow' or 'pytorch'")
+        ModelDefaults.DEFAULT_FRAMEWORK = framework
+
+    @staticmethod
     def get_all_config() -> dict:
         """Get complete framework configuration."""
         return get_framework_config()
