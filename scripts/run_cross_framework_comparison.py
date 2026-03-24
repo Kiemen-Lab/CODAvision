@@ -6,13 +6,17 @@ in sequence, then prints a summary.  The underlying script handles all heavy
 lifting (tile creation, training, testing, metrics, plotting) and automatically
 generates a cross-framework comparison when results from both frameworks exist.
 
+Supports multiple datasets via --dataset (default: liver).
+
 Usage:
     python scripts/run_cross_framework_comparison.py
+    python scripts/run_cross_framework_comparison.py --dataset lungs
     python scripts/run_cross_framework_comparison.py --epochs 2 8 25
     python scripts/run_cross_framework_comparison.py --suffix weight_decay_fix
     python scripts/run_cross_framework_comparison.py --frameworks pytorch
     python scripts/run_cross_framework_comparison.py --data-path D:/data --gpu 1
     python scripts/run_cross_framework_comparison.py --no-early-stopping
+    python scripts/run_cross_framework_comparison.py --dataset lungs --epochs 2 8 --frameworks pytorch
 """
 
 import argparse
@@ -24,12 +28,17 @@ import time
 from datetime import datetime
 
 
-DEFAULT_DATA_PATH = r"C:\Users\tnewton\Desktop\liver_tissue_data"
+DEFAULT_DATA_PATH = None  # resolved from dataset config if not specified
 DEFAULT_EPOCH_COUNTS = [2, 8, 25]
 DEFAULT_TILE_SIZE = 1024
 DEFAULT_BATCH_SIZE = 3
 DEFAULT_GPU = "0"
 DEFAULT_TIMEOUT = 12 * 60 * 60  # 12 hours per framework
+
+DATASET_DATA_PATHS = {
+    "liver": r"C:\Users\tnewton\Desktop\liver_tissue_data",
+    "lungs": r"C:\Users\tnewton\Desktop\lungs_data",
+}
 
 
 def _sanitize_suffix(raw: str) -> str:
@@ -59,6 +68,7 @@ def _build_command(args, framework: str) -> list[str]:
     cmd = [
         sys.executable, script_path,
         "--framework", framework,
+        "--dataset", args.dataset,
         "--data-path", args.data_path,
         "--epochs", *[str(e) for e in args.epochs],
         "--tile-size", str(args.tile_size),
@@ -78,6 +88,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
+        "--dataset", choices=list(DATASET_DATA_PATHS.keys()), default="liver",
+        help="Dataset configuration to use (default: %(default)s)",
+    )
+    parser.add_argument(
         "--epochs", type=int, nargs="+", default=DEFAULT_EPOCH_COUNTS,
         help="Epoch counts to compare (default: %(default)s)",
     )
@@ -91,8 +105,8 @@ def main():
         help="Experiment tag appended to output directory names",
     )
     parser.add_argument(
-        "--data-path", default=DEFAULT_DATA_PATH,
-        help="Root data directory (default: %(default)s)",
+        "--data-path", default=None,
+        help="Root data directory (default: resolved from --dataset)",
     )
     parser.add_argument(
         "--gpu", default=DEFAULT_GPU,
@@ -120,10 +134,15 @@ def main():
     args.suffix = _sanitize_suffix(args.suffix)
     sfx = f"_{args.suffix}" if args.suffix else ""
 
+    # Resolve default data path from dataset if not explicitly provided
+    if args.data_path is None:
+        args.data_path = DATASET_DATA_PATHS[args.dataset]
+
     # --- Banner ---
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print("=" * 70)
     print(f"Cross-Framework Epoch Comparison — {timestamp}")
+    print(f"  Dataset:         {args.dataset}")
     print(f"  Frameworks:      {', '.join(args.frameworks)}")
     print(f"  Epoch counts:    {sorted(args.epochs)}")
     print(f"  Suffix:          {args.suffix or '(none)'}")

@@ -9,15 +9,19 @@ between runs (same isolation pattern as test_gpu_configurations.py).
 When results exist for the *other* framework, a cross-framework comparison
 report and plot are generated automatically.
 
+Supports multiple datasets via --dataset (default: liver).
+
 Default epoch counts: 2, 8, 25, 50, 100
 
 Usage:
-    python scripts/test_epoch_comparison.py                              # PyTorch (default)
+    python scripts/test_epoch_comparison.py                              # Liver, PyTorch (default)
+    python scripts/test_epoch_comparison.py --dataset lungs              # Lungs dataset
     python scripts/test_epoch_comparison.py --framework tensorflow       # TensorFlow
     python scripts/test_epoch_comparison.py --epochs 2 8 25              # Custom subset
     python scripts/test_epoch_comparison.py --no-early-stopping          # Disable early stopping
     python scripts/test_epoch_comparison.py --gpu 0                      # Select GPU
     python scripts/test_epoch_comparison.py --data-path D:/my_data       # Custom data path
+    python scripts/test_epoch_comparison.py --dataset lungs --epochs 2 8 --frameworks pytorch
 """
 
 import argparse
@@ -41,36 +45,60 @@ import numpy as np
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_DATA_PATH = r"C:\Users\tnewton\Desktop\liver_tissue_data"
+DEFAULT_DATA_PATH = None  # resolved from dataset config if not specified
 DEFAULT_EPOCH_COUNTS = [2, 8, 25, 50, 100]
 DEFAULT_TILE_SIZE = 1024
 DEFAULT_BATCH_SIZE = 3
 DEFAULT_GPU = "0"
 SUBPROCESS_TIMEOUT = 12 * 60 * 60  # 12 hours
 
-# Dataset-specific configuration (mirrors non-gui_workflow.py / test_gpu_configurations.py)
-WS = [
-    [0, 0, 0, 0, 2, 0, 2],
-    [7, 6],
-    [1, 2, 3, 4, 5, 6, 7],
-    [6, 4, 2, 3, 5, 1, 7],
-    [],
-]
-CMAP = np.array([
-    [230, 190, 100],   # PDAC
-    [65,  155, 210],   # bile duct
-    [145,  35,  35],   # vasculature
-    [158,  24, 118],   # hepatocyte
-    [30,   50,  50],   # immune
-    [235, 188, 215],   # stroma
-    [255, 255, 255],   # whitespace
-])
-CLASS_NAMES = [
-    "PDAC", "bile duct", "vasculature", "hepatocyte",
-    "immune", "stroma", "whitespace",
-]
-NTRAIN = 15
-NVALIDATE = int(np.ceil(NTRAIN / 5))
+# ---------------------------------------------------------------------------
+# Dataset configurations
+# ---------------------------------------------------------------------------
+
+DATASET_CONFIGS = {
+    "liver": {
+        "WS": [[0, 0, 0, 0, 2, 0, 2], [7, 6], [1, 2, 3, 4, 5, 6, 7], [6, 4, 2, 3, 5, 1, 7], []],
+        "CMAP": np.array([
+            [230, 190, 100],   # PDAC
+            [65,  155, 210],   # bile duct
+            [145,  35,  35],   # vasculature
+            [158,  24, 118],   # hepatocyte
+            [30,   50,  50],   # immune
+            [235, 188, 215],   # stroma
+            [255, 255, 255],   # whitespace
+        ]),
+        "CLASS_NAMES": ["PDAC", "bile duct", "vasculature", "hepatocyte", "immune", "stroma", "whitespace"],
+        "display_class_names": ["PDAC", "bile duct", "vasculature", "hepatocyte", "immune", "stroma"],
+        "NTRAIN": 15, "NVALIDATE": 3, "umpix": 1,
+        "resolution_subdir": "10x", "test_subdir": "testing_image",
+        "default_data_path": r"C:\Users\tnewton\Desktop\liver_tissue_data",
+    },
+    "lungs": {
+        "WS": [[0, 2, 0, 0, 2, 0], [5, 6], [1, 2, 3, 4, 5, 6], [6, 2, 4, 3, 1, 5], []],
+        "CMAP": np.array([
+            [128,   0, 255],   # bronchioles
+            [166, 193, 202],   # alveoli
+            [255,   0,   0],   # vasculature
+            [128,  64,   0],   # mets
+            [255, 255, 255],   # whitespace
+            [255, 128, 192],   # collagen
+        ]),
+        "CLASS_NAMES": ["bronchioles", "alveoli", "vasculature", "mets", "whitespace", "collagen"],
+        "display_class_names": ["bronchioles", "alveoli", "vasculature", "mets", "collagen"],
+        "NTRAIN": 15, "NVALIDATE": 3, "umpix": 2,
+        "resolution_subdir": "5x", "test_subdir": "test",
+        "default_data_path": r"C:\Users\tnewton\Desktop\lungs_data",
+    },
+}
+
+
+def _get_dataset_config(dataset_name):
+    """Return the configuration dict for a named dataset."""
+    if dataset_name not in DATASET_CONFIGS:
+        raise ValueError(f"Unknown dataset '{dataset_name}'. "
+                         f"Available: {list(DATASET_CONFIGS.keys())}")
+    return DATASET_CONFIGS[dataset_name]
 
 
 # ---------------------------------------------------------------------------
@@ -82,29 +110,35 @@ def _run_create_tiles(args):
     shared_dir = args.shared_dir
     data_path = args.data_path
     tile_size = args.tile_size
+    cfg = _get_dataset_config(args.dataset)
 
-    from base.models.utils import create_initial_model_metadata
+    from base.models.utils import create_initial_model_metadata, save_model_metadata
     from base.data.annotation import load_annotation_data
     from base.data.tiles import create_training_tiles
 
-    pthim = os.path.join(data_path, "10x")
-    pthtest = os.path.join(data_path, "testing_image")
+    pthim = os.path.join(data_path, cfg["resolution_subdir"])
+    pthtest = os.path.join(data_path, cfg["test_subdir"])
 
-    print(f"[tiles] Creating metadata in {shared_dir}")
+    print(f"[tiles] Creating metadata in {shared_dir} (dataset={args.dataset})")
     create_initial_model_metadata(
         pthDL=shared_dir,
         pthim=pthim,
-        WS=WS,
+        WS=cfg["WS"],
         nm="epoch_comparison",
-        umpix=1,
-        cmap=CMAP,
+        umpix=cfg["umpix"],
+        cmap=cfg["CMAP"],
         sxy=tile_size,
-        classNames=CLASS_NAMES,
-        ntrain=NTRAIN,
-        nvalidate=NVALIDATE,
+        classNames=cfg["CLASS_NAMES"],
+        ntrain=cfg["NTRAIN"],
+        nvalidate=cfg["NVALIDATE"],
         pthtest=pthtest,
         tile_format='png',
     )
+
+    # Store resolution_subdir in net.pkl so workers can construct pthtestim
+    save_model_metadata(shared_dir, {
+        "resolution_subdir": cfg["resolution_subdir"],
+    })
 
     print("[tiles] Loading annotation data")
     ctlist0, numann0, create_new_tiles = load_annotation_data(
@@ -189,7 +223,8 @@ def _run_worker(args):
         with open(os.path.join(model_dir, "net.pkl"), "rb") as f:
             meta = pickle.load(f)
         pthtest = meta.get("pthtest", "")
-        pthtestim = os.path.join(pthtest, "10x") if pthtest else ""
+        res_subdir = meta.get("resolution_subdir", "10x")
+        pthtestim = os.path.join(pthtest, res_subdir) if pthtest else ""
 
         if pthtest and os.path.isdir(pthtest):
             print(f"[worker:epochs_{epoch_count}] Testing")
@@ -329,6 +364,12 @@ def _orchestrate(args):
     gpu = args.gpu
     no_early_stopping = args.no_early_stopping
     framework = args.framework
+    dataset = args.dataset
+    cfg = _get_dataset_config(dataset)
+
+    # Compute display class indices (maps display_class_names → CLASS_NAMES indices)
+    display_class_names = cfg["display_class_names"]
+    display_indices = [cfg["CLASS_NAMES"].index(cn) for cn in display_class_names]
 
     suffix = f"_{args.results_suffix}" if getattr(args, "results_suffix", "") else ""
     results_dir = os.path.join(data_path, f"epoch_comparison_results_{framework}{suffix}")
@@ -363,6 +404,7 @@ def _orchestrate(args):
 
     print("=" * 70)
     print(f"Epoch Comparison Test — {timestamp}")
+    print(f"  Dataset:         {dataset}")
     print(f"  Framework:       {framework}")
     print(f"  Data path:       {data_path}")
     print(f"  Output:          {results_dir}")
@@ -389,6 +431,7 @@ def _orchestrate(args):
                 "--shared-dir", shared_dir,
                 "--data-path", data_path,
                 "--tile-size", str(tile_size),
+                "--dataset", dataset,
             ],
             env=env,
             log_stdout=os.path.join(results_dir, "tile_creation_stdout.log"),
@@ -499,19 +542,25 @@ def _orchestrate(args):
     # ------------------------------------------------------------------
     _generate_summary_report(results_dir, case_results, epoch_counts, timestamp,
                              data_path, tile_size, batch_size, gpu,
-                             no_early_stopping, framework)
+                             no_early_stopping, framework,
+                             class_names=display_class_names,
+                             class_indices=display_indices)
 
     # ------------------------------------------------------------------
     # Step 5: Generate comparison plot
     # ------------------------------------------------------------------
-    _generate_comparison_plot(results_dir, case_results, epoch_counts, framework)
+    _generate_comparison_plot(results_dir, case_results, epoch_counts, framework,
+                              class_names=display_class_names,
+                              class_indices=display_indices)
 
     # ------------------------------------------------------------------
     # Step 6: Cross-framework comparison (if the other framework's results exist)
     # ------------------------------------------------------------------
     _generate_cross_framework_comparison(results_dir, framework, case_results,
                                          epoch_counts, data_path,
-                                         suffix=getattr(args, "results_suffix", ""))
+                                         suffix=getattr(args, "results_suffix", ""),
+                                         class_names=display_class_names,
+                                         class_indices=display_indices)
 
     print(f"\nAll outputs in: {results_dir}")
 
@@ -532,7 +581,8 @@ def _tiles_exist(directory):
 
 def _generate_summary_report(results_dir, case_results, epoch_counts, timestamp,
                              data_path, tile_size, batch_size, gpu,
-                             no_early_stopping, framework):
+                             no_early_stopping, framework,
+                             class_names=None, class_indices=None):
     """Generate a human-readable summary_report.txt."""
     lines = []
     lines.append(f"Epoch Comparison Results — {timestamp}")
@@ -582,7 +632,6 @@ def _generate_summary_report(results_dir, case_results, epoch_counts, timestamp,
         lines.append("-" * 70)
 
         # Header row
-        class_names = CLASS_NAMES[:-1]  # exclude whitespace from metrics display
         hdr = f"{'Epochs':<8}"
         for cn in class_names:
             hdr += f" {cn:<14}"
@@ -592,7 +641,8 @@ def _generate_summary_report(results_dir, case_results, epoch_counts, timestamp,
             recall = _extract_per_class_recall(r)
             row = f"{ec:<8}"
             if recall is not None:
-                for val in recall[:len(class_names)]:
+                for idx in class_indices:
+                    val = recall[idx] if idx < len(recall) else 0
                     row += f" {val:<14.1f}"
             else:
                 for _ in class_names:
@@ -608,7 +658,8 @@ def _generate_summary_report(results_dir, case_results, epoch_counts, timestamp,
             precision = _extract_per_class_precision(r)
             row = f"{ec:<8}"
             if precision is not None:
-                for val in precision[:len(class_names)]:
+                for idx in class_indices:
+                    val = precision[idx] if idx < len(precision) else 0
                     row += f" {val:<14.1f}"
             else:
                 for _ in class_names:
@@ -675,7 +726,8 @@ def _extract_per_class_precision(result):
 # ---------------------------------------------------------------------------
 
 def _generate_comparison_plot(results_dir, case_results, epoch_counts,
-                              framework="pytorch"):
+                              framework="pytorch", class_names=None,
+                              class_indices=None):
     """Generate a 4-panel matplotlib comparison figure."""
     import matplotlib
     matplotlib.use('Agg')
@@ -689,7 +741,6 @@ def _generate_comparison_plot(results_dir, case_results, epoch_counts,
     per_class_recalls = {}   # {class_name: [values]}
     loss_curves = {}         # {epoch_count: [losses]}
 
-    class_names = CLASS_NAMES[:-1]  # exclude whitespace
     for cn in class_names:
         per_class_recalls[cn] = []
 
@@ -706,8 +757,9 @@ def _generate_comparison_plot(results_dir, case_results, epoch_counts,
 
         recall = _extract_per_class_recall(r)
         for i, cn in enumerate(class_names):
-            if recall and i < len(recall):
-                per_class_recalls[cn].append(recall[i])
+            idx = class_indices[i]
+            if recall and idx < len(recall):
+                per_class_recalls[cn].append(recall[idx])
             else:
                 per_class_recalls[cn].append(0)
 
@@ -791,7 +843,8 @@ def _generate_comparison_plot(results_dir, case_results, epoch_counts,
 # ---------------------------------------------------------------------------
 
 def _generate_cross_framework_comparison(results_dir, framework, case_results,
-                                          epoch_counts, data_path, suffix=""):
+                                          epoch_counts, data_path, suffix="",
+                                          class_names=None, class_indices=None):
     """Generate a side-by-side comparison when results from both frameworks exist.
 
     Looks for the *other* framework's ``all_results.json`` in
@@ -821,7 +874,6 @@ def _generate_cross_framework_comparison(results_dir, framework, case_results,
           f"({framework} vs {other})")
 
     # --- Build per-epoch-count data ---
-    class_names = CLASS_NAMES[:-1]  # exclude whitespace
     rows = []  # list of dicts for the text table
     for ec in epoch_counts:
         case_name = f"epochs_{ec:03d}"
@@ -847,15 +899,15 @@ def _generate_cross_framework_comparison(results_dir, framework, case_results,
 
     # --- Text report ---
     _write_cross_framework_text(results_dir, rows, epoch_counts, framework,
-                                 other, class_names)
+                                 other, class_names, class_indices)
 
     # --- Plot ---
     _write_cross_framework_plot(results_dir, rows, epoch_counts, framework,
-                                 other, class_names)
+                                 other, class_names, class_indices)
 
 
 def _write_cross_framework_text(results_dir, rows, epoch_counts, fw_a, fw_b,
-                                 class_names):
+                                 class_names, class_indices):
     """Write cross_framework_comparison.txt."""
     lines = []
     lines.append(f"Cross-Framework Comparison: {fw_a} vs {fw_b}")
@@ -911,8 +963,9 @@ def _write_cross_framework_text(results_dir, rows, epoch_counts, fw_a, fw_b,
         lines.append(hdr2)
 
         for i, cn in enumerate(class_names):
-            va = r_a[i] if r_a and i < len(r_a) else None
-            vb = r_b[i] if r_b and i < len(r_b) else None
+            idx = class_indices[i]
+            va = r_a[idx] if r_a and idx < len(r_a) else None
+            vb = r_b[idx] if r_b and idx < len(r_b) else None
             sa = f"{va:.1f}" if va is not None else "—"
             sb = f"{vb:.1f}" if vb is not None else "—"
             if va is not None and vb is not None:
@@ -930,7 +983,7 @@ def _write_cross_framework_text(results_dir, rows, epoch_counts, fw_a, fw_b,
 
 
 def _write_cross_framework_plot(results_dir, rows, epoch_counts, fw_a, fw_b,
-                                 class_names):
+                                 class_names, class_indices):
     """Write cross_framework_comparison.png — 4-panel figure."""
     import matplotlib
     matplotlib.use('Agg')
@@ -1027,11 +1080,13 @@ def _write_cross_framework_plot(results_dir, rows, epoch_counts, fw_a, fw_b,
     recall_a = ref_row[f"{fw_a}_recall"] or []
     recall_b = ref_row[f"{fw_b}_recall"] or []
 
-    n_classes = min(len(class_names), max(len(recall_a), len(recall_b)))
+    n_classes = len(class_names)
     if n_classes > 0:
         cx = np.arange(n_classes)
-        ra = [recall_a[i] if i < len(recall_a) else 0 for i in range(n_classes)]
-        rb = [recall_b[i] if i < len(recall_b) else 0 for i in range(n_classes)]
+        ra = [recall_a[class_indices[i]] if recall_a and class_indices[i] < len(recall_a) else 0
+              for i in range(n_classes)]
+        rb = [recall_b[class_indices[i]] if recall_b and class_indices[i] < len(recall_b) else 0
+              for i in range(n_classes)]
         ax.bar(cx - bar_w / 2, ra, bar_w, label=fw_a.capitalize(),
                color=color_a, edgecolor='black', linewidth=0.5)
         ax.bar(cx + bar_w / 2, rb, bar_w, label=fw_b.capitalize(),
@@ -1061,8 +1116,11 @@ def main():
     )
 
     # Orchestrator args
-    parser.add_argument("--data-path", default=DEFAULT_DATA_PATH,
-                        help="Root data directory (default: %(default)s)")
+    parser.add_argument("--dataset", choices=list(DATASET_CONFIGS.keys()),
+                        default="liver",
+                        help="Dataset configuration to use (default: %(default)s)")
+    parser.add_argument("--data-path", default=None,
+                        help="Root data directory (default: resolved from --dataset)")
     parser.add_argument("--epochs", type=int, nargs="+", default=DEFAULT_EPOCH_COUNTS,
                         help="Epoch counts to compare (default: %(default)s)")
     parser.add_argument("--framework", choices=["pytorch", "tensorflow"],
@@ -1093,6 +1151,10 @@ def main():
                         help=argparse.SUPPRESS)
 
     args = parser.parse_args()
+
+    # Resolve default data path from dataset config if not explicitly provided
+    if args.data_path is None:
+        args.data_path = _get_dataset_config(args.dataset)["default_data_path"]
 
     if args.create_tiles:
         _run_create_tiles(args)
