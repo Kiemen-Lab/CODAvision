@@ -123,8 +123,9 @@ def read_image(
     """
     try:
         if isinstance(image_input, np.ndarray):
-            # Convert numpy array to tensor
-            image = tf.convert_to_tensor(image_input)
+            # Convert numpy array to tensor (explicit float32 to match training path
+            # and prevent tf.image.resize from auto-scaling uint8 to [0,1])
+            image = tf.convert_to_tensor(image_input, dtype=tf.float32)
             resize_method = 'nearest' if mask else 'bilinear'
             image = tf.image.resize(image, [image_size, image_size], method=resize_method)
         else:
