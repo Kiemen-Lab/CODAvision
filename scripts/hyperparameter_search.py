@@ -356,11 +356,13 @@ class HyperparameterSearcher:
             
             # Test the model if test path is provided
             if 'pthtest' in self.base_config:
+                classification_output_dir = os.path.join(pthDL, "classification_output")
                 test_metrics = test_segmentation_model(
                     pthDL,
                     self.base_config['pthtest'],
                     self.base_config.get('pthtestim', os.path.join(self.base_config['pthtest'], '10x')),
-                    show_fig=False
+                    show_fig=False,
+                    classification_output_dir=classification_output_dir
                 )
                 if test_metrics:
                     # Extract test accuracy from confusion matrix
@@ -714,11 +716,13 @@ class HyperparameterSearcher:
                 logger.info("\nRunning final test on best model with confusion matrix visualization...")
                 logger.info("=" * 60)
                 
+                classification_output_dir = os.path.join(best_model_dir, "classification_output")
                 test_metrics = test_segmentation_model(
                     best_model_dir,
                     self.base_config['pthtest'],
                     self.base_config.get('pthtestim', os.path.join(self.base_config['pthtest'], '10x')),
-                    show_fig=True  # Show confusion matrix for best model
+                    show_fig=True,  # Show confusion matrix for best model
+                    classification_output_dir=classification_output_dir
                 )
                 
                 if test_metrics and 'confusion_with_metrics' in test_metrics:

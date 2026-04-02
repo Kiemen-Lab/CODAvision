@@ -229,8 +229,12 @@ def _run_worker(args):
         if pthtest and os.path.isdir(pthtest):
             print(f"[worker:epochs_{epoch_count}] Testing")
             t0 = time.time()
+            # Use per-worker classification directory to avoid caching
+            # across epoch counts and frameworks
+            classification_output_dir = os.path.join(model_dir, "classification_output")
             metrics = test_segmentation_model(
-                model_dir, pthtest, pthtestim, show_fig=False
+                model_dir, pthtest, pthtestim, show_fig=False,
+                classification_output_dir=classification_output_dir
             )
             result["test_time_s"] = round(time.time() - t0, 1)
             if metrics:
