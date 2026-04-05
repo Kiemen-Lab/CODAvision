@@ -93,7 +93,7 @@ EXPERIMENTS = [
     ("dsai_baseline", "DSAI as-is (control)",
      "SafeBaselineTrainer", {}),
     ("main_all", "All main-branch behaviors",
-     "MainStyleFullTrainer", {"learning_rate": 0.0005}),
+     "MainStyleFullTrainer", {"learning_rate": 0.0005, "optimizer_epsilon": 1e-7}),
     ("exp_a_loss", "Main per-pixel loss only",
      "MainStyleLossTrainer", {}),
     ("exp_b_lr_sched", "Main counter-based LR schedule only",
@@ -350,7 +350,7 @@ def _run_worker(args):
     try:
         # ----- Update metadata with experiment-specific overrides -----
         batch_size = args.batch_size
-        tile_size = getattr(args, 'tile_size', 512)
+        tile_size = getattr(args, 'tile_size', 1024)
         # Steps per epoch = num_tiles / batch_size. Validate ~3x per epoch.
         steps_per_epoch = 1500 // batch_size
         val_freq = max(1, steps_per_epoch // 3)
@@ -452,63 +452,35 @@ def _run_worker(args):
 
         # ----- NaNTolerantCallback: DSAI callback but skip NaN termination -----
         class NaNTolerantCallback(BatchAccuracyCallback):
-            """BatchAccuracyCallback that logs NaN validation loss but does NOT
-            terminate training. Needed for batch_size=1 where validation loss
-            can be NaN while model predictions remain valid."""
+            """BatchAccuracyCallback that tolerates NaN validation loss.
+
+            Required for batch_size=1 where BatchNorm moving variance is
+            degenerate. Instead of terminating training on NaN (parent
+            behavior), records 999.0 and continues.
+
+            Delegates to parent for all other logic (validation, early
+            stopping, model saving, LR scheduling) so it automatically
+            tracks changes to BatchAccuracyCallback.
+            """
             def run_validation(self):
-                val_loss_total = 0
-                val_accuracy_total = 0
-                num_batches = 0
-                try:
-                    for x_val, y_val in self.val_data:
-                        y_val = tf.cast(y_val, dtype=tf.int32)
-                        val_logits = self._model(x_val, training=False)
-                        num_classes = val_logits.shape[-1]
-                        val_logits_flat = tf.reshape(val_logits, [-1, num_classes])
-                        y_val_flat = tf.reshape(y_val, [-1])
-                        predictions = tf.cast(
-                            tf.argmax(val_logits_flat, axis=1), tf.int32)
-                        val_loss = self.loss_function(y_val_flat, val_logits_flat)
-                        val_accuracy = tf.reduce_mean(
-                            tf.cast(tf.equal(predictions, y_val_flat), tf.float32))
-                        loss_val = tf.reduce_mean(val_loss).numpy()
-                        if not (np.isnan(loss_val) or np.isinf(loss_val)):
-                            val_loss_total += loss_val
-                        val_accuracy_total += val_accuracy.numpy()
-                        num_batches += 1
-                    val_loss_avg = val_loss_total / max(num_batches, 1)
-                    val_accuracy_avg = val_accuracy_total / max(num_batches, 1)
-                    # Log NaN but do NOT stop training
-                    if np.isnan(val_loss_avg) or np.isinf(val_loss_avg):
-                        print(f"  [WARNING] Validation loss is NaN/Inf — continuing training")
-                        val_loss_avg = 999.0  # Replace NaN for tracking
-                    self.validation_losses.append(val_loss_avg)
-                    self.validation_accuracies.append(val_accuracy_avg)
-                    if self.logger:
-                        self.logger.log_validation_metrics(
-                            val_logits, y_val,
-                            loss=val_loss_avg, accuracy=val_accuracy_avg)
-                    if self.early_stopping:
-                        current = (val_loss_avg if self.monitor == 'val_loss'
-                                   else val_accuracy_avg)
-                        if current is None:
-                            return
-                        if self.monitor_op(current, self.best):
-                            self.best = current
-                            self.wait = 0
-                            if self.save_best_model:
-                                tf.keras.models.save_model(
-                                    self._model, self.save_path,
-                                    save_format='tf')
-                        else:
-                            self.wait += 1
-                            if self.wait >= self.es_patience:
-                                self.stopped_epoch = self.current_epoch
-                                self._model.stop_training = True
-                except Exception as e:
-                    if self.logger:
-                        self.logger.log_error(f"Validation failed: {e}")
-                    raise
+                prev_stop = self._model.stop_training
+                prev_n = len(self.validation_losses)
+
+                super().run_validation()
+
+                # Parent terminates training on NaN/Inf and returns early
+                # without recording metrics.  Detect this and undo it.
+                nan_triggered = (
+                    self._model.stop_training
+                    and not prev_stop
+                    and len(self.validation_losses) == prev_n
+                )
+                if nan_triggered:
+                    self._model.stop_training = False
+                    self.validation_losses.append(999.0)
+                    self.validation_accuracies.append(0.0)
+                    print(f"  [NaN-tolerant] Validation loss NaN/Inf at step "
+                          f"{self.global_step} — continuing training")
 
         # ----- PatienceBasedLRCallback: DSAI validation + main LR schedule -----
         class PatienceBasedLRCallback(NaNTolerantCallback):
@@ -914,14 +886,16 @@ def _run_worker(args):
                 return [callback, keras.callbacks.TerminateOnNaN()]
 
             def _compile_model(self, model):
-                """Use main's Adam(lr=0.0005) with default epsilon."""
+                """Use main's Adam optimizer with metadata-driven LR and epsilon."""
                 model.compile(
-                    optimizer=keras.optimizers.Adam(learning_rate=0.0005),
+                    optimizer=keras.optimizers.Adam(
+                        learning_rate=self.learning_rate,
+                        epsilon=self.optimizer_epsilon),
                     loss=self.loss_function,
                     metrics=["accuracy"],
                 )
-                print("  [MainStyleFullTrainer] Compiled with Adam "
-                      "lr=0.0005, default epsilon")
+                print(f"  [MainStyleFullTrainer] Compiled with Adam "
+                      f"lr={self.learning_rate}, epsilon={self.optimizer_epsilon}")
 
             def _train_model(self, model, callbacks):
                 """Main's model.fit() — no steps_per_epoch."""
@@ -964,6 +938,10 @@ def _run_worker(args):
         result["train_time_s"] = round(time.time() - t0, 1)
         print(f"[worker:{experiment_name}] Training finished in "
               f"{result['train_time_s']}s")
+
+        # Release Logger file handles (prevents locked files on Windows)
+        if hasattr(trainer, 'logger') and trainer.logger:
+            trainer.logger.close()
 
         # ----- Repair NaN BatchNorm statistics and save final model -----
         # batch_size=1 corrupts BatchNorm moving_variance (single-sample
@@ -1190,6 +1168,9 @@ def _orchestrate(args):
     csv_path = os.path.join(results_dir, "ablation_comparison.csv")
     _generate_csv(csv_path, all_results, dataset)
 
+    # Collect confusion matrices into results dir
+    _collect_confusion_matrices(results_dir, experiments, all_results)
+
     # Print summary
     _print_summary(all_results, experiments, dataset, timestamp)
 
@@ -1218,6 +1199,59 @@ def _generate_csv(csv_path: str, all_results: dict, dataset: str) -> None:
                 res.get("train_time_s", ""),
             ])
     print(f"\nCSV saved: {csv_path}")
+
+
+def _collect_confusion_matrices(results_dir: str, experiments: list,
+                                all_results: dict) -> None:
+    """Copy per-experiment confusion matrices to results dir and build grid."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.image as mpimg
+
+    collected = []
+    for exp_name in experiments:
+        exp_dir = os.path.join(results_dir, exp_name)
+        src = os.path.join(exp_dir, "confusion_matrix_DeepLabV3_plus.png")
+        if os.path.isfile(src):
+            dst = os.path.join(results_dir, f"cm_{exp_name}.png")
+            shutil.copy2(src, dst)
+            collected.append((exp_name, dst))
+
+    if not collected:
+        print("\n  No confusion matrix figures found.")
+        return
+
+    print(f"\nCollected {len(collected)} confusion matrices -> {results_dir}")
+    for name, path in collected:
+        print(f"  cm_{name}.png")
+
+    # Build combined grid figure
+    n = len(collected)
+    ncols = min(n, 4)
+    nrows = (n + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(7 * ncols, 6 * nrows))
+    if nrows == 1 and ncols == 1:
+        axes = np.array([axes])
+    axes = np.atleast_2d(axes)
+
+    for idx, (name, path) in enumerate(collected):
+        r, c = divmod(idx, ncols)
+        img = mpimg.imread(path)
+        axes[r, c].imshow(img)
+        axes[r, c].set_title(name, fontsize=11, fontweight='bold')
+        axes[r, c].axis('off')
+
+    # Hide unused subplots
+    for idx in range(n, nrows * ncols):
+        r, c = divmod(idx, ncols)
+        axes[r, c].axis('off')
+
+    plt.tight_layout()
+    grid_path = os.path.join(results_dir, "confusion_matrices_all.png")
+    plt.savefig(grid_path, dpi=150)
+    plt.close()
+    print(f"  Combined grid -> confusion_matrices_all.png")
 
 
 def _print_summary(all_results: dict, experiments: list,
@@ -1274,9 +1308,10 @@ def _print_summary(all_results: dict, experiments: list,
         gap = main_all_acc - baseline_acc
         print(f"\nTotal gap (main_all - dsai_baseline): {gap:+.1f}%")
 
-        # Find largest individual contributor
+        # Find largest individual contributor (by magnitude)
         best_exp = None
         best_delta = 0
+        best_abs = 0
         for exp_name in experiments:
             if exp_name in ("dsai_baseline", "main_all"):
                 continue
@@ -1284,14 +1319,15 @@ def _print_summary(all_results: dict, experiments: list,
             acc = res.get("overall_accuracy")
             if acc is not None:
                 delta = acc - baseline_acc
-                if delta > best_delta:
+                if abs(delta) > best_abs:
+                    best_abs = abs(delta)
                     best_delta = delta
                     best_exp = exp_name
 
-        if best_exp:
-            pct_explained = (best_delta / gap * 100) if gap > 0 else 0
+        if best_exp and gap != 0:
+            pct_explained = (best_delta / gap * 100)
             print(f"Largest individual contributor: {best_exp} "
-                  f"(+{best_delta:.1f}%, explains {pct_explained:.0f}% of gap)")
+                  f"({best_delta:+.1f}%, explains {pct_explained:.0f}% of gap)")
 
     print(f"{'=' * 80}")
 

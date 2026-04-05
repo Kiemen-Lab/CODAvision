@@ -551,6 +551,11 @@ def _orchestrate(args):
                              class_indices=display_indices)
 
     # ------------------------------------------------------------------
+    # Step 4b: Collect confusion matrices
+    # ------------------------------------------------------------------
+    _collect_confusion_matrices(results_dir, case_results, epoch_counts, framework)
+
+    # ------------------------------------------------------------------
     # Step 5: Generate comparison plot
     # ------------------------------------------------------------------
     _generate_comparison_plot(results_dir, case_results, epoch_counts, framework,
@@ -690,6 +695,61 @@ def _generate_summary_report(results_dir, case_results, epoch_counts, timestamp,
     for line in lines:
         print(line)
     print(f"\nReport saved to {report_path}")
+
+
+def _collect_confusion_matrices(results_dir: str, case_results: dict,
+                                epoch_counts: list, framework: str) -> None:
+    """Copy per-epoch confusion matrices to results dir and build a grid figure."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import matplotlib.image as mpimg
+
+    collected = []
+    for ec in sorted(epoch_counts):
+        case_name = f"epochs_{ec:03d}"
+        case_dir = os.path.join(results_dir, case_name)
+        src = os.path.join(case_dir, "confusion_matrix_DeepLabV3_plus.png")
+        if os.path.isfile(src):
+            dst = os.path.join(results_dir, f"cm_{case_name}.png")
+            shutil.copy2(src, dst)
+            collected.append((f"{ec} epochs", dst))
+
+    if not collected:
+        print("\n  No confusion matrix figures found.")
+        return
+
+    print(f"\nCollected {len(collected)} confusion matrices -> {results_dir}")
+    for title, path in collected:
+        print(f"  {os.path.basename(path)}")
+
+    # Build combined grid figure
+    n = len(collected)
+    ncols = min(n, 4)
+    nrows = (n + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(7 * ncols, 6 * nrows))
+    if nrows == 1 and ncols == 1:
+        axes = np.array([axes])
+    axes = np.atleast_2d(axes)
+
+    for idx, (title, path) in enumerate(collected):
+        r, c = divmod(idx, ncols)
+        img = mpimg.imread(path)
+        axes[r, c].imshow(img)
+        axes[r, c].set_title(f"{framework} \u2014 {title}",
+                             fontsize=11, fontweight='bold')
+        axes[r, c].axis('off')
+
+    # Hide unused subplots
+    for idx in range(n, nrows * ncols):
+        r, c = divmod(idx, ncols)
+        axes[r, c].axis('off')
+
+    plt.tight_layout()
+    grid_path = os.path.join(results_dir, "confusion_matrices_all.png")
+    plt.savefig(grid_path, dpi=150)
+    plt.close()
+    print(f"  Combined grid -> confusion_matrices_all.png")
 
 
 def _extract_accuracy(result):
