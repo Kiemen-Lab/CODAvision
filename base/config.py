@@ -46,7 +46,7 @@ class ModelDefaults:
 
     # Training defaults
     BATCH_SIZE = 8  # Default batch size for training
-    LEARNING_RATE = 1e-4  # Default initial learning rate
+    LEARNING_RATE = 5e-4  # Default initial learning rate
     EPOCHS = 8  # Default number of training epochs
 
     # Optimizer defaults

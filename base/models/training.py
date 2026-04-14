@@ -9,6 +9,7 @@ https://keras.io/examples/vision/deeplabv3_plus/
 import time
 import pickle
 import os
+import random
 import warnings
 import platform
 from glob import glob
@@ -409,21 +410,24 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         """
         Called at the end of each epoch.
-        Reduces learning rate every epoch to match MATLAB piecewise schedule.
+        Reduces learning rate after lr_patience epochs without reduction.
 
         Args:
             epoch: Current epoch number
             logs: Dictionary of logs (unused)
         """
-        # MATLAB-style: Drop LR every epoch unconditionally (piecewise schedule)
-        old_lr = float(self._model.optimizer.learning_rate.numpy())
-        new_lr = old_lr * self.lr_factor
-        self._model.optimizer.learning_rate.assign(new_lr)
+        self.epoch_wait += 1
+        if self.epoch_wait > self.lr_patience and self.reduce_lr:
+            old_lr = float(self._model.optimizer.learning_rate.numpy())
+            new_lr = old_lr * self.lr_factor
+            self._model.optimizer.learning_rate.assign(new_lr)
 
-        if self.verbose > 0 and self.logger:
-            self.logger.logger.debug(
-                f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr:.6f} to {new_lr:.6f}"
-            )
+            if self.verbose > 0 and self.logger:
+                self.logger.logger.debug(
+                    f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr:.6f} to {new_lr:.6f}"
+                )
+
+            self.epoch_wait = 0
 
     def on_train_end(self, logs=None):
         """
@@ -854,6 +858,27 @@ class SegmentationModelTrainer:
             reg_callback = RegularizationLossCallback(logger=self.logger)
             callbacks.append(reg_callback)
 
+        # Add diagnostic instrumentation if BN_DIAGNOSTICS env var is set.
+        # Inert (not added) on production training paths.
+        from base.models.diagnostics import (
+            BNDiagnosticCallback,
+            diagnostics_enabled,
+        )
+        if diagnostics_enabled():
+            diag_callback = BNDiagnosticCallback(
+                val_dataset=self.val_dataset,
+                loss_function=self.loss_function,
+                num_classes=self.num_classes,
+                log_dir=os.path.join(self.model_path, "logs"),
+                log_every=self.validation_frequency,
+                logger=self.logger,
+            )
+            callbacks.append(diag_callback)
+            if self.logger:
+                self.logger.logger.info(
+                    "BN_DIAGNOSTICS=1 — BNDiagnosticCallback attached"
+                )
+
         return callbacks
 
     def _compile_model(self, model: keras.Model):
@@ -897,11 +922,23 @@ class SegmentationModelTrainer:
         # Start timing
         start_time = time.time()
 
-        # Set seed if provided for reproducibility
+        # Set seed if provided for reproducibility. Note: we intentionally do
+        # NOT call tf.config.experimental.enable_op_determinism() because TF
+        # 2.10 lacks a deterministic GPU kernel for UnsortedSegmentSum (used
+        # by sparse_categorical_crossentropy inside WeightedSparseCategorical-
+        # Crossentropy), which causes training to crash on the first gradient
+        # step. Seeds still give deterministic data shuffling, weight init,
+        # and dropout, which is sufficient for variance characterization;
+        # we accept floating-point non-determinism from unbranded GPU ops.
         if seed is not None:
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            random.seed(seed)
             np.random.seed(seed)
             tf.random.set_seed(seed)
-            module_logger.info(f"Random seed set to {seed} for reproducibility")
+            module_logger.info(
+                f"Random seed set to {seed} for reproducibility "
+                "(data shuffling, weight init; GPU ops remain non-deterministic)"
+            )
 
         # Prepare data with shuffling for training
         self._prepare_data(seed=seed)
@@ -1027,7 +1064,8 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
                 module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
                 optimizer = keras.optimizers.Adam(
                     learning_rate=self.learning_rate,
-                    epsilon=self.optimizer_epsilon
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
             else:
                 # AdamW provides weight decay (different from L2 regularization)
@@ -1035,13 +1073,15 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
                 optimizer = tf.keras.optimizers.AdamW(
                     learning_rate=self.learning_rate,
                     weight_decay=self.l2_regularization_weight,
-                    epsilon=self.optimizer_epsilon
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
             optimizer = keras.optimizers.Adam(
                 learning_rate=self.learning_rate,
-                epsilon=self.optimizer_epsilon
+                epsilon=self.optimizer_epsilon,
+                global_clipnorm=1.0,
             )
 
         model.compile(
@@ -1129,20 +1169,23 @@ class UNetTrainer(SegmentationModelTrainer):
                 module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
                 optimizer = keras.optimizers.Adam(
                     learning_rate=learning_rate,
-                    epsilon=self.optimizer_epsilon
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
             else:
                 # AdamW provides weight decay (different from L2 regularization)
                 optimizer = tf.keras.optimizers.AdamW(
                     learning_rate=learning_rate,
                     weight_decay=self.l2_regularization_weight,
-                    epsilon=self.optimizer_epsilon
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
             optimizer = keras.optimizers.Adam(
                 learning_rate=learning_rate,
-                epsilon=self.optimizer_epsilon
+                epsilon=self.optimizer_epsilon,
+                global_clipnorm=1.0,
             )
 
         model.compile(
@@ -1217,7 +1260,11 @@ class UNetTrainer(SegmentationModelTrainer):
         return history_fine_tuning
 
 
-def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> None:
+def train_segmentation_model_cnns(
+    pthDL: str,
+    retrain_model: bool = False,
+    seed: Optional[int] = None,
+) -> None:
     """
     Train a segmentation model with the specified configuration.
 
@@ -1230,6 +1277,8 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
     Args:
         pthDL: Path to the directory containing model data
         retrain_model: Whether to retrain an existing model
+        seed: Optional random seed for reproducibility. When set, enables
+            deterministic data shuffling and (for TF) op-level determinism.
 
     Returns:
         None
@@ -1291,7 +1340,7 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
                 trainer = UNetTrainer(pthDL)
 
         # Train the model
-        trainer.train()
+        trainer.train(seed=seed)
 
         module_logger.info(f"Successfully trained {model_type} model with {framework} framework.")
 

@@ -19,6 +19,7 @@ Date: 2025-11-12
 """
 
 import os
+import random
 import sys
 import time
 import pickle
@@ -270,7 +271,7 @@ class PyTorchSegmentationTrainer:
         )
         self.early_stopping_patience = self.metadata.get('es_patience', 6)
         self.lr_reduction_patience = self.metadata.get('lr_patience', 1)
-        self.lr_reduction_factor = self.metadata.get('lr_factor', 0.5)
+        self.lr_reduction_factor = self.metadata.get('lr_factor', ModelDefaults.LR_FACTOR)
         self.min_lr = self.metadata.get('min_lr', 1e-7)
 
         # Advanced optimization settings
@@ -492,7 +493,8 @@ class PyTorchSegmentationTrainer:
         image_list: List[str],
         batch_size: int = 4,
         num_workers: Optional[int] = None,
-        validation_split: float = 0.2
+        validation_split: float = 0.2,
+        seed: Optional[int] = None,
     ) -> Tuple[DataLoader, DataLoader]:
         """
         Create PyTorch DataLoaders for training and validation.
@@ -512,9 +514,10 @@ class PyTorchSegmentationTrainer:
         if num_workers is None:
             num_workers = self._get_default_num_workers()
 
-        # Split into train and validation
-        np.random.seed(42)  # For reproducibility
-        shuffled_indices = np.random.permutation(len(image_list))
+        # Split into train and validation (deterministic shuffle)
+        split_seed = seed if seed is not None else 42
+        rng = np.random.default_rng(split_seed)
+        shuffled_indices = rng.permutation(len(image_list))
         val_size = int(len(image_list) * validation_split)
 
         val_indices = shuffled_indices[:val_size]
@@ -859,7 +862,8 @@ class PyTorchSegmentationTrainer:
         learning_rate: float = None,
         validation_split: float = 0.2,
         num_workers: Optional[int] = None,
-        resume_from_checkpoint: Optional[str] = None
+        resume_from_checkpoint: Optional[str] = None,
+        seed: Optional[int] = None,
     ) -> Dict:
         """
         Main training method with full feature set.
@@ -872,6 +876,8 @@ class PyTorchSegmentationTrainer:
             num_workers: Number of data loading workers.
                 If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
             resume_from_checkpoint: Optional path to checkpoint to resume from
+            seed: Optional random seed for reproducibility (propagates to numpy,
+                torch, CUDA, and the train/val split in create_dataloaders).
 
         Returns:
             Training history dictionary
@@ -883,6 +889,22 @@ class PyTorchSegmentationTrainer:
             batch_size = self.batch_size
         if learning_rate is None:
             learning_rate = self.learning_rate
+
+        # Set seed for reproducibility. Note: cudnn.deterministic is left at
+        # its default (False) to avoid the same class of slowdowns and
+        # kernel-availability errors that force disabling op determinism on
+        # the TF side. Seeds still cover data shuffling, weight init, and
+        # dropout, which is sufficient for variance characterization.
+        if seed is not None:
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            random.seed(seed)
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            self.logger.logger.info(
+                f"Random seed set to {seed} for reproducibility "
+                "(data shuffling, weight init; GPU ops remain non-deterministic)"
+            )
 
         self.logger.logger.info("=" * 50)
         self.logger.logger.info("Starting PyTorch Training")
@@ -929,7 +951,8 @@ class PyTorchSegmentationTrainer:
 
         # Create dataloaders
         train_dataloader, val_dataloader = self.create_dataloaders(
-            annotations, image_list, batch_size, num_workers, validation_split
+            annotations, image_list, batch_size, num_workers, validation_split,
+            seed=seed,
         )
 
         # Resume from checkpoint if specified
@@ -975,6 +998,12 @@ class PyTorchSegmentationTrainer:
 
                     # Optimizer step (with gradient accumulation)
                     if (batch_idx + 1) % self.gradient_accumulation_steps == 0:
+                        # Unscale gradients before clipping so clip_grad_norm_
+                        # operates on real gradient magnitudes.
+                        self.scaler.unscale_(self.optimizer)
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), max_norm=1.0
+                        )
                         self.scaler.step(self.optimizer)
                         self.scaler.update()
                         self.optimizer.zero_grad()
@@ -991,6 +1020,13 @@ class PyTorchSegmentationTrainer:
 
                     # Optimizer step (with gradient accumulation)
                     if (batch_idx + 1) % self.gradient_accumulation_steps == 0:
+                        # Clip gradients to max L2 norm of 1.0 (matches TF
+                        # global_clipnorm=1.0) — bounds per-update weight
+                        # movement so a single bad batch cannot destabilize
+                        # BN running stats.
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), max_norm=1.0
+                        )
                         self.optimizer.step()
                         self.optimizer.zero_grad()
 
@@ -1087,7 +1123,8 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
         validation_split: float = 0.2,
         num_workers: Optional[int] = None,
         resume_from_checkpoint: Optional[str] = None,
-        freeze_encoder: bool = True
+        freeze_encoder: bool = True,
+        seed: Optional[int] = None,
     ) -> Dict:
         """
         Train DeepLabV3+ model with specific configuration.
@@ -1101,6 +1138,7 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
                 If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
             resume_from_checkpoint: Optional path to checkpoint to resume from
             freeze_encoder: Whether to freeze encoder weights (default: True)
+            seed: Optional random seed for reproducibility.
 
         Returns:
             Training history dictionary
@@ -1126,7 +1164,8 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
             learning_rate=learning_rate,
             validation_split=validation_split,
             num_workers=num_workers,
-            resume_from_checkpoint=resume_from_checkpoint
+            resume_from_checkpoint=resume_from_checkpoint,
+            seed=seed,
         )
 
 
