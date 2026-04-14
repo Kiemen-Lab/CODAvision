@@ -48,12 +48,19 @@ CONDITION_WORKTREES: Dict[str, str] = {
     "lr_fix":   r"C:\Users\tnewton\git\CODAvision_phase0_lr_fix",
     # Phase 5
     "clipping": r"C:\Users\tnewton\git\CODAvision_phase5_clipping",
+    # Phase 6 (PyTorch framework-parity fixes, on top of DSAI/clipping)
+    "fix1":     r"C:\Users\tnewton\git\CODAvision_phase6_fix1",
+    "fix2":     r"C:\Users\tnewton\git\CODAvision_phase6_fix2",
+    "fix12":    r"C:\Users\tnewton\git\CODAvision_phase6_fix12",
 }
 
 CONDITION_BRANCHES: Dict[str, str] = {
     "baseline": "phase0_baseline",
     "lr_fix":   "phase0_lr_fix",
     "clipping": "phase5_clipping",
+    "fix1":     "phase6_fix1",
+    "fix2":     "phase6_fix2",
+    "fix12":    "phase6_fix12",
 }
 
 # Cell definitions: (dataset, framework, tile_mode, batch_size, data_path)
@@ -95,6 +102,13 @@ PHASES: Dict[str, Dict] = {
         "description": "Gradient clipping validation — 4 cells × 3 seeds × clipping",
         "cells": list(CELLS.keys()),
         "conditions": ["clipping"],
+        "seeds": [1, 2, 3],
+        "bn_diagnostics": False,
+    },
+    "phase6": {
+        "description": "PyTorch framework-parity fixes — 2 PT cells × 3 seeds × {fix1, fix2, fix12}",
+        "cells": ["lungs_pt", "liver_pt"],
+        "conditions": ["fix1", "fix2", "fix12"],
         "seeds": [1, 2, 3],
         "bn_diagnostics": False,
     },
