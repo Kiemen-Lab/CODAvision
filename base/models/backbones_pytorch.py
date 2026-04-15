@@ -522,9 +522,14 @@ class DeepLabV3PlusModel(nn.Module):
         self.encoder_layer3 = resnet50.layer3
         self.encoder_layer4 = resnet50.layer4  # Output channels: 2048
 
-        # Freeze encoder initially (matching TensorFlow behavior)
-        for param in self.parameters():
-            param.requires_grad = False
+        # NOTE: encoder is intentionally NOT frozen here. The previous
+        # comment "matching TensorFlow behavior" was incorrect — the TF
+        # DeepLabV3+ path in backbones_tf.py:199-204 does NOT freeze the
+        # ResNet50 encoder; it fine-tunes end-to-end with the decoder.
+        # Phase 0/5 lr_investigation showed lungs/pt was 8% behind lungs/tf
+        # (84.0% vs 92.1%) primarily because of this asymmetry; with the
+        # encoder frozen, the decoder couldn't learn histology-specific
+        # features for minority classes (vasculature, collagen).
 
         # ASPP module
         self.aspp = ASPPModule(in_channels=2048, out_channels=256)

@@ -499,50 +499,79 @@ class PyTorchSegmentationTrainer:
         """
         Create PyTorch DataLoaders for training and validation.
 
+        Uses the held-out validation tile directory created by the tile
+        generator (validation/im/, validation/label/) rather than re-splitting
+        the training tiles. This matches the TensorFlow training path
+        (DeepLabV3PlusTrainer._prepare_data) and ensures both frameworks
+        train on identical data and evaluate on the same held-out set.
+
         Args:
             annotations: Dictionary of annotations
-            image_list: List of image identifiers
+            image_list: List of training image identifiers (from train_list.pkl)
             batch_size: Batch size for training
             num_workers: Number of worker processes for data loading.
                 If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
-            validation_split: Fraction of data for validation
+            validation_split: Deprecated. The trainer now reads validation
+                tiles from the pre-split validation/ directory; this kwarg
+                is preserved only for backward compatibility and is ignored.
+            seed: Optional random seed for reproducibility (no longer affects
+                the train/val split since the split is now disk-based).
 
         Returns:
             Tuple of (train_dataloader, val_dataloader)
+
+        Raises:
+            FileNotFoundError: if validation/im/ does not contain any tile
+                files. The tile generator (create_training_tiles) must have
+                run before training.
         """
         # Resolve None to platform-aware default
         if num_workers is None:
             num_workers = self._get_default_num_workers()
 
-        # Split into train and validation (deterministic shuffle)
-        split_seed = seed if seed is not None else 42
-        rng = np.random.default_rng(split_seed)
-        shuffled_indices = rng.permutation(len(image_list))
-        val_size = int(len(image_list) * validation_split)
-
-        val_indices = shuffled_indices[:val_size]
-        train_indices = shuffled_indices[val_size:]
-
-        train_image_list = [image_list[i] for i in train_indices]
-        val_image_list = [image_list[i] for i in val_indices]
+        if validation_split != 0.2:
+            warnings.warn(
+                "validation_split is deprecated and ignored — the PyTorch "
+                "trainer now uses the pre-split validation/ directory "
+                "created by the tile generator (matches the TF path). To "
+                "control the split, configure the tile generator's "
+                "nvalidate parameter instead.",
+                DeprecationWarning, stacklevel=2,
+            )
 
         # Detect file format from model metadata or existing files
         file_format = self._detect_tile_format()
 
+        # Discover validation tile IDs by globbing the held-out val directory
+        val_im_dir = os.path.join(self.model_path, 'validation', 'im')
+        val_glob_pattern = os.path.join(val_im_dir, f'*{file_format}')
+        val_tile_files = sorted(glob(val_glob_pattern))
+        if not val_tile_files:
+            raise FileNotFoundError(
+                f"No validation tiles found at {val_glob_pattern}. The tile "
+                "generator (base.data.tiles.create_training_tiles) must run "
+                "before training. If you intended to re-split the training "
+                "tiles 80/20 internally (legacy behavior), revert to a "
+                "version of this file prior to the framework-parity fix."
+            )
+        val_image_list = [
+            os.path.splitext(os.path.basename(p))[0] for p in val_tile_files
+        ]
+
         # Build full paths to images and masks
-        def build_paths(image_ids):
+        def build_paths(image_ids, subdir):
             image_paths = [
-                os.path.join(self.model_path, 'training', 'im', f'{img_id}{file_format}')
+                os.path.join(self.model_path, subdir, 'im', f'{img_id}{file_format}')
                 for img_id in image_ids
             ]
             mask_paths = [
-                os.path.join(self.model_path, 'training', 'label', f'{img_id}{file_format}')
+                os.path.join(self.model_path, subdir, 'label', f'{img_id}{file_format}')
                 for img_id in image_ids
             ]
             return image_paths, mask_paths
 
-        train_image_paths, train_mask_paths = build_paths(train_image_list)
-        val_image_paths, val_mask_paths = build_paths(val_image_list)
+        train_image_paths, train_mask_paths = build_paths(image_list, 'training')
+        val_image_paths, val_mask_paths = build_paths(val_image_list, 'validation')
 
         # Validate that files exist
         self._validate_tile_files(train_image_paths, train_mask_paths, "training")
@@ -583,7 +612,10 @@ class PyTorchSegmentationTrainer:
             persistent_workers=(num_workers > 0)
         )
 
-        self.logger.logger.info(f"Training samples: {len(train_dataset)}, Validation samples: {len(val_dataset)}")
+        self.logger.logger.info(
+            f"Training samples: {len(train_dataset)}, "
+            f"Validation samples: {len(val_dataset)} (held-out from tile generator)"
+        )
         self.logger.logger.info(f"Batch size: {batch_size}, Num workers: {num_workers}")
 
         return train_dataloader, val_dataloader
