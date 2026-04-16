@@ -230,6 +230,19 @@ project/
 - Manual specification: `device='cuda'|'mps'|'cpu'`
 - Configuration: Set `ModelDefaults.PYTORCH_DEVICE` in `base/config.py`
 
+**GPU Selection** (multi-GPU systems):
+- By default, PyTorch uses GPU 0. To target a specific GPU, set environment variables before launching:
+  ```bash
+  # Bash / Linux / macOS
+  CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=2 python CODAvision.py
+
+  # PowerShell (Windows)
+  $env:CUDA_DEVICE_ORDER="PCI_BUS_ID"; $env:CUDA_VISIBLE_DEVICES="2"; python CODAvision.py
+  ```
+- `CUDA_DEVICE_ORDER=PCI_BUS_ID` ensures GPU indices match `nvidia-smi` output (CUDA defaults to `FASTEST_FIRST` ordering)
+- `CUDA_VISIBLE_DEVICES=N` makes only GPU N visible to PyTorch as `cuda:0`
+- Some CLI scripts (`lr_investigation.py`, `run_regression_ablation.py`, `run_version_comparison.py`, `test_epoch_comparison.py`) accept a `--gpu` flag that sets these variables internally
+
 **Performance** (Apple M3 Max, 512×512 images):
 - PyTorch inference: **64 img/s** (9× faster)
 - TensorFlow inference: **7 img/s**
