@@ -1059,7 +1059,7 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
             validation_steps=self.val_steps_per_epoch,
             callbacks=callbacks,
             verbose=1,
-            epochs=8  # Train for 8 epochs
+            epochs=ModelDefaults.EPOCHS
         )
 
         return history
