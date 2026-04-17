@@ -54,7 +54,7 @@ class ModelDefaults:
     OPTIMIZER_EPSILON = 1e-8  # Epsilon value for Adam and AdamW optimizers (for numerical stability)
 
     # Early stopping and learning rate reduction
-    ES_PATIENCE = 6  # Patience for early stopping
+    ES_PATIENCE = 16  # Patience for early stopping
     LR_PATIENCE = 1  # Patience for learning rate reduction
     LR_FACTOR = 0.75  # Factor for learning rate reduction
     MIN_LR = 1e-7  # Minimum learning rate

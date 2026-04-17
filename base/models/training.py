@@ -240,7 +240,7 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         early_stopping: bool = True,
         reduce_lr_on_plateau: bool = True,
         monitor: str = 'val_accuracy',
-        es_patience: int = 6,
+        es_patience: int = ModelDefaults.ES_PATIENCE,
         lr_patience: int = 1,
         lr_factor: float = 0.75,
         verbose: int = 0,
@@ -822,7 +822,7 @@ class SegmentationModelTrainer:
             early_stopping=True,
             reduce_lr_on_plateau=True,
             monitor='val_accuracy',
-            es_patience=6,       # Stop after 6 epochs without improvement
+            es_patience=ModelDefaults.ES_PATIENCE,
             lr_patience=1,       # Reduce LR after 1 epoch without improvement
             lr_factor=0.75,      # Reduce LR to 75% of current value
             verbose=1,
