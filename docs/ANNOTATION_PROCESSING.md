@@ -267,8 +267,7 @@ The parser includes robust error handling for:
 #### Configuration Sources (Priority Order)
 
 1. **Explicit parameter**: Pass `config` to `create_training_tiles()`
-2. **Environment variable**: `CODAVISION_TILE_GENERATION_MODE`
-3. **Config file default**: `ModelDefaults.TILE_GENERATION_MODE` in `base/config.py`
+2. **Config file default**: `ModelDefaults.TILE_GENERATION_MODE` in `base/config.py`
 
 #### Two Predefined Modes
 
@@ -316,15 +315,11 @@ LEGACY_CONFIG = TileGenerationConfig(
 
 #### Setting Configuration
 
-**Via Environment Variable**:
-```bash
-# Use modern mode (default)
-export CODAVISION_TILE_GENERATION_MODE=modern
-python CODAvision.py
-
-# Use legacy mode
-export CODAVISION_TILE_GENERATION_MODE=legacy
-python scripts/non-gui_workflow.py
+**Via config.py**:
+```python
+# In base/config.py
+class ModelDefaults:
+    TILE_GENERATION_MODE = "modern"  # Change to "legacy" if needed
 ```
 
 **Programmatically**:
@@ -781,7 +776,6 @@ for images, labels in train_loader:
 |------|------|--------|-------------|
 | **Model Config** | `base/config.py` | Python | `ModelDefaults.TILE_GENERATION_MODE` |
 | **Tile Config** | `base/data/tiles.py` | Python | `MODERN_CONFIG`, `LEGACY_CONFIG` |
-| **Environment** | Shell | Env Var | `CODAVISION_TILE_GENERATION_MODE` |
 
 ---
 

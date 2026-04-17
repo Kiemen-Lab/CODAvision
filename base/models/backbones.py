@@ -65,7 +65,7 @@ def model_call(
             raise ImportError(
                 "TensorFlow framework requested but not installed. "
                 "Install with: pip install -e . "
-                "Or switch to PyTorch with: export CODAVISION_FRAMEWORK=pytorch"
+                "Or set DEFAULT_FRAMEWORK = 'pytorch' in base/config.py"
             )
 
         from base.models.backbones_tf import DeepLabV3Plus as TFDeepLabV3Plus
@@ -83,7 +83,7 @@ def model_call(
             raise ImportError(
                 "PyTorch framework requested but not installed. "
                 "Install with: pip install -e '.[pytorch]' "
-                "Or switch to TensorFlow with: export CODAVISION_FRAMEWORK=tensorflow"
+                "Or set DEFAULT_FRAMEWORK = 'tensorflow' in base/config.py"
             )
 
         # Check model availability in PyTorch

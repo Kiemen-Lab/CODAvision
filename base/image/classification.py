@@ -52,7 +52,7 @@ class ImageClassifier:
     """
 
 
-    def __init__(self, image_path: str, model_path: str, model_type: str):
+    def __init__(self, image_path: str, model_path: str, model_type: str, output_dir: str = None):
         """
         Initialize the ImageClassifier.
 
@@ -60,10 +60,13 @@ class ImageClassifier:
             image_path: Path to the directory containing images to classify
             model_path: Path to the directory containing the model data
             model_type: Type of model to use for classification
+            output_dir: Optional override for classification output directory.
+                        If None, uses the default path under image_path.
         """
         self.image_path = image_path
         self.model_path = model_path
         self.model_type = model_type
+        self._output_dir_override = output_dir
 
         # Will be initialized later
         self.model = None
@@ -106,8 +109,11 @@ class ImageClassifier:
             # Get standard paths
             self.model_paths = get_model_paths(self.model_path, self.model_type)
 
-            # Set output path
-            self.output_path = os.path.join(self.image_path, f'classification_{self.model_name}_{self.model_type}')
+            # Set output path (use override if provided, otherwise default)
+            if self._output_dir_override:
+                self.output_path = self._output_dir_override
+            else:
+                self.output_path = os.path.join(self.image_path, f'classification_{self.model_name}_{self.model_type}')
 
         except Exception as e:
             raise ValueError(f"Failed to load model data: {e}")
@@ -509,7 +515,7 @@ class ImageClassifier:
         return self.output_path
 
 
-def classify_images(pthim: str, pthDL: str, name: str, color_overlay_HE: bool = True, color_mask: bool = False, disp: bool = True) -> str:
+def classify_images(pthim: str, pthDL: str, name: str, color_overlay_HE: bool = True, color_mask: bool = False, disp: bool = True, output_dir: str = None) -> str:
     """
     Classify images using a trained semantic segmentation model.
 
@@ -520,9 +526,11 @@ def classify_images(pthim: str, pthDL: str, name: str, color_overlay_HE: bool = 
         color_overlay_HE: Whether to create a color overlay on the original image. Defaults to True.
         color_mask: Whether to create a color mask. Defaults to False.
         disp: Whether to display a sample of the results. Defaults to True.
+        output_dir: Optional override for classification output directory.
+                    If None, uses the default path under pthim.
 
     Returns:
         Path to the directory containing classified images
     """
-    classifier = ImageClassifier(pthim, pthDL, name)
+    classifier = ImageClassifier(pthim, pthDL, name, output_dir=output_dir)
     return classifier.classify(color_overlay=color_overlay_HE, color_mask=color_mask, display=disp)

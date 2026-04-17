@@ -34,7 +34,8 @@ class SegmentationModelTester:
     confusion matrices for evaluation.
     """
 
-    def __init__(self, model_path: str, test_annotation_path: str, test_image_path: str):
+    def __init__(self, model_path: str, test_annotation_path: str, test_image_path: str,
+                 classification_output_dir: str = None):
         """
         Initialize the SegmentationModelTester with paths to model and test data.
 
@@ -42,10 +43,13 @@ class SegmentationModelTester:
             model_path: Path to the directory containing model data
             test_annotation_path: Path to the directory containing test annotations
             test_image_path: Path to the directory containing test images
+            classification_output_dir: Optional override for classification output directory.
+                                       If None, uses the default path under test_image_path.
         """
         self.model_path = model_path
         self.test_annotation_path = test_annotation_path
         self.test_image_path = test_image_path
+        self.classification_output_dir = classification_output_dir
 
         self.model_data = None
         self.nblack = None
@@ -121,7 +125,8 @@ class SegmentationModelTester:
                 self.model_type,
                 color_overlay_HE=True,
                 color_mask=False,
-                disp=False  # Don't display images during testing
+                disp=False,  # Don't display images during testing
+                output_dir=self.classification_output_dir
             )
 
             return classified_path
@@ -173,8 +178,16 @@ class SegmentationModelTester:
                     logger.error(f"Error loading prediction for {folder}: {e}")
                     continue
 
+                # Validate dimensions match between ground truth and prediction
+                if ground_truth.shape != prediction_array.shape:
+                    logger.error(
+                        f"Shape mismatch for {folder}: ground_truth {ground_truth.shape} "
+                        f"vs prediction {prediction_array.shape}. Skipping."
+                    )
+                    continue
+
                 # Clean small objects from ground truth
-                for label in range(0, int(ground_truth.max())):
+                for label in range(0, int(ground_truth.max()) + 1):
                     mask = ground_truth == label
                     ground_truth[mask] = 0
                     cleaned_mask = remove_small_objects(mask.astype(bool), min_size=25, connectivity=2)
@@ -364,7 +377,8 @@ class SegmentationModelTester:
             raise ValueError(f"Model testing failed: {e}")
 
 
-def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str, show_fig: bool = True) -> Dict[str, Any]:
+def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str, show_fig: bool = True,
+                            classification_output_dir: str = None) -> Dict[str, Any]:
     """
     Test a segmentation model with the provided paths.
 
@@ -376,9 +390,12 @@ def test_segmentation_model(pthDL: str, pthtest: str, pthtestim: str, show_fig: 
         pthtest: Path to the directory containing test annotations
         pthtestim: Path to the directory containing test images
         show_fig: Whether to display the confusion matrix figure. Defaults to True.
-    
+        classification_output_dir: Optional override for classification output directory.
+                                   If None, uses the default path under pthtestim.
+
     Returns:
         Dictionary containing confusion matrix and performance metrics
     """
-    tester = SegmentationModelTester(pthDL, pthtest, pthtestim)
+    tester = SegmentationModelTester(pthDL, pthtest, pthtestim,
+                                     classification_output_dir=classification_output_dir)
     return tester.test(show_fig=show_fig)

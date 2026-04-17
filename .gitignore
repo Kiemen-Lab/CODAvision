@@ -214,3 +214,6 @@ credentials.json
 *.cer
 *.pfx
 *.p12
+
+# Claude Code local state (memory, plans, settings)
+.claude/

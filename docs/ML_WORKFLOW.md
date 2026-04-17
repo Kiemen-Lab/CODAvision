@@ -105,7 +105,7 @@ project/
 | `big_tile_size` | 10240 | 10000 | Composite tile dimensions (px) |
 | `file_format` | png | tif | Output format |
 
-**Environment Variable**: `CODAVISION_TILE_GENERATION_MODE=modern|legacy`
+**Configuration**: Set `ModelDefaults.TILE_GENERATION_MODE` in `base/config.py`
 
 **Algorithm** (`combine_annotations_into_tiles`):
 1. **Initialize Canvas**: Create 10240×10240 (or 10000×10000) blank composite tile
@@ -228,7 +228,20 @@ project/
 **Device Support**:
 - Auto-detection priority: CUDA > MPS > CPU
 - Manual specification: `device='cuda'|'mps'|'cpu'`
-- Environment override: `CODAVISION_PYTORCH_DEVICE=cuda|mps|cpu`
+- Configuration: Set `ModelDefaults.PYTORCH_DEVICE` in `base/config.py`
+
+**GPU Selection** (multi-GPU systems):
+- By default, PyTorch uses GPU 0. To target a specific GPU, set environment variables before launching:
+  ```bash
+  # Bash / Linux / macOS
+  CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=2 python CODAvision.py
+
+  # PowerShell (Windows)
+  $env:CUDA_DEVICE_ORDER="PCI_BUS_ID"; $env:CUDA_VISIBLE_DEVICES="2"; python CODAvision.py
+  ```
+- `CUDA_DEVICE_ORDER=PCI_BUS_ID` ensures GPU indices match `nvidia-smi` output (CUDA defaults to `FASTEST_FIRST` ordering)
+- `CUDA_VISIBLE_DEVICES=N` makes only GPU N visible to PyTorch as `cuda:0`
+- Some CLI scripts (`lr_investigation.py`, `run_regression_ablation.py`, `run_version_comparison.py`, `test_epoch_comparison.py`) accept a `--gpu` flag that sets these variables internally
 
 **Performance** (Apple M3 Max, 512×512 images):
 - PyTorch inference: **64 img/s** (9× faster)
@@ -236,9 +249,9 @@ project/
 - Recommended batch size: 4 (PyTorch), 2 (TensorFlow)
 
 **Advanced Features**:
-- Mixed Precision (AMP): `CODAVISION_PYTORCH_AMP=1`
-- PyTorch 2.0 Compilation: `CODAVISION_PYTORCH_COMPILE=1`
-- Gradient Accumulation: `CODAVISION_GRADIENT_ACCUMULATION_STEPS=4`
+- Mixed Precision (AMP): Set `ModelDefaults.PYTORCH_AMP = True` in `base/config.py`
+- PyTorch 2.0 Compilation: Set `ModelDefaults.PYTORCH_COMPILE = True` in `base/config.py`
+- Gradient Accumulation: Set `ModelDefaults.GRADIENT_ACCUMULATION_STEPS = 4` in `base/config.py`
 
 **Model Loading** (`base/models/backbones.py:load_model_weights`):
 - Auto-detects format: `.pth` (PyTorch) or `.keras` (TensorFlow)
@@ -295,7 +308,7 @@ Image Loading → Cache (optional) → Shuffle → Batch → Prefetch
 - Batch Size: 8
 - Epochs: 100
 - Validation Frequency: Every **128 iterations** (not epoch-based)
-  - Override: `CODAVISION_VALIDATION_FREQUENCY=<int>`
+  - Configure: `ModelDefaults.VALIDATION_FREQUENCY` in `base/config.py`
   - Guarantees ≥1 validation per training run
 
 **Learning Rate Schedule** (ReduceLROnPlateau):
@@ -496,13 +509,13 @@ visualizer.plot(output_path='results/')
 | Module | Primary Function/Class | Purpose | Key Config Options |
 |--------|------------------------|---------|-------------------|
 | `base/data/annotation.py` | `load_annotation_data()` | Parse XML annotations to pickle | N/A |
-| `base/data/tiles.py` | `create_training_tiles()` | Generate training tiles | `CODAVISION_TILE_GENERATION_MODE`, `config=TileGenerationConfig()` |
+| `base/data/tiles.py` | `create_training_tiles()` | Generate training tiles | `ModelDefaults.TILE_GENERATION_MODE`, `config=TileGenerationConfig()` |
 | `base/image/augmentation.py` | `augment_image()` | Apply augmentations | `rotation`, `scaling`, `hue_shift`, `blur`, `crop_rotations` |
 | `base/tissue_area/threshold.py` | `determine_optimal_TA()` | Tissue area detection | `num_images`, `test_ta_mode` |
 | `base/models/backbones.py` | `model_call()` | Model factory | `name`, `IMAGE_SIZE`, `NUM_CLASSES`, `framework` |
-| `base/models/wrappers.py` | `PyTorchKerasAdapter` | PyTorch-Keras bridge | `device`, `CODAVISION_PYTORCH_DEVICE` |
+| `base/models/wrappers.py` | `PyTorchKerasAdapter` | PyTorch-Keras bridge | `device`, `ModelDefaults.PYTORCH_DEVICE` |
 | `base/data/loaders.py` | `create_training_dataset()` | TensorFlow data pipeline | `batch_size`, `shuffle_buffer_size`, `cache` |
-| `base/models/training.py` | `BatchAccuracyCallback` | TensorFlow training | `CODAVISION_VALIDATION_FREQUENCY`, `learning_rate`, `epochs` |
+| `base/models/training.py` | `BatchAccuracyCallback` | TensorFlow training | `validation_frequency`, `learning_rate`, `epochs` |
 | `base/models/training_pytorch.py` | `DeepLabV3PlusTrainer` | PyTorch training | `validation_frequency`, `learning_rate`, `epochs` |
 | `base/image/classification.py` | `ImageClassifier` | Image classification | `batch_size`, `apply_tissue_mask` |
 | `base/image/segmentation.py` | `semantic_seg()` | Sliding window inference | `image_size`, `batch_size` |
@@ -516,16 +529,19 @@ visualizer.plot(output_path='results/')
 
 ## 9. Configuration Summary
 
-### Environment Variables
-| Variable | Values | Default | Purpose |
-|----------|--------|---------|---------|
-| `CODAVISION_FRAMEWORK` | `pytorch`, `tensorflow` | `tensorflow` | Select ML framework |
-| `CODAVISION_TILE_GENERATION_MODE` | `modern`, `legacy` | `modern` | Tile generation preset |
-| `CODAVISION_VALIDATION_FREQUENCY` | int | 128 | Iterations between validations |
-| `CODAVISION_PYTORCH_DEVICE` | `auto`, `cuda`, `mps`, `cpu` | `auto` | PyTorch device |
-| `CODAVISION_PYTORCH_COMPILE` | `0`, `1` | `0` | Enable PyTorch 2.0 compilation |
-| `CODAVISION_PYTORCH_AMP` | `0`, `1` | `0` | Enable mixed precision training |
-| `CODAVISION_GRADIENT_ACCUMULATION_STEPS` | int | 1 | Gradient accumulation steps |
+### Configuration (`base/config.py:ModelDefaults`)
+
+All framework and training settings are configured in `base/config.py` via the `ModelDefaults` class:
+
+| Setting | Values | Default | Purpose |
+|---------|--------|---------|---------|
+| `DEFAULT_FRAMEWORK` | `"pytorch"`, `"tensorflow"` | `"pytorch"` | Select ML framework |
+| `TILE_GENERATION_MODE` | `"modern"`, `"legacy"` | `"modern"` | Tile generation preset |
+| `VALIDATION_FREQUENCY` | int | 128 | Iterations between validations |
+| `PYTORCH_DEVICE` | `"auto"`, `"cuda"`, `"mps"`, `"cpu"` | `"auto"` | PyTorch device |
+| `PYTORCH_COMPILE` | bool | `False` | Enable PyTorch 2.0 compilation |
+| `PYTORCH_AMP` | bool | `False` | Enable mixed precision training |
+| `GRADIENT_ACCUMULATION_STEPS` | int | 1 | Gradient accumulation steps |
 
 ### Key Hyperparameters (`base/config.py`)
 - `INPUT_SIZE`: 512 (image size)

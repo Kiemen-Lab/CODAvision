@@ -9,6 +9,7 @@ https://keras.io/examples/vision/deeplabv3_plus/
 import time
 import pickle
 import os
+import random
 import warnings
 import platform
 from glob import glob
@@ -65,7 +66,8 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         class_weights: Union[List[float], np.ndarray],
         from_logits: bool = True,
         reduction: str = 'sum_over_batch_size',
-        name: Optional[str] = None
+        name: Optional[str] = None,
+        num_replicas: int = 1
     ):
         """
         Initialize the weighted sparse categorical crossentropy loss.
@@ -75,6 +77,10 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
             from_logits: Whether the predictions are logits
             reduction: Type of reduction to apply to the loss
             name: Name of the loss function
+            num_replicas: Number of replicas in distributed training. When using
+                MirroredStrategy, per-replica losses are summed. This parameter
+                divides the loss to compensate, keeping the effective loss scale
+                consistent regardless of GPU count.
         """
         super().__init__(reduction=reduction, name=name)
 
@@ -84,6 +90,7 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         self.class_weights = weights / weights_sum
 
         self.from_logits = from_logits
+        self.num_replicas = num_replicas
 
     def call(self, y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
         """
@@ -140,7 +147,13 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         )
 
         # Sum all class contributions (MATLAB-style: sum not mean)
-        return tf.reduce_sum(class_losses)
+        total_loss = tf.reduce_sum(class_losses)
+
+        # Compensate for MirroredStrategy summing per-replica losses
+        if self.num_replicas > 1:
+            total_loss = total_loss / tf.cast(self.num_replicas, tf.float32)
+
+        return total_loss
 
     def get_config(self) -> Dict[str, Any]:
         """Get configuration for serialization."""
@@ -148,6 +161,7 @@ class WeightedSparseCategoricalCrossentropy(tf.keras.losses.Loss):
         config.update({
             "class_weights": self.class_weights.numpy().tolist(),
             "from_logits": self.from_logits,
+            "num_replicas": self.num_replicas,
         })
         return config
 
@@ -286,21 +300,6 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
             )
             validation_frequency = new_freq
 
-        # Check for environment variable override
-        env_freq = os.environ.get('CODAVISION_VALIDATION_FREQUENCY')
-        if env_freq:
-            try:
-                validation_frequency = int(env_freq)
-                if logger:
-                    logger.info(
-                        f"Using validation frequency {env_freq} from environment variable"
-                    )
-            except ValueError:
-                if logger:
-                    logger.warning(
-                        f"Invalid CODAVISION_VALIDATION_FREQUENCY value: {env_freq}"
-                    )
-
         super(BatchAccuracyCallback, self).__init__()
         self.logger = logger
         self._model = model
@@ -411,21 +410,24 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         """
         Called at the end of each epoch.
-        Reduces learning rate every epoch to match MATLAB piecewise schedule.
+        Reduces learning rate after lr_patience epochs without reduction.
 
         Args:
             epoch: Current epoch number
             logs: Dictionary of logs (unused)
         """
-        # MATLAB-style: Drop LR every epoch unconditionally (piecewise schedule)
-        old_lr = float(self._model.optimizer.learning_rate.numpy())
-        new_lr = old_lr * self.lr_factor
-        self._model.optimizer.learning_rate.assign(new_lr)
+        self.epoch_wait += 1
+        if self.epoch_wait > self.lr_patience and self.reduce_lr:
+            old_lr = float(self._model.optimizer.learning_rate.numpy())
+            new_lr = old_lr * self.lr_factor
+            self._model.optimizer.learning_rate.assign(new_lr)
 
-        if self.verbose > 0 and self.logger:
-            self.logger.logger.debug(
-                f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr:.6f} to {new_lr:.6f}"
-            )
+            if self.verbose > 0 and self.logger:
+                self.logger.logger.debug(
+                    f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr:.6f} to {new_lr:.6f}"
+                )
+
+            self.epoch_wait = 0
 
     def on_train_end(self, logs=None):
         """
@@ -585,11 +587,16 @@ class SegmentationModelTrainer:
         # GPU information for logging
         self.gpu_info = self._setup_gpu()
 
-        # Initialize distribution strategy for multi-GPU training
-        self.strategy, self.num_gpus = create_distribution_strategy()
-
-        # Initialize model data and parameters
+        # Load model data FIRST so batch_size is available for strategy decision
         self._load_model_data()
+
+        # Initialize distribution strategy for multi-GPU training
+        # Pass batch_size so the strategy can fall back to single-GPU
+        # if per-GPU batch size would be too small for BatchNorm stability
+        self.strategy, self.num_gpus = create_distribution_strategy(
+            batch_size=self.batch_size,
+            min_per_gpu_batch_size=2
+        )
 
     def _setup_gpu(self):
         """
@@ -611,6 +618,15 @@ class SegmentationModelTrainer:
             self.batch_size = self.model_data.get('batch_size', 3)
             self.l2_regularization_weight = self.model_data.get('l2_regularization_weight', 0)  # Default 0 to match MATLAB (no regularization)
             self.use_adamw_optimizer = self.model_data.get('use_adamw_optimizer', False)
+
+            # Extract training hyperparameters with defaults for backward compatibility
+            self.learning_rate = self.model_data.get('learning_rate', ModelDefaults.LEARNING_RATE)
+            self.epochs = self.model_data.get('epochs', ModelDefaults.EPOCHS)
+            self.es_patience = self.model_data.get('es_patience', ModelDefaults.ES_PATIENCE)
+            self.lr_patience = self.model_data.get('lr_patience', ModelDefaults.LR_PATIENCE)
+            self.lr_factor = self.model_data.get('lr_factor', ModelDefaults.LR_FACTOR)
+            self.validation_frequency = self.model_data.get('validation_frequency', ModelDefaults.VALIDATION_FREQUENCY)
+            self.optimizer_epsilon = self.model_data.get('optimizer_epsilon', ModelDefaults.OPTIMIZER_EPSILON)
 
             # Validate L2 regularization weight
             if self.l2_regularization_weight > 1e-3:
@@ -771,10 +787,12 @@ class SegmentationModelTrainer:
         self.class_weights = self._calculate_class_weights(train_masks)
 
         # Create the loss function
+        # Pass num_replicas to compensate for MirroredStrategy summing per-replica losses
         self.loss_function = WeightedSparseCategoricalCrossentropy(
             class_weights=self.class_weights,
             from_logits=True,
-            reduction='sum_over_batch_size'
+            reduction='sum_over_batch_size',
+            num_replicas=self.num_gpus if self.num_gpus > 1 else 1
         )
 
     def _create_model(self) -> keras.Model:
@@ -813,18 +831,28 @@ class SegmentationModelTrainer:
             self.model_path, f"best_model_{self.model_type}.keras"
         )
 
+        # Convert epoch-based patience to validation-based patience
+        validations_per_epoch = max(1, self.train_steps_per_epoch // self.validation_frequency)
+        es_patience_validations = self.es_patience * validations_per_epoch
+        if self.logger:
+            self.logger.logger.info(
+                f"Early stopping: {self.es_patience} epochs = "
+                f"{es_patience_validations} validations "
+                f"({validations_per_epoch} validations/epoch)"
+            )
+
         batch_callback = BatchAccuracyCallback(
             model=model,
             val_data=self.val_dataset,
             loss_function=self.loss_function,
             logger=self.logger,
-            validation_frequency=ModelDefaults.VALIDATION_FREQUENCY,
+            validation_frequency=self.validation_frequency,
             early_stopping=True,
             reduce_lr_on_plateau=True,
             monitor='val_accuracy',
-            es_patience=6,       # Stop after 6 epochs without improvement
-            lr_patience=1,       # Reduce LR after 1 epoch without improvement
-            lr_factor=0.75,      # Reduce LR to 75% of current value
+            es_patience=es_patience_validations,
+            lr_patience=self.lr_patience,
+            lr_factor=self.lr_factor,
             verbose=1,
             save_best_model=True,
             filepath=best_model_path
@@ -839,6 +867,27 @@ class SegmentationModelTrainer:
         if self.l2_regularization_weight and self.l2_regularization_weight > 0:
             reg_callback = RegularizationLossCallback(logger=self.logger)
             callbacks.append(reg_callback)
+
+        # Add diagnostic instrumentation if BN_DIAGNOSTICS env var is set.
+        # Inert (not added) on production training paths.
+        from base.models.diagnostics import (
+            BNDiagnosticCallback,
+            diagnostics_enabled,
+        )
+        if diagnostics_enabled():
+            diag_callback = BNDiagnosticCallback(
+                val_dataset=self.val_dataset,
+                loss_function=self.loss_function,
+                num_classes=self.num_classes,
+                log_dir=os.path.join(self.model_path, "logs"),
+                log_every=self.validation_frequency,
+                logger=self.logger,
+            )
+            callbacks.append(diag_callback)
+            if self.logger:
+                self.logger.logger.info(
+                    "BN_DIAGNOSTICS=1 — BNDiagnosticCallback attached"
+                )
 
         return callbacks
 
@@ -883,11 +932,23 @@ class SegmentationModelTrainer:
         # Start timing
         start_time = time.time()
 
-        # Set seed if provided for reproducibility
+        # Set seed if provided for reproducibility. Note: we intentionally do
+        # NOT call tf.config.experimental.enable_op_determinism() because TF
+        # 2.10 lacks a deterministic GPU kernel for UnsortedSegmentSum (used
+        # by sparse_categorical_crossentropy inside WeightedSparseCategorical-
+        # Crossentropy), which causes training to crash on the first gradient
+        # step. Seeds still give deterministic data shuffling, weight init,
+        # and dropout, which is sufficient for variance characterization;
+        # we accept floating-point non-determinism from unbranded GPU ops.
         if seed is not None:
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            random.seed(seed)
             np.random.seed(seed)
             tf.random.set_seed(seed)
-            module_logger.info(f"Random seed set to {seed} for reproducibility")
+            module_logger.info(
+                f"Random seed set to {seed} for reproducibility "
+                "(data shuffling, weight init; GPU ops remain non-deterministic)"
+            )
 
         # Prepare data with shuffling for training
         self._prepare_data(seed=seed)
@@ -1012,22 +1073,25 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
             if is_metal:
                 module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
                 optimizer = keras.optimizers.Adam(
-                    learning_rate=0.0005,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    learning_rate=self.learning_rate,
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
             else:
                 # AdamW provides weight decay (different from L2 regularization)
                 # weight_decay is typically similar to L2 regularization weight
                 optimizer = tf.keras.optimizers.AdamW(
-                    learning_rate=0.0005,
+                    learning_rate=self.learning_rate,
                     weight_decay=self.l2_regularization_weight,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
             optimizer = keras.optimizers.Adam(
-                learning_rate=0.0005,
-                epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                learning_rate=self.learning_rate,
+                epsilon=self.optimizer_epsilon,
+                global_clipnorm=1.0,
             )
 
         model.compile(
@@ -1059,7 +1123,7 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
             validation_steps=self.val_steps_per_epoch,
             callbacks=callbacks,
             verbose=1,
-            epochs=8  # Train for 8 epochs
+            epochs=self.epochs
         )
 
         return history
@@ -1094,14 +1158,17 @@ class UNetTrainer(SegmentationModelTrainer):
 
         return model
 
-    def _compile_model(self, model: keras.Model, learning_rate: float = 0.001):
+    def _compile_model(self, model: keras.Model, learning_rate: float = None):
         """
         Compile the UNet model.
 
         Args:
             model: The model to compile
-            learning_rate: Learning rate for the optimizer
+            learning_rate: Learning rate for the optimizer (defaults to self.learning_rate)
         """
+        if learning_rate is None:
+            learning_rate = self.learning_rate
+
         # Use AdamW for weight decay or regular Adam with kernel regularizers
         if self.use_adamw_optimizer:
             # Check for Metal device (AdamW has issues on Apple Silicon)
@@ -1112,20 +1179,23 @@ class UNetTrainer(SegmentationModelTrainer):
                 module_logger.warning("AdamW optimizer not fully supported on Metal devices, falling back to Adam")
                 optimizer = keras.optimizers.Adam(
                     learning_rate=learning_rate,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
             else:
                 # AdamW provides weight decay (different from L2 regularization)
                 optimizer = tf.keras.optimizers.AdamW(
                     learning_rate=learning_rate,
                     weight_decay=self.l2_regularization_weight,
-                    epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                    epsilon=self.optimizer_epsilon,
+                    global_clipnorm=1.0,
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
             optimizer = keras.optimizers.Adam(
                 learning_rate=learning_rate,
-                epsilon=ModelDefaults.OPTIMIZER_EPSILON
+                epsilon=self.optimizer_epsilon,
+                global_clipnorm=1.0,
             )
 
         model.compile(
@@ -1148,16 +1218,18 @@ class UNetTrainer(SegmentationModelTrainer):
         Returns:
             Training history from the final phase
         """
+        # Split total epochs between transfer learning phases
+        initial_epochs = max(1, self.epochs // 2)
+        total_epochs = self.epochs
+
         if self.logger:
             self.logger.logger.info('Starting UNet model training...')
-            self.logger.logger.info('Phase 1: Training with frozen encoder layers...')
+            self.logger.logger.info(f'Phase 1: Training with frozen encoder layers ({initial_epochs} epochs)...')
         else:
             module_logger.info('Starting UNet model training...')
-            module_logger.info('Phase 1: Training with frozen encoder layers...')
+            module_logger.info(f'Phase 1: Training with frozen encoder layers ({initial_epochs} epochs)...')
 
         # Initial training phase with frozen encoder
-        initial_epochs = 5
-
         history_initial = model.fit(
             self.train_dataset,
             validation_data=self.val_dataset,
@@ -1169,21 +1241,22 @@ class UNetTrainer(SegmentationModelTrainer):
         )
 
         # Fine-tuning phase with unfrozen encoder
+        fine_tune_epochs = total_epochs - initial_epochs
         if self.logger:
-            self.logger.logger.info('Phase 2: Fine-tuning with unfrozen encoder layers...')
+            self.logger.logger.info(f'Phase 2: Fine-tuning with unfrozen encoder layers ({fine_tune_epochs} more epochs)...')
         else:
-            module_logger.info('Phase 2: Fine-tuning with unfrozen encoder layers...')
+            module_logger.info(f'Phase 2: Fine-tuning with unfrozen encoder layers ({fine_tune_epochs} more epochs)...')
         model = unfreeze_model(model)
 
-        # Recompile with lower learning rate
+        # Recompile with lower learning rate (1/10th of initial)
         # Note: No need to wrap in strategy scope as model was already created within scope
-        self._compile_model(model, learning_rate=0.0001)
+        self._compile_model(model, learning_rate=self.learning_rate / 10)
 
         # Continue training from where we left off
         history_fine_tuning = model.fit(
             self.train_dataset,
             validation_data=self.val_dataset,
-            epochs=10,  # Train for additional epochs
+            epochs=total_epochs,
             initial_epoch=initial_epochs,
             steps_per_epoch=self.train_steps_per_epoch,
             validation_steps=self.val_steps_per_epoch,
@@ -1197,7 +1270,11 @@ class UNetTrainer(SegmentationModelTrainer):
         return history_fine_tuning
 
 
-def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> None:
+def train_segmentation_model_cnns(
+    pthDL: str,
+    retrain_model: bool = False,
+    seed: Optional[int] = None,
+) -> None:
     """
     Train a segmentation model with the specified configuration.
 
@@ -1205,11 +1282,13 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
     configuration, creates the appropriate trainer, and trains the model.
 
     The function automatically detects the framework (TensorFlow or PyTorch) from
-    the CODAVISION_FRAMEWORK environment variable or base/config.py defaults.
+    the DEFAULT_FRAMEWORK setting in base/config.py.
 
     Args:
         pthDL: Path to the directory containing model data
         retrain_model: Whether to retrain an existing model
+        seed: Optional random seed for reproducibility. When set, enables
+            deterministic data shuffling and (for TF) op-level determinism.
 
     Returns:
         None
@@ -1271,10 +1350,11 @@ def train_segmentation_model_cnns(pthDL: str, retrain_model: bool = False) -> No
                 trainer = UNetTrainer(pthDL)
 
         # Train the model
-        trainer.train()
+        trainer.train(seed=seed)
 
         module_logger.info(f"Successfully trained {model_type} model with {framework} framework.")
 
     except Exception as e:
         module_logger.error(f"Error during model training: {e}")
         module_logger.error(f"Traceback:\n{traceback.format_exc()}")
+        raise

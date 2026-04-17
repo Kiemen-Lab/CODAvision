@@ -14,7 +14,6 @@ Key features:
 
 from abc import abstractmethod
 from typing import Optional, Tuple
-import os
 
 import numpy as np
 
@@ -34,8 +33,10 @@ def get_pytorch_device() -> str:
     """
     Auto-detect the best available PyTorch device.
 
-    Checks in order: CUDA → MPS (Apple Silicon) → CPU
-    Can be overridden with CODAVISION_PYTORCH_DEVICE environment variable.
+    Checks ModelDefaults.PYTORCH_DEVICE first. If set to 'auto' (the default),
+    detects in order: CUDA → MPS (Apple Silicon) → CPU.
+
+    To change the device, set ModelDefaults.PYTORCH_DEVICE in base/config.py.
 
     Returns:
         str: Device string ('cuda', 'mps', or 'cpu')
@@ -43,16 +44,17 @@ def get_pytorch_device() -> str:
     if not PYTORCH_AVAILABLE:
         raise ImportError("PyTorch is not installed. Install with: pip install torch torchvision")
 
-    # Check for environment variable override
-    env_device = os.getenv('CODAVISION_PYTORCH_DEVICE', '').lower()
-    if env_device in ['cuda', 'mps', 'cpu']:
-        if env_device == 'cuda' and not torch.cuda.is_available():
+    from base.config import ModelDefaults
+
+    device_setting = ModelDefaults.PYTORCH_DEVICE.lower()
+    if device_setting in ['cuda', 'mps', 'cpu']:
+        if device_setting == 'cuda' and not torch.cuda.is_available():
             print(f"Warning: CUDA requested but not available, falling back to CPU")
             return 'cpu'
-        if env_device == 'mps' and not torch.backends.mps.is_available():
+        if device_setting == 'mps' and not torch.backends.mps.is_available():
             print(f"Warning: MPS requested but not available, falling back to CPU")
             return 'cpu'
-        return env_device
+        return device_setting
 
     # Auto-detect
     if torch.cuda.is_available():
@@ -225,10 +227,12 @@ class ASPPModule(nn.Module):
         super().__init__()
 
         # Global average pooling branch
+        # Note: No BatchNorm here because after AdaptiveAvgPool2d((1,1)) the spatial
+        # dimensions are 1x1, which causes BatchNorm2d to crash with batch_size=1.
+        # The subsequent project layer (after concatenation) already applies BatchNorm.
         self.global_avg_pool = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=True),
-            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)
         )
 
@@ -382,11 +386,15 @@ class DecoderModule(nn.Module):
         x = self.conv1(x)
         x = self.conv2(x)
 
+        # Classification before upsampling to reduce peak memory.
+        # 1x1 conv is a per-pixel linear transform that commutes with bilinear
+        # interpolation, so this is mathematically equivalent. Reduces the
+        # upsampled tensor from 256 channels to num_classes (~5-10), cutting
+        # peak memory ~30x (e.g., 2GB -> 64MB at batch=2, 1024x1024).
+        x = self.classifier(x)
+
         # Final upsampling to original resolution
         x = F.interpolate(x, size=input_size, mode='bilinear', align_corners=False)
-
-        # Classification
-        x = self.classifier(x)
 
         return x
 
@@ -514,9 +522,14 @@ class DeepLabV3PlusModel(nn.Module):
         self.encoder_layer3 = resnet50.layer3
         self.encoder_layer4 = resnet50.layer4  # Output channels: 2048
 
-        # Freeze encoder initially (matching TensorFlow behavior)
-        for param in self.parameters():
-            param.requires_grad = False
+        # NOTE: encoder is intentionally NOT frozen here. The previous
+        # comment "matching TensorFlow behavior" was incorrect — the TF
+        # DeepLabV3+ path in backbones_tf.py:199-204 does NOT freeze the
+        # ResNet50 encoder; it fine-tunes end-to-end with the decoder.
+        # Phase 0/5 lr_investigation showed lungs/pt was 8% behind lungs/tf
+        # (84.0% vs 92.1%) primarily because of this asymmetry; with the
+        # encoder frozen, the decoder couldn't learn histology-specific
+        # features for minority classes (vasculature, collagen).
 
         # ASPP module
         self.aspp = ASPPModule(in_channels=2048, out_channels=256)
@@ -529,6 +542,18 @@ class DeepLabV3PlusModel(nn.Module):
             'imagenet_mean_bgr',
             torch.tensor([103.939, 116.779, 123.68]).view(1, 3, 1, 1)
         )
+
+        # Gradient checkpointing flag (reduces memory usage at cost of compute)
+        self.gradient_checkpointing = False
+
+    def enable_gradient_checkpointing(self):
+        """
+        Enable gradient checkpointing for encoder layers to reduce memory usage.
+
+        Trades compute for memory by not storing intermediate activations in the
+        encoder during the forward pass. Can reduce memory usage by ~40-60%.
+        """
+        self.gradient_checkpointing = True
 
     def preprocess(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -547,6 +572,12 @@ class DeepLabV3PlusModel(nn.Module):
         x = x - self.imagenet_mean_bgr
 
         return x
+
+    def _run_encoder_layer(self, layer, x):
+        """Run a single encoder layer with optional gradient checkpointing."""
+        if self.gradient_checkpointing and self.training:
+            return torch.utils.checkpoint.checkpoint(layer, x, use_reentrant=False)
+        return layer(x)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -569,10 +600,10 @@ class DeepLabV3PlusModel(nn.Module):
         x = self.encoder_relu(x)
         x = self.encoder_maxpool(x)
 
-        x = self.encoder_layer1(x)
-        low_level_feat = self.encoder_layer2(x)  # Stride 4, channels: 512
-        x = self.encoder_layer3(low_level_feat)
-        high_level_feat = self.encoder_layer4(x)  # Stride 16, channels: 2048
+        x = self._run_encoder_layer(self.encoder_layer1, x)
+        low_level_feat = self._run_encoder_layer(self.encoder_layer2, x)  # Stride 4, channels: 512
+        x = self._run_encoder_layer(self.encoder_layer3, low_level_feat)
+        high_level_feat = self._run_encoder_layer(self.encoder_layer4, x)  # Stride 16, channels: 2048
 
         # ASPP
         aspp_out = self.aspp(high_level_feat)  # Stride 16, channels: 256
