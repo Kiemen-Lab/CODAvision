@@ -831,6 +831,16 @@ class SegmentationModelTrainer:
             self.model_path, f"best_model_{self.model_type}.keras"
         )
 
+        # Convert epoch-based patience to validation-based patience
+        validations_per_epoch = max(1, self.train_steps_per_epoch // self.validation_frequency)
+        es_patience_validations = self.es_patience * validations_per_epoch
+        if self.logger:
+            self.logger.logger.info(
+                f"Early stopping: {self.es_patience} epochs = "
+                f"{es_patience_validations} validations "
+                f"({validations_per_epoch} validations/epoch)"
+            )
+
         batch_callback = BatchAccuracyCallback(
             model=model,
             val_data=self.val_dataset,
@@ -840,7 +850,7 @@ class SegmentationModelTrainer:
             early_stopping=True,
             reduce_lr_on_plateau=True,
             monitor='val_accuracy',
-            es_patience=self.es_patience,
+            es_patience=es_patience_validations,
             lr_patience=self.lr_patience,
             lr_factor=self.lr_factor,
             verbose=1,

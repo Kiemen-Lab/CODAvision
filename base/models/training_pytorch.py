@@ -269,7 +269,7 @@ class PyTorchSegmentationTrainer:
         self.validation_frequency = int(
             self.metadata.get('validation_frequency', ModelDefaults.VALIDATION_FREQUENCY)
         )
-        self.early_stopping_patience = self.metadata.get('es_patience', 6)
+        self.early_stopping_patience = self.metadata.get('es_patience', ModelDefaults.ES_PATIENCE)
         self.lr_reduction_patience = self.metadata.get('lr_patience', 1)
         self.lr_reduction_factor = self.metadata.get('lr_factor', ModelDefaults.LR_FACTOR)
         self.min_lr = self.metadata.get('min_lr', 1e-7)
@@ -286,7 +286,7 @@ class PyTorchSegmentationTrainer:
             self.logger.logger.info("Automatic Mixed Precision (AMP) enabled")
 
         self.logger.logger.info(f"Validation frequency: {self.validation_frequency} iterations")
-        self.logger.logger.info(f"Early stopping patience: {self.early_stopping_patience} validations")
+        self.logger.logger.info(f"Early stopping patience: {self.early_stopping_patience} epochs")
         self.logger.logger.info(f"LR reduction patience: {self.lr_reduction_patience} validations")
 
     def _log_cpu_fallback_warning(self):
@@ -1006,6 +1006,14 @@ class PyTorchSegmentationTrainer:
         total_validations = max(1, total_iterations // self.validation_frequency)
         self.logger.logger.info(f"Expected validations: {total_validations}")
 
+        validations_per_epoch = max(1, len(train_dataloader) // self.validation_frequency)
+        es_patience_validations = self.early_stopping_patience * validations_per_epoch
+        self.logger.logger.info(
+            f"Early stopping: {self.early_stopping_patience} epochs = "
+            f"{es_patience_validations} validations "
+            f"({validations_per_epoch} validations/epoch)"
+        )
+
         start_time = time.time()
 
         for epoch in range(epochs):
@@ -1111,10 +1119,11 @@ class PyTorchSegmentationTrainer:
                         self.scheduler.step(val_loss)
 
                     # Early stopping
-                    if validations_without_improvement >= self.early_stopping_patience:
+                    if validations_without_improvement >= es_patience_validations:
                         self.logger.logger.info(
                             f"Early stopping triggered after {validations_without_improvement} "
-                            f"validations without improvement"
+                            f"validations without improvement "
+                            f"(patience: {self.early_stopping_patience} epochs)"
                         )
                         break
 
@@ -1122,7 +1131,7 @@ class PyTorchSegmentationTrainer:
             self.history['train_loss'].append(epoch_loss / batch_count)
 
             # Early stopping break from epoch loop
-            if validations_without_improvement >= self.early_stopping_patience:
+            if validations_without_improvement >= es_patience_validations:
                 break
 
         total_time = time.time() - start_time
