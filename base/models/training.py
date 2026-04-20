@@ -326,7 +326,8 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         self.monitor = monitor
         self.es_patience = es_patience
         self.lr_patience = lr_patience
-        self.original_lr_patience = lr_patience
+        self.lr_wait = 0
+        self.best_val_loss_for_lr = np.Inf
         self.verbose = verbose
 
         if monitor not in ['val_accuracy', 'val_loss']:
@@ -338,7 +339,6 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
         self.monitor_op = np.less if self.mode == 'min' else np.greater
         self.best = np.Inf if self.mode == 'min' else -np.Inf
         self.wait = 0
-        self.epoch_wait = 0
         self.stopped_epoch = 0
         self.lr_factor = lr_factor
 
@@ -408,26 +408,8 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
             self.batch_losses.append(loss)
 
     def on_epoch_end(self, epoch, logs=None):
-        """
-        Called at the end of each epoch.
-        Reduces learning rate after lr_patience epochs without reduction.
-
-        Args:
-            epoch: Current epoch number
-            logs: Dictionary of logs (unused)
-        """
-        self.epoch_wait += 1
-        if self.epoch_wait > self.lr_patience and self.reduce_lr:
-            old_lr = float(self._model.optimizer.learning_rate.numpy())
-            new_lr = old_lr * self.lr_factor
-            self._model.optimizer.learning_rate.assign(new_lr)
-
-            if self.verbose > 0 and self.logger:
-                self.logger.logger.debug(
-                    f"\nEpoch {epoch + 1}: Reducing learning rate from {old_lr:.6f} to {new_lr:.6f}"
-                )
-
-            self.epoch_wait = 0
+        """Called at the end of each epoch."""
+        pass
 
     def on_train_end(self, logs=None):
         """
@@ -541,6 +523,25 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
                             self.logger.logger.debug(
                                 f'\nEpoch {self.current_epoch + 1}: early stopping'
                             )
+
+            # Learning rate reduction on plateau (mirrors PyTorch ReduceLROnPlateau)
+            if self.reduce_lr:
+                if val_loss_avg < self.best_val_loss_for_lr:
+                    self.best_val_loss_for_lr = val_loss_avg
+                    self.lr_wait = 0
+                else:
+                    self.lr_wait += 1
+                    if self.lr_wait >= self.lr_patience:
+                        old_lr = float(self._model.optimizer.learning_rate.numpy())
+                        new_lr = max(old_lr * self.lr_factor, 1e-7)
+                        if new_lr < old_lr:
+                            self._model.optimizer.learning_rate.assign(new_lr)
+                            if self.logger:
+                                self.logger.logger.info(
+                                    f"Reducing learning rate from {old_lr:.6f} to "
+                                    f"{new_lr:.6f} (val_loss plateau)"
+                                )
+                        self.lr_wait = 0
 
         except Exception as e:
             # Log errors and re-raise
