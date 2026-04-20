@@ -48,7 +48,7 @@ class ModelDefaults:
     # Training defaults
     BATCH_SIZE = 8  # Default batch size for training
     LEARNING_RATE = 1e-4  # Default initial learning rate
-    EPOCHS = 12   # Default number of training epochs
+    EPOCHS = 8   # Default number of training epochs
 
     # Optimizer defaults
     OPTIMIZER_EPSILON = 1e-8  # Epsilon value for Adam and AdamW optimizers (for numerical stability)
