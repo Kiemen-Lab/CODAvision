@@ -99,7 +99,10 @@ def load_annotation_data(model_path: str, annotation_path: str, image_path: str,
 
     # Find XML files, filtering out hidden files
     all_xml_files = [f for f in os.listdir(annotation_path) if f.endswith('.xml')]
-    imlist = [f for f in all_xml_files if not is_hidden_file(f)]
+    imlist = sorted(
+        (f for f in all_xml_files if not is_hidden_file(f)),
+        key=str.casefold  # case-insensitive alphabetical sort
+    )
 
     # Log if hidden files were skipped
     hidden_files = [f for f in all_xml_files if is_hidden_file(f)]
