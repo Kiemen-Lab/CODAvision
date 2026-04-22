@@ -207,29 +207,61 @@ def create_initial_model_metadata(
     logger.info(f"Color map legend saved to {plot_save_path}")
 
 
-def create_distribution_strategy() -> Tuple[Any, int]:
+def create_distribution_strategy(
+    batch_size: int = None,
+    min_per_gpu_batch_size: int = 2
+) -> Tuple[Any, int]:
     """
     Create a distribution strategy for multi-GPU training.
-    
+
     Automatically detects the operating system and uses the appropriate
     cross-device communication backend:
     - Linux/Mac: Uses NCCL (default, optimal performance)
     - Windows: Uses HierarchicalCopyAllReduce (NCCL not supported on Windows)
-    
+
+    If batch_size is provided and the per-GPU batch size would be less than
+    min_per_gpu_batch_size, falls back to single-GPU training. This prevents
+    BatchNormalization layers from receiving batch_size=1 (variance=0 → NaN).
+
+    Args:
+        batch_size: Global batch size for training. If provided, used to check
+            whether multi-GPU training is viable. If None, no check is performed.
+        min_per_gpu_batch_size: Minimum per-GPU batch size required for stable
+            BatchNorm behavior. Defaults to 2.
+
     Returns:
         Tuple of (strategy, number_of_gpus)
     """
     import platform
-    
+
     physical_devices = tf.config.list_physical_devices('GPU')
-    
+
+    # Ensure memory growth is set for all GPUs (safe to call even if already set)
+    for device in physical_devices:
+        try:
+            tf.config.experimental.set_memory_growth(device, True)
+        except RuntimeError:
+            # Memory growth already set or GPU already initialized — safe to continue
+            pass
+
     if len(physical_devices) > 1:
         logger.info(f"Found {len(physical_devices)} GPUs. Using MirroredStrategy for multi-GPU training.")
+
+        # Check if per-GPU batch size would be too small for BatchNorm stability
+        if batch_size is not None:
+            per_gpu_batch = batch_size // len(physical_devices)
+            if per_gpu_batch < min_per_gpu_batch_size:
+                logger.warning(
+                    f"Multi-GPU training skipped: batch_size={batch_size} across "
+                    f"{len(physical_devices)} GPUs gives per-GPU batch size of "
+                    f"{per_gpu_batch}, which is below the minimum of "
+                    f"{min_per_gpu_batch_size} required for stable BatchNormalization. "
+                    f"Falling back to single-GPU training. To use all GPUs, increase "
+                    f"batch_size to at least {min_per_gpu_batch_size * len(physical_devices)}."
+                )
+                return None, 1
+
         try:
-            # Set memory growth for all GPUs
-            for device in physical_devices:
-                tf.config.experimental.set_memory_growth(device, True)
-            
             # Create MirroredStrategy with appropriate cross-device ops
             if platform.system() == 'Windows':
                 # NCCL is not supported on Windows, use HierarchicalCopyAllReduce instead
@@ -253,8 +285,6 @@ def create_distribution_strategy() -> Tuple[Any, int]:
     # Fallback to single GPU or CPU
     if physical_devices:
         logger.info("Using single GPU training")
-        # Set memory growth for single GPU
-        tf.config.experimental.set_memory_growth(physical_devices[0], True)
         return None, 1
     else:
         logger.info("No GPUs available. Using CPU training")
@@ -306,8 +336,25 @@ def setup_gpu() -> Dict[str, Any]:
         except RuntimeError as e:
             logger.error(f"GPU setup error: {e}")
     else:
-        logger.warning("No GPU available. Operations will proceed on the CPU.")
-        logger.warning("Ensure that the NVIDIA GPU and CUDA are correctly installed if you intended to use a GPU.")
+        logger.warning("No GPU available for TensorFlow. Operations will proceed on the CPU.")
+        import sys
+        if sys.platform == 'win32':
+            try:
+                tf_ver = tuple(int(x) for x in tf.__version__.split('.')[:2])
+                if tf_ver > (2, 10):
+                    logger.warning(
+                        "TensorFlow %s does not support GPU on native Windows. "
+                        "GPU support was removed in TF 2.11+. "
+                        "Fix: pip install tensorflow==2.10.1 keras==2.10.0 "
+                        "\"protobuf>=3.9.2,<3.20\"",
+                        tf.__version__
+                    )
+                else:
+                    logger.warning("Ensure NVIDIA GPU drivers and CUDA are correctly installed.")
+            except (ValueError, IndexError):
+                logger.warning("Ensure NVIDIA GPU and CUDA are correctly installed.")
+        else:
+            logger.warning("Ensure NVIDIA GPU and CUDA are correctly installed.")
     
     return gpu_info
 

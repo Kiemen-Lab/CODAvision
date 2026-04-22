@@ -78,7 +78,7 @@ def _load_image_pil_internal(image_path, image_size: int, mask: bool) -> np.ndar
         # Resize
         if image_array.shape[0] != image_size or image_array.shape[1] != image_size:
             image_pil = Image.fromarray(image_array.squeeze())
-            image_pil = image_pil.resize((image_size, image_size), Image.BILINEAR)
+            image_pil = image_pil.resize((image_size, image_size), Image.NEAREST)
             image_array = np.array(image_pil)
             if len(image_array.shape) == 2:
                 image_array = np.expand_dims(image_array, -1)
@@ -123,9 +123,11 @@ def read_image(
     """
     try:
         if isinstance(image_input, np.ndarray):
-            # Convert numpy array to tensor
-            image = tf.convert_to_tensor(image_input)
-            image = tf.image.resize(image, [image_size, image_size])
+            # Convert numpy array to tensor (explicit float32 to match training path
+            # and prevent tf.image.resize from auto-scaling uint8 to [0,1])
+            image = tf.convert_to_tensor(image_input, dtype=tf.float32)
+            resize_method = 'nearest' if mask else 'bilinear'
+            image = tf.image.resize(image, [image_size, image_size], method=resize_method)
         else:
             # Detect file format based on extension
             is_tiff = isinstance(image_input, str) and image_input.lower().endswith(('.tif', '.tiff'))
@@ -144,9 +146,9 @@ def read_image(
                     # Add channel dimension
                     if len(image_array.shape) == 2:
                         image_array = np.expand_dims(image_array, -1)
-                    # Convert to tensor and resize
+                    # Convert to tensor and resize (NEAREST for masks to preserve class labels)
                     image = tf.convert_to_tensor(image_array, dtype=tf.float32)
-                    image = tf.image.resize(images=image, size=[image_size, image_size])
+                    image = tf.image.resize(images=image, size=[image_size, image_size], method='nearest')
                     image.set_shape([image_size, image_size, 1])
                 else:
                     # Ensure 3 channels for RGB images
@@ -167,10 +169,10 @@ def read_image(
                 # Use TensorFlow's decode_image for other formats (PNG, JPEG, GIF, BMP)
                 image = tf.io.read_file(image_input)
                 if mask:
-                    # Decode mask (single channel)
+                    # Decode mask (single channel, NEAREST to preserve class labels)
                     image = tf.io.decode_image(image, channels=1, expand_animations=False)
                     image.set_shape([None, None, 1])
-                    image = tf.image.resize(images=image, size=[image_size, image_size])
+                    image = tf.image.resize(images=image, size=[image_size, image_size], method='nearest')
                 else:
                     # Decode RGB image
                     image = tf.io.decode_image(image, channels=3, expand_animations=False)

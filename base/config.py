@@ -8,7 +8,6 @@ package, eliminating magic numbers and hardcoded values throughout the codebase.
 from dataclasses import dataclass, field
 from typing import List, Tuple, Optional
 from enum import Enum
-import os
 
 
 class ThresholdDefaults:
@@ -47,14 +46,14 @@ class ModelDefaults:
 
     # Training defaults
     BATCH_SIZE = 8  # Default batch size for training
-    LEARNING_RATE = 1e-4  # Default initial learning rate
-    EPOCHS = 8   # Default number of training epochs
+    LEARNING_RATE = 5e-4  # Default initial learning rate
+    EPOCHS = 100  # Default number of training epochs
 
     # Optimizer defaults
     OPTIMIZER_EPSILON = 1e-8  # Epsilon value for Adam and AdamW optimizers (for numerical stability)
 
     # Early stopping and learning rate reduction
-    ES_PATIENCE = 12  # Patience for early stopping
+    ES_PATIENCE = 12  # Patience for early stopping (epochs without improvement)
     LR_PATIENCE = 1  # Patience for learning rate reduction
     LR_FACTOR = 0.75  # Factor for learning rate reduction
     MIN_LR = 1e-7  # Minimum learning rate
@@ -66,7 +65,7 @@ class ModelDefaults:
     TILE_GENERATION_MODE = "modern"  # Default tile generation mode ("modern" or "legacy")
 
     # ===== FRAMEWORK CONFIGURATION =====
-    DEFAULT_FRAMEWORK = "tensorflow"  # "pytorch" or "tensorflow"
+    DEFAULT_FRAMEWORK = "pytorch"  # "pytorch" or "tensorflow"
 
     # PyTorch-specific settings
     PYTORCH_DEVICE = "auto"  # auto, cuda, mps, cpu
@@ -117,8 +116,8 @@ class RuntimeConfig:
     
     def __post_init__(self):
         """Validate configuration after initialization."""
-        if self.num_workers < 1:
-            raise ValueError("num_workers must be at least 1")
+        if self.num_workers < 0:
+            raise ValueError("num_workers must be non-negative")
         if self.seed < 0:
             raise ValueError("seed must be non-negative")
 
@@ -168,7 +167,7 @@ MODERN_CONFIG = TileGenerationConfig(
     use_disk_filter=False,
     crop_rotations=False,
     class_rotation_frequency=5,
-    deterministic_seed=None,
+    deterministic_seed=3,
     big_tile_size=10240,
     file_format="png"
 )
@@ -244,10 +243,7 @@ def get_model_config() -> dict:
 
 def get_default_tile_config() -> TileGenerationConfig:
     """
-    Get default tile configuration from environment or ModelDefaults.
-
-    Checks the CODAVISION_TILE_GENERATION_MODE environment variable first,
-    falling back to ModelDefaults.TILE_GENERATION_MODE if not set.
+    Get default tile configuration from ModelDefaults.
 
     Returns:
         TileGenerationConfig: Either MODERN_CONFIG or LEGACY_CONFIG preset
@@ -255,8 +251,7 @@ def get_default_tile_config() -> TileGenerationConfig:
     Raises:
         ValueError: If the mode is not 'modern' or 'legacy'
     """
-    mode = os.environ.get('CODAVISION_TILE_GENERATION_MODE',
-                         ModelDefaults.TILE_GENERATION_MODE).lower()
+    mode = ModelDefaults.TILE_GENERATION_MODE.lower()
 
     if mode == "legacy":
         return LEGACY_CONFIG
@@ -268,14 +263,7 @@ def get_default_tile_config() -> TileGenerationConfig:
 
 def get_framework_config() -> dict:
     """
-    Get framework configuration from environment or defaults.
-
-    Environment variables:
-        CODAVISION_FRAMEWORK: 'tensorflow' or 'pytorch'
-        CODAVISION_PYTORCH_DEVICE: 'auto', 'cuda', 'mps', 'cpu'
-        CODAVISION_PYTORCH_COMPILE: '1' or '0'
-        CODAVISION_PYTORCH_AMP: '1' or '0'
-        CODAVISION_GRADIENT_ACCUMULATION_STEPS: int (default: 1)
+    Get framework configuration from ModelDefaults.
 
     Returns:
         Dictionary with framework configuration
@@ -283,18 +271,17 @@ def get_framework_config() -> dict:
     Raises:
         ValueError: If framework is not 'tensorflow' or 'pytorch'
     """
-    framework = os.environ.get('CODAVISION_FRAMEWORK', ModelDefaults.DEFAULT_FRAMEWORK).lower()
+    framework = ModelDefaults.DEFAULT_FRAMEWORK.lower()
 
     if framework not in ['tensorflow', 'pytorch']:
         raise ValueError(f"Invalid framework: {framework}. Must be 'tensorflow' or 'pytorch'")
 
     return {
         'framework': framework,
-        'pytorch_device': os.environ.get('CODAVISION_PYTORCH_DEVICE', ModelDefaults.PYTORCH_DEVICE),
-        'pytorch_compile': os.environ.get('CODAVISION_PYTORCH_COMPILE', '0') == '1',
-        'pytorch_amp': os.environ.get('CODAVISION_PYTORCH_AMP', '0') == '1',
-        'gradient_accumulation_steps': int(os.environ.get('CODAVISION_GRADIENT_ACCUMULATION_STEPS',
-                                                          str(ModelDefaults.GRADIENT_ACCUMULATION_STEPS))),
+        'pytorch_device': ModelDefaults.PYTORCH_DEVICE,
+        'pytorch_compile': ModelDefaults.PYTORCH_COMPILE,
+        'pytorch_amp': ModelDefaults.PYTORCH_AMP,
+        'gradient_accumulation_steps': ModelDefaults.GRADIENT_ACCUMULATION_STEPS,
     }
 
 class FrameworkConfig:
@@ -321,27 +308,6 @@ class FrameworkConfig:
         return config['framework']
 
     @staticmethod
-    def set_framework(framework: str):
-        """
-        Set the framework by updating the environment variable.
-
-        Args:
-            framework: Framework name ('pytorch' or 'tensorflow')
-
-        Raises:
-            ValueError: If framework is not valid
-
-        Example:
-            >>> FrameworkConfig.set_framework('pytorch')
-            >>> assert FrameworkConfig.get_framework() == 'pytorch'
-        """
-        framework = framework.lower()
-        if framework not in ['tensorflow', 'pytorch']:
-            raise ValueError(f"Invalid framework: {framework}. Must be 'tensorflow' or 'pytorch'")
-
-        os.environ['CODAVISION_FRAMEWORK'] = framework
-
-    @staticmethod
     def get_device() -> str:
         """Get the PyTorch device setting."""
         config = get_framework_config()
@@ -364,6 +330,22 @@ class FrameworkConfig:
         """Get gradient accumulation steps."""
         config = get_framework_config()
         return config['gradient_accumulation_steps']
+
+    @staticmethod
+    def set_framework(framework: str) -> None:
+        """
+        Set the active deep learning framework.
+
+        Args:
+            framework: Framework name ('pytorch' or 'tensorflow')
+
+        Raises:
+            ValueError: If framework is not 'tensorflow' or 'pytorch'
+        """
+        framework = framework.lower()
+        if framework not in ['tensorflow', 'pytorch']:
+            raise ValueError(f"Invalid framework: {framework}. Must be 'tensorflow' or 'pytorch'")
+        ModelDefaults.DEFAULT_FRAMEWORK = framework
 
     @staticmethod
     def get_all_config() -> dict:

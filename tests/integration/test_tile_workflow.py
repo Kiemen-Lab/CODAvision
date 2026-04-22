@@ -568,32 +568,34 @@ class TestConfigurationOverride:
         custom_formats = {f.suffix for f in custom_tiles}
         assert ".jpg" in custom_formats, "Custom config should create JPG files"
 
-    def test_environment_variable_override(
+    def test_config_default_override(
         self,
         test_annotations_3_classes,
         test_image_list,
         temp_model_directory,
         monkeypatch
     ):
-        """Test that environment variable overrides default mode."""
-        # Set environment variable to legacy mode
-        monkeypatch.setenv('CODAVISION_TILE_GENERATION_MODE', 'legacy')
+        """Test that ModelDefaults.TILE_GENERATION_MODE controls default mode."""
+        from base.config import ModelDefaults
 
-        # Get default config (should be legacy due to env var)
+        # Override ModelDefaults to legacy mode
+        monkeypatch.setattr(ModelDefaults, 'TILE_GENERATION_MODE', 'legacy')
+
+        # Get default config (should be legacy due to ModelDefaults override)
         config = get_default_tile_config()
         assert config.mode == 'legacy'
         assert config.reduction_factor == 5
         assert config.file_format == 'tif'
 
         # Create tiles using default config (should use legacy)
-        env_dir = os.path.join(temp_model_directory, "env_legacy")
-        os.makedirs(env_dir, exist_ok=True)
+        cfg_dir = os.path.join(temp_model_directory, "cfg_legacy")
+        os.makedirs(cfg_dir, exist_ok=True)
 
         # Create metadata file
-        create_model_metadata(env_dir)
+        create_model_metadata(cfg_dir)
 
         create_training_tiles(
-            model_path=env_dir,
+            model_path=cfg_dir,
             annotations=test_annotations_3_classes,
             image_list=test_image_list,
             create_new_tiles=True
@@ -601,10 +603,10 @@ class TestConfigurationOverride:
         )
 
         # Check that TIFF files were created (legacy format)
-        env_tiles = list(Path(env_dir).rglob("HE*.*"))
-        env_formats = {f.suffix for f in env_tiles}
-        assert ".tif" in env_formats, \
-            "Environment variable should override to legacy mode (TIFF format)"
+        cfg_tiles = list(Path(cfg_dir).rglob("HE*.*"))
+        cfg_formats = {f.suffix for f in cfg_tiles}
+        assert ".tif" in cfg_formats, \
+            "ModelDefaults override should use legacy mode (TIFF format)"
 
 
 @pytest.mark.integration

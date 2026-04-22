@@ -212,7 +212,7 @@ class TestCrossFrameworkCompatibility:
 
                 # If TensorFlow is available, we could test creating a .keras file
                 # and verifying the system selects the correct format based on
-                # CODAVISION_FRAMEWORK environment variable
+                # ModelDefaults.DEFAULT_FRAMEWORK setting in base/config.py
 
                 # For now, just verify the .pth file is preferred when framework='pytorch'
                 assert os.path.exists(pth_path), "PyTorch framework should use .pth file"

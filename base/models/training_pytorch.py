@@ -19,6 +19,8 @@ Date: 2025-11-12
 """
 
 import os
+import random
+import sys
 import time
 import pickle
 import logging
@@ -223,8 +225,8 @@ class PyTorchSegmentationTrainer:
         self.num_classes = len(self.class_names)
         self.image_size = self.metadata.get('image_size') or self.metadata.get('sxy')
 
-        # Get device from config or environment
-        device_str = os.getenv('CODAVISION_PYTORCH_DEVICE', ModelDefaults.PYTORCH_DEVICE)
+        # Get device from config
+        device_str = ModelDefaults.PYTORCH_DEVICE
         if device_str == 'auto':
             if torch.cuda.is_available():
                 self.device = torch.device('cuda')
@@ -235,7 +237,14 @@ class PyTorchSegmentationTrainer:
         else:
             self.device = torch.device(device_str)
 
-        self.logger.logger.info(f"Using device: {self.device}")
+        # Log device info with GPU name (if available) or CPU fallback warning
+        if self.device.type == 'cuda':
+            gpu_name = torch.cuda.get_device_name(0)
+            self.logger.logger.info(f"Using device: cuda ({gpu_name})")
+        elif self.device.type == 'mps':
+            self.logger.logger.info(f"Using device: mps (Apple Silicon GPU)")
+        else:
+            self._log_cpu_fallback_warning()
 
         # Training state
         self.model = None
@@ -253,24 +262,22 @@ class PyTorchSegmentationTrainer:
             'val_iterations': []  # Track which iterations had validation
         }
 
-        # Training settings (can be overridden)
+        # Training settings - read from metadata with fallbacks for backward compatibility
+        self.learning_rate = self.metadata.get('learning_rate', ModelDefaults.LEARNING_RATE)
+        self.epochs = self.metadata.get('epochs', ModelDefaults.EPOCHS)
+        self.batch_size = self.metadata.get('batch_size', ModelDefaults.BATCH_SIZE)
         self.validation_frequency = int(
-            os.getenv('CODAVISION_VALIDATION_FREQUENCY', ModelDefaults.VALIDATION_FREQUENCY)
+            self.metadata.get('validation_frequency', ModelDefaults.VALIDATION_FREQUENCY)
         )
-        self.early_stopping_patience = 6  # validations, not epochs
-        self.lr_reduction_patience = 1  # validations
-        self.lr_reduction_factor = 0.5
-        self.min_lr = 1e-7
+        self.early_stopping_patience = self.metadata.get('es_patience', ModelDefaults.ES_PATIENCE)
+        self.lr_reduction_patience = self.metadata.get('lr_patience', 1)
+        self.lr_reduction_factor = self.metadata.get('lr_factor', ModelDefaults.LR_FACTOR)
+        self.min_lr = self.metadata.get('min_lr', 1e-7)
 
         # Advanced optimization settings
-        self.use_amp = os.getenv('CODAVISION_PYTORCH_AMP', 'false').lower() == 'true' or \
-                       ModelDefaults.PYTORCH_AMP
-        self.use_compile = os.getenv('CODAVISION_PYTORCH_COMPILE', 'false').lower() == 'true' or \
-                          ModelDefaults.PYTORCH_COMPILE
-        self.gradient_accumulation_steps = int(
-            os.getenv('CODAVISION_GRADIENT_ACCUMULATION_STEPS',
-                     getattr(ModelDefaults, 'GRADIENT_ACCUMULATION_STEPS', 1))
-        )
+        self.use_amp = ModelDefaults.PYTORCH_AMP
+        self.use_compile = ModelDefaults.PYTORCH_COMPILE
+        self.gradient_accumulation_steps = ModelDefaults.GRADIENT_ACCUMULATION_STEPS
 
         # AMP scaler (only if using AMP and CUDA)
         self.scaler = None
@@ -279,8 +286,43 @@ class PyTorchSegmentationTrainer:
             self.logger.logger.info("Automatic Mixed Precision (AMP) enabled")
 
         self.logger.logger.info(f"Validation frequency: {self.validation_frequency} iterations")
-        self.logger.logger.info(f"Early stopping patience: {self.early_stopping_patience} validations")
+        self.logger.logger.info(f"Early stopping patience: {self.early_stopping_patience} epochs")
         self.logger.logger.info(f"LR reduction patience: {self.lr_reduction_patience} validations")
+
+    def _log_cpu_fallback_warning(self):
+        """Log a warning when training falls back to CPU with actionable guidance."""
+        self.logger.logger.warning("=" * 60)
+        self.logger.logger.warning("WARNING: Using device: cpu")
+        self.logger.logger.warning("Training on CPU is significantly slower than GPU.")
+
+        # Distinguish between "CPU-only PyTorch" and "CUDA drivers missing"
+        has_cuda_build = hasattr(torch.version, 'cuda') and torch.version.cuda is not None
+        if not has_cuda_build:
+            self.logger.logger.warning("")
+            self.logger.logger.warning("CAUSE: CPU-only PyTorch is installed (no CUDA support).")
+            self.logger.logger.warning("FIX: Install CUDA-enabled PyTorch:")
+            self.logger.logger.warning("  pip uninstall torch torchvision -y")
+            self.logger.logger.warning("  pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118")
+            self.logger.logger.warning("")
+            self.logger.logger.warning("Or run 'python scripts/check_cuda_version.py' for guidance.")
+        else:
+            self.logger.logger.warning("")
+            self.logger.logger.warning(f"CAUSE: PyTorch was built with CUDA {torch.version.cuda},")
+            self.logger.logger.warning("but no compatible GPU/driver was detected.")
+            self.logger.logger.warning("Check that NVIDIA drivers are installed: nvidia-smi")
+
+        self.logger.logger.warning("=" * 60)
+
+    @staticmethod
+    def _get_default_num_workers() -> int:
+        """
+        Get the platform-appropriate default for DataLoader num_workers.
+
+        Windows uses 'spawn' for multiprocessing, which copies the entire
+        process memory for each worker. This causes high memory pressure,
+        so we default to 0 (main-process data loading) on Windows.
+        """
+        return 0 if sys.platform == 'win32' else 4
 
     def _load_model_data(self) -> Tuple[Dict, List[str]]:
         """
@@ -398,7 +440,7 @@ class PyTorchSegmentationTrainer:
         self.model = model
         return model
 
-    def setup_optimizer(self, learning_rate: float = 0.001, weight_decay: float = 0.0001):
+    def setup_optimizer(self, learning_rate: float = 0.001, weight_decay: float = 0.0):
         """
         Setup optimizer (Adam with weight decay for L2 regularization).
 
@@ -450,50 +492,86 @@ class PyTorchSegmentationTrainer:
         annotations: Dict,
         image_list: List[str],
         batch_size: int = 4,
-        num_workers: int = 4,
-        validation_split: float = 0.2
+        num_workers: Optional[int] = None,
+        validation_split: float = 0.2,
+        seed: Optional[int] = None,
     ) -> Tuple[DataLoader, DataLoader]:
         """
         Create PyTorch DataLoaders for training and validation.
 
+        Uses the held-out validation tile directory created by the tile
+        generator (validation/im/, validation/label/) rather than re-splitting
+        the training tiles. This matches the TensorFlow training path
+        (DeepLabV3PlusTrainer._prepare_data) and ensures both frameworks
+        train on identical data and evaluate on the same held-out set.
+
         Args:
             annotations: Dictionary of annotations
-            image_list: List of image identifiers
+            image_list: List of training image identifiers (from train_list.pkl)
             batch_size: Batch size for training
-            num_workers: Number of worker processes for data loading
-            validation_split: Fraction of data for validation
+            num_workers: Number of worker processes for data loading.
+                If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
+            validation_split: Deprecated. The trainer now reads validation
+                tiles from the pre-split validation/ directory; this kwarg
+                is preserved only for backward compatibility and is ignored.
+            seed: Optional random seed for reproducibility (no longer affects
+                the train/val split since the split is now disk-based).
 
         Returns:
             Tuple of (train_dataloader, val_dataloader)
+
+        Raises:
+            FileNotFoundError: if validation/im/ does not contain any tile
+                files. The tile generator (create_training_tiles) must have
+                run before training.
         """
-        # Split into train and validation
-        np.random.seed(42)  # For reproducibility
-        shuffled_indices = np.random.permutation(len(image_list))
-        val_size = int(len(image_list) * validation_split)
+        # Resolve None to platform-aware default
+        if num_workers is None:
+            num_workers = self._get_default_num_workers()
 
-        val_indices = shuffled_indices[:val_size]
-        train_indices = shuffled_indices[val_size:]
-
-        train_image_list = [image_list[i] for i in train_indices]
-        val_image_list = [image_list[i] for i in val_indices]
+        if validation_split != 0.2:
+            warnings.warn(
+                "validation_split is deprecated and ignored — the PyTorch "
+                "trainer now uses the pre-split validation/ directory "
+                "created by the tile generator (matches the TF path). To "
+                "control the split, configure the tile generator's "
+                "nvalidate parameter instead.",
+                DeprecationWarning, stacklevel=2,
+            )
 
         # Detect file format from model metadata or existing files
         file_format = self._detect_tile_format()
 
+        # Discover validation tile IDs by globbing the held-out val directory
+        val_im_dir = os.path.join(self.model_path, 'validation', 'im')
+        val_glob_pattern = os.path.join(val_im_dir, f'*{file_format}')
+        val_tile_files = sorted(glob(val_glob_pattern))
+        if not val_tile_files:
+            raise FileNotFoundError(
+                f"No validation tiles found at {val_glob_pattern}. The tile "
+                "generator (base.data.tiles.create_training_tiles) must run "
+                "before training. If you intended to re-split the training "
+                "tiles 80/20 internally (legacy behavior), revert to a "
+                "version of this file prior to the framework-parity fix."
+            )
+        val_image_list = [
+            os.path.splitext(os.path.basename(p))[0] for p in val_tile_files
+        ]
+
         # Build full paths to images and masks
-        def build_paths(image_ids):
+        def build_paths(image_ids, subdir):
             image_paths = [
-                os.path.join(self.model_path, 'training', 'im', f'{img_id}{file_format}')
+                os.path.join(self.model_path, subdir, 'im', f'{img_id}{file_format}')
                 for img_id in image_ids
             ]
             mask_paths = [
-                os.path.join(self.model_path, 'training', 'label', f'{img_id}{file_format}')
+                os.path.join(self.model_path, subdir, 'label', f'{img_id}{file_format}')
                 for img_id in image_ids
             ]
             return image_paths, mask_paths
 
-        train_image_paths, train_mask_paths = build_paths(train_image_list)
-        val_image_paths, val_mask_paths = build_paths(val_image_list)
+        train_image_paths, train_mask_paths = build_paths(image_list, 'training')
+        val_image_paths, val_mask_paths = build_paths(val_image_list, 'validation')
 
         # Validate that files exist
         self._validate_tile_files(train_image_paths, train_mask_paths, "training")
@@ -534,7 +612,10 @@ class PyTorchSegmentationTrainer:
             persistent_workers=(num_workers > 0)
         )
 
-        self.logger.logger.info(f"Training samples: {len(train_dataset)}, Validation samples: {len(val_dataset)}")
+        self.logger.logger.info(
+            f"Training samples: {len(train_dataset)}, "
+            f"Validation samples: {len(val_dataset)} (held-out from tile generator)"
+        )
         self.logger.logger.info(f"Batch size: {batch_size}, Num workers: {num_workers}")
 
         return train_dataloader, val_dataloader
@@ -808,30 +889,59 @@ class PyTorchSegmentationTrainer:
 
     def train(
         self,
-        epochs: int = 100,
-        batch_size: int = 4,
-        learning_rate: float = 0.001,
+        epochs: int = None,
+        batch_size: int = None,
+        learning_rate: float = None,
         validation_split: float = 0.2,
-        num_workers: int = 4,
-        resume_from_checkpoint: Optional[str] = None
+        num_workers: Optional[int] = None,
+        resume_from_checkpoint: Optional[str] = None,
+        seed: Optional[int] = None,
     ) -> Dict:
         """
         Main training method with full feature set.
 
         Args:
-            epochs: Number of epochs to train
-            batch_size: Batch size for training
-            learning_rate: Initial learning rate
+            epochs: Number of epochs to train (defaults to self.epochs from metadata)
+            batch_size: Batch size for training (defaults to self.batch_size from metadata)
+            learning_rate: Initial learning rate (defaults to self.learning_rate from metadata)
             validation_split: Fraction of data for validation
-            num_workers: Number of data loading workers
+            num_workers: Number of data loading workers.
+                If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
             resume_from_checkpoint: Optional path to checkpoint to resume from
+            seed: Optional random seed for reproducibility (propagates to numpy,
+                torch, CUDA, and the train/val split in create_dataloaders).
 
         Returns:
             Training history dictionary
         """
+        # Use instance variables (from metadata) as defaults
+        if epochs is None:
+            epochs = self.epochs
+        if batch_size is None:
+            batch_size = self.batch_size
+        if learning_rate is None:
+            learning_rate = self.learning_rate
+
+        # Set seed for reproducibility. Note: cudnn.deterministic is left at
+        # its default (False) to avoid the same class of slowdowns and
+        # kernel-availability errors that force disabling op determinism on
+        # the TF side. Seeds still cover data shuffling, weight init, and
+        # dropout, which is sufficient for variance characterization.
+        if seed is not None:
+            os.environ["PYTHONHASHSEED"] = str(seed)
+            random.seed(seed)
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            torch.cuda.manual_seed_all(seed)
+            self.logger.logger.info(
+                f"Random seed set to {seed} for reproducibility "
+                "(data shuffling, weight init; GPU ops remain non-deterministic)"
+            )
+
         self.logger.logger.info("=" * 50)
         self.logger.logger.info("Starting PyTorch Training")
         self.logger.logger.info("=" * 50)
+        self.logger.logger.info(f"Training parameters: epochs={epochs}, batch_size={batch_size}, learning_rate={learning_rate}")
 
         # Load data
         annotations, image_list = self._load_model_data()
@@ -865,14 +975,16 @@ class PyTorchSegmentationTrainer:
             self.build_model()
 
         # Setup training components
-        self.setup_optimizer(learning_rate=learning_rate)
+        l2_weight = self.metadata.get('l2_regularization_weight', 0.0)
+        self.setup_optimizer(learning_rate=learning_rate, weight_decay=l2_weight)
         self.setup_loss(class_weights=class_weights)
         self.setup_scheduler(mode='min', factor=self.lr_reduction_factor,
                            patience=self.lr_reduction_patience)
 
         # Create dataloaders
         train_dataloader, val_dataloader = self.create_dataloaders(
-            annotations, image_list, batch_size, num_workers, validation_split
+            annotations, image_list, batch_size, num_workers, validation_split,
+            seed=seed,
         )
 
         # Resume from checkpoint if specified
@@ -893,6 +1005,14 @@ class PyTorchSegmentationTrainer:
         # Ensure at least one validation
         total_validations = max(1, total_iterations // self.validation_frequency)
         self.logger.logger.info(f"Expected validations: {total_validations}")
+
+        validations_per_epoch = max(1, len(train_dataloader) // self.validation_frequency)
+        es_patience_validations = self.early_stopping_patience * validations_per_epoch
+        self.logger.logger.info(
+            f"Early stopping: {self.early_stopping_patience} epochs = "
+            f"{es_patience_validations} validations "
+            f"({validations_per_epoch} validations/epoch)"
+        )
 
         start_time = time.time()
 
@@ -918,6 +1038,12 @@ class PyTorchSegmentationTrainer:
 
                     # Optimizer step (with gradient accumulation)
                     if (batch_idx + 1) % self.gradient_accumulation_steps == 0:
+                        # Unscale gradients before clipping so clip_grad_norm_
+                        # operates on real gradient magnitudes.
+                        self.scaler.unscale_(self.optimizer)
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), max_norm=1.0
+                        )
                         self.scaler.step(self.optimizer)
                         self.scaler.update()
                         self.optimizer.zero_grad()
@@ -934,6 +1060,13 @@ class PyTorchSegmentationTrainer:
 
                     # Optimizer step (with gradient accumulation)
                     if (batch_idx + 1) % self.gradient_accumulation_steps == 0:
+                        # Clip gradients to max L2 norm of 1.0 (matches TF
+                        # global_clipnorm=1.0) — bounds per-update weight
+                        # movement so a single bad batch cannot destabilize
+                        # BN running stats.
+                        torch.nn.utils.clip_grad_norm_(
+                            self.model.parameters(), max_norm=1.0
+                        )
                         self.optimizer.step()
                         self.optimizer.zero_grad()
 
@@ -986,10 +1119,11 @@ class PyTorchSegmentationTrainer:
                         self.scheduler.step(val_loss)
 
                     # Early stopping
-                    if validations_without_improvement >= self.early_stopping_patience:
+                    if validations_without_improvement >= es_patience_validations:
                         self.logger.logger.info(
                             f"Early stopping triggered after {validations_without_improvement} "
-                            f"validations without improvement"
+                            f"validations without improvement "
+                            f"(patience: {self.early_stopping_patience} epochs)"
                         )
                         break
 
@@ -997,7 +1131,7 @@ class PyTorchSegmentationTrainer:
             self.history['train_loss'].append(epoch_loss / batch_count)
 
             # Early stopping break from epoch loop
-            if validations_without_improvement >= self.early_stopping_patience:
+            if validations_without_improvement >= es_patience_validations:
                 break
 
         total_time = time.time() - start_time
@@ -1024,25 +1158,28 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
 
     def train(
         self,
-        epochs: int = 100,
-        batch_size: int = 4,
-        learning_rate: float = 0.001,
+        epochs: int = None,
+        batch_size: int = None,
+        learning_rate: float = None,
         validation_split: float = 0.2,
-        num_workers: int = 4,
+        num_workers: Optional[int] = None,
         resume_from_checkpoint: Optional[str] = None,
-        freeze_encoder: bool = True
+        freeze_encoder: bool = True,
+        seed: Optional[int] = None,
     ) -> Dict:
         """
         Train DeepLabV3+ model with specific configuration.
 
         Args:
-            epochs: Number of epochs to train
-            batch_size: Batch size for training
-            learning_rate: Initial learning rate
+            epochs: Number of epochs to train (defaults to self.epochs from metadata)
+            batch_size: Batch size for training (defaults to self.batch_size from metadata)
+            learning_rate: Initial learning rate (defaults to self.learning_rate from metadata)
             validation_split: Fraction of data for validation
-            num_workers: Number of data loading workers
+            num_workers: Number of data loading workers.
+                If None, uses platform-aware default (0 on Windows, 4 on Linux/macOS).
             resume_from_checkpoint: Optional path to checkpoint to resume from
             freeze_encoder: Whether to freeze encoder weights (default: True)
+            seed: Optional random seed for reproducibility.
 
         Returns:
             Training history dictionary
@@ -1051,19 +1188,25 @@ class PyTorchDeepLabV3PlusTrainer(PyTorchSegmentationTrainer):
         if self.model is None:
             self.build_model(architecture='DeepLabV3_plus')
 
+        # Enable gradient checkpointing on CPU to reduce memory usage
+        if self.device.type == 'cpu' and hasattr(self.model, 'enable_gradient_checkpointing'):
+            self.model.enable_gradient_checkpointing()
+            self.logger.logger.info("Gradient checkpointing enabled (CPU training, reduces memory usage)")
+
         # Optionally freeze encoder
         if freeze_encoder and hasattr(self.model, 'freeze_encoder'):
             self.model.freeze_encoder()
             self.logger.logger.info("Encoder weights frozen (transfer learning)")
 
-        # Call parent train method
+        # Call parent train method (which will use instance variables if None)
         return super().train(
             epochs=epochs,
             batch_size=batch_size,
             learning_rate=learning_rate,
             validation_split=validation_split,
             num_workers=num_workers,
-            resume_from_checkpoint=resume_from_checkpoint
+            resume_from_checkpoint=resume_from_checkpoint,
+            seed=seed,
         )
 
 

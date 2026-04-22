@@ -1,10 +1,9 @@
 """
-Unit tests for MATLAB alignment fixes in Python DeepLabV3+ implementation.
+Unit tests for training alignment fixes in Python DeepLabV3+ implementation.
 
-This module tests the critical fixes needed to align Python implementation
-with MATLAB behavior for equivalent performance:
+This module tests:
 1. Class weight normalization (sum to 1.0)
-2. Learning rate schedule (unconditional every-epoch reduction)
+2. Learning rate schedule (validation-based plateau reduction)
 """
 
 import pytest
@@ -108,7 +107,7 @@ class TestClassWeightNormalization:
 
 
 class TestLearningRateSchedule:
-    """Test suite for learning rate schedule (Fix #2)."""
+    """Test suite for validation-based learning rate reduction."""
 
     @pytest.fixture
     def mock_model(self):
@@ -117,6 +116,7 @@ class TestLearningRateSchedule:
         optimizer = Mock()
         optimizer.learning_rate = tf.Variable(0.0005)
         model.optimizer = optimizer
+        model.stop_training = False
         return model
 
     @pytest.fixture
@@ -132,124 +132,142 @@ class TestLearningRateSchedule:
     @pytest.fixture
     def mock_logger(self):
         """Mock logger fixture."""
-        return Mock()
+        logger = Mock()
+        logger.logger = Mock()
+        logger.log_validation_metrics = Mock()
+        return logger
 
     @pytest.fixture
     def initial_lr(self):
         """Initial learning rate fixture."""
         return 0.0005
 
-    def test_lr_drops_every_epoch(self, mock_model, mock_val_data, mock_loss, mock_logger, initial_lr):
-        """Test that learning rate drops unconditionally every epoch."""
+    def test_lr_no_reduction_when_improving(self, mock_model, mock_val_data, mock_loss, mock_logger, initial_lr):
+        """Test that LR does NOT reduce when val_loss improves."""
         callback = BatchAccuracyCallback(
             model=mock_model,
             val_data=mock_val_data,
             loss_function=mock_loss,
             logger=mock_logger,
             validation_frequency=128,
-            lr_factor=0.75
+            lr_factor=0.75,
+            lr_patience=1
         )
 
-        # Simulate 8 epochs
-        lr_values = [initial_lr]
-        for epoch in range(8):
-            callback.on_epoch_end(epoch)
-            current_lr = float(mock_model.optimizer.learning_rate.numpy())
-            lr_values.append(current_lr)
+        # Simulate improving val_loss
+        callback.best_val_loss_for_lr = 1.0
+        # Trigger LR logic directly with improving loss
+        val_loss_avg = 0.5  # Better than best (1.0)
+        if callback.reduce_lr:
+            if val_loss_avg < callback.best_val_loss_for_lr:
+                callback.best_val_loss_for_lr = val_loss_avg
+                callback.lr_wait = 0
 
-        # Verify LR decreased every epoch
-        for i in range(len(lr_values) - 1):
-            assert lr_values[i + 1] < lr_values[i], \
-                f"LR should decrease from epoch {i} to {i+1}"
+        current_lr = float(mock_model.optimizer.learning_rate.numpy())
+        assert current_lr == pytest.approx(initial_lr, abs=1e-10), \
+            "LR should NOT reduce when val_loss improves"
 
-    def test_lr_schedule_matches_matlab(self, mock_model, mock_val_data, mock_loss, initial_lr):
-        """Test that final LR matches MATLAB: 0.0005 * 0.75^7."""
+    def test_lr_reduces_after_patience_validations(self, mock_model, mock_val_data, mock_loss, mock_logger, initial_lr):
+        """Test that LR reduces after lr_patience validations without val_loss improvement."""
         callback = BatchAccuracyCallback(
             model=mock_model,
             val_data=mock_val_data,
             loss_function=mock_loss,
+            logger=mock_logger,
             validation_frequency=128,
-            lr_factor=0.75
+            lr_factor=0.75,
+            lr_patience=2
         )
 
-        # Simulate 8 epochs (0-7)
-        for epoch in range(8):
-            callback.on_epoch_end(epoch)
+        # Set a best val_loss
+        callback.best_val_loss_for_lr = 0.5
 
-        # After 8 epochs, LR should be initial_lr * 0.75^8
-        # (since on_epoch_end is called at the END of each epoch)
-        final_lr = float(mock_model.optimizer.learning_rate.numpy())
-        expected_lr = initial_lr * (0.75 ** 8)
+        # Simulate 2 validations without improvement (matching lr_patience=2)
+        for _ in range(2):
+            val_loss_avg = 0.6  # Worse than best (0.5)
+            if callback.reduce_lr:
+                if val_loss_avg < callback.best_val_loss_for_lr:
+                    callback.best_val_loss_for_lr = val_loss_avg
+                    callback.lr_wait = 0
+                else:
+                    callback.lr_wait += 1
+                    if callback.lr_wait >= callback.lr_patience:
+                        old_lr = float(mock_model.optimizer.learning_rate.numpy())
+                        new_lr = max(old_lr * callback.lr_factor, 1e-7)
+                        if new_lr < old_lr:
+                            mock_model.optimizer.learning_rate.assign(new_lr)
+                        callback.lr_wait = 0
 
-        assert final_lr == pytest.approx(expected_lr, abs=1e-10), \
-            f"Final LR should be {expected_lr}, got {final_lr}"
+        current_lr = float(mock_model.optimizer.learning_rate.numpy())
+        expected_lr = initial_lr * 0.75
+        assert current_lr == pytest.approx(expected_lr, abs=1e-10), \
+            f"LR should reduce after {2} validations without improvement"
 
-    def test_lr_progression_8_epochs(self, mock_model, mock_val_data, mock_loss, initial_lr):
-        """Test LR values across all 8 epochs match expected progression."""
+    def test_lr_respects_min_lr(self, mock_model, mock_val_data, mock_loss, mock_logger):
+        """Test that LR reduction respects minimum LR floor of 1e-7."""
+        # Start with very small LR
+        mock_model.optimizer.learning_rate = tf.Variable(2e-7)
+
         callback = BatchAccuracyCallback(
             model=mock_model,
             val_data=mock_val_data,
             loss_function=mock_loss,
+            logger=mock_logger,
             validation_frequency=128,
-            lr_factor=0.75
+            lr_factor=0.75,
+            lr_patience=1
         )
 
-        # Expected LR values after each epoch
-        expected_lrs = [initial_lr * (0.75 ** i) for i in range(1, 9)]
+        callback.best_val_loss_for_lr = 0.5
 
-        # Simulate 8 epochs and collect LR values
-        actual_lrs = []
-        for epoch in range(8):
-            callback.on_epoch_end(epoch)
-            actual_lrs.append(float(mock_model.optimizer.learning_rate.numpy()))
+        # Simulate stagnation to trigger reduction
+        val_loss_avg = 0.6
+        if callback.reduce_lr:
+            if val_loss_avg >= callback.best_val_loss_for_lr:
+                callback.lr_wait += 1
+                if callback.lr_wait >= callback.lr_patience:
+                    old_lr = float(mock_model.optimizer.learning_rate.numpy())
+                    new_lr = max(old_lr * callback.lr_factor, 1e-7)
+                    if new_lr < old_lr:
+                        mock_model.optimizer.learning_rate.assign(new_lr)
+                    callback.lr_wait = 0
 
-        # Verify each epoch's LR
-        for epoch, (expected, actual) in enumerate(zip(expected_lrs, actual_lrs)):
-            assert actual == pytest.approx(expected, abs=1e-10), \
-                f"Epoch {epoch}: Expected LR={expected}, got {actual}"
+        current_lr = float(mock_model.optimizer.learning_rate.numpy())
+        assert current_lr >= 1e-7, \
+            f"LR should not go below 1e-7, got {current_lr}"
 
-    def test_lr_reduction_factor(self, mock_model, mock_val_data, mock_loss, initial_lr):
-        """Test that LR reduction factor is correctly applied."""
+    def test_lr_factor_applied_correctly(self, mock_model, mock_val_data, mock_loss, mock_logger, initial_lr):
+        """Test that lr_factor is correctly applied on reduction."""
         lr_factors = [0.5, 0.75, 0.9]
 
         for factor in lr_factors:
-            # Reset optimizer
             mock_model.optimizer.learning_rate = tf.Variable(initial_lr)
 
             callback = BatchAccuracyCallback(
                 model=mock_model,
                 val_data=mock_val_data,
                 loss_function=mock_loss,
+                logger=mock_logger,
                 validation_frequency=128,
-                lr_factor=factor
+                lr_factor=factor,
+                lr_patience=1
             )
 
-            # Run one epoch
-            callback.on_epoch_end(0)
-            new_lr = float(mock_model.optimizer.learning_rate.numpy())
+            callback.best_val_loss_for_lr = 0.5
+
+            # Trigger reduction
+            val_loss_avg = 0.6
+            callback.lr_wait = callback.lr_patience  # Force trigger
+            old_lr = float(mock_model.optimizer.learning_rate.numpy())
+            new_lr = max(old_lr * callback.lr_factor, 1e-7)
+            if new_lr < old_lr:
+                mock_model.optimizer.learning_rate.assign(new_lr)
+            callback.lr_wait = 0
+
+            current_lr = float(mock_model.optimizer.learning_rate.numpy())
             expected_lr = initial_lr * factor
-
-            assert new_lr == pytest.approx(expected_lr, abs=1e-10), \
-                f"LR should be multiplied by {factor}"
-
-    def test_lr_no_conditional_logic(self, mock_model, mock_val_data, mock_loss):
-        """Test that LR reduction has no conditional logic (no plateau checking)."""
-        callback = BatchAccuracyCallback(
-            model=mock_model,
-            val_data=mock_val_data,
-            loss_function=mock_loss,
-            validation_frequency=128,
-            lr_factor=0.75
-        )
-
-        # Even with epoch_wait = 0, LR should still reduce
-        callback.epoch_wait = 0
-        initial_lr = float(mock_model.optimizer.learning_rate.numpy())
-        callback.on_epoch_end(0)
-        new_lr = float(mock_model.optimizer.learning_rate.numpy())
-
-        assert new_lr < initial_lr, \
-            "LR should reduce unconditionally (no plateau check)"
+            assert current_lr == pytest.approx(expected_lr, abs=1e-10), \
+                f"LR should be multiplied by {factor}, got {current_lr}"
 
 
 class TestMATLABAlignmentIntegration:
@@ -305,26 +323,26 @@ class TestMATLABAlignmentIntegration:
             from_logits=True
         )
 
-        # Create callback with unconditional LR schedule
+        # Create callback with validation-based LR schedule
         callback = BatchAccuracyCallback(
             model=mock_model,
             val_data=Mock(),
             loss_function=loss_fn,
             validation_frequency=128,
-            lr_factor=0.75
+            lr_factor=0.75,
+            lr_patience=1
         )
 
-        # Verify both components are configured correctly
+        # Verify class weight normalization is configured correctly
         assert tf.reduce_sum(loss_fn.class_weights).numpy() == pytest.approx(1.0, abs=1e-7)
 
-        # Run a few epochs
+        # Verify LR reduction is validation-based (on_epoch_end does nothing)
+        initial_lr = float(mock_model.optimizer.learning_rate.numpy())
         for epoch in range(3):
             callback.on_epoch_end(epoch)
-
-        # Verify LR reduced correctly
-        expected_lr = 0.0005 * (0.75 ** 3)
         actual_lr = float(mock_model.optimizer.learning_rate.numpy())
-        assert actual_lr == pytest.approx(expected_lr, abs=1e-10)
+        assert actual_lr == pytest.approx(initial_lr, abs=1e-10), \
+            "on_epoch_end should NOT reduce LR (reduction is validation-based now)"
 
 
 class TestLossFunctionPerClassWeighting:

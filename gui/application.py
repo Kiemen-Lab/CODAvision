@@ -155,7 +155,18 @@ def CODAVision():
         tiles_time = str(int(tiles_time // 3600)) + ':' + str(int((tiles_time % 3600) // 60)) + ':' + str(
             round(tiles_time % 60, 2))
         train_time = time.time()
-        train_segmentation_model_cnns(pthDL, create_new_tiles)
+        try:
+            train_segmentation_model_cnns(pthDL, create_new_tiles)
+        except Exception as e:
+            train_time = time.time() - train_time
+            logger.error(f"Training failed: {e}")
+            logger.error("Skipping testing, classification, and quantification due to training failure.")
+            QtWidgets.QMessageBox.critical(
+                None, "Training Failed",
+                f"Model training failed with error:\n\n{e}\n\n"
+                "Testing and classification have been skipped."
+            )
+            return
         train_time = time.time() - train_time
         train_time = str(int(train_time // 3600)) + ':' + str(int((train_time % 3600) // 60)) + ':' + str(
             round(train_time % 60, 2))

@@ -291,18 +291,20 @@ def calculate_tissue_mask(path: str, image_name: str, test: bool = False,
         if alt_ta_path not in [p[1] for p in paths_to_check]:
             paths_to_check.append(("alternative", alt_ta_path))
     
-    # 4. Training path if provided and different
-    if training_path:
+    # 4. Training path if provided and different — only for training images,
+    #    not test images (test images may share filenames with training images
+    #    but have different dimensions, causing annotation mask misalignment)
+    if training_path and not test:
         training_path_parts = training_path.rstrip(os.path.sep).split(os.path.sep)
         last_part = training_path_parts[-1] if training_path_parts else ''
-        
+
         if last_part.endswith('x') and last_part[:-1].isdigit():
             training_ta_path = os.path.join(training_path, 'TA', f'{image_name}.tif')
         elif resolution:
             training_ta_path = os.path.join(training_path, resolution, 'TA', f'{image_name}.tif')
         else:
             training_ta_path = os.path.join(training_path, 'TA', f'{image_name}.tif')
-        
+
         training_ta_path = os.path.normpath(os.path.abspath(training_ta_path))
         if training_ta_path not in [p[1] for p in paths_to_check]:
             paths_to_check.append(("training", training_ta_path))
@@ -351,12 +353,21 @@ def calculate_tissue_mask(path: str, image_name: str, test: bool = False,
                     # Verify file is readable
                     with open(check_path, 'rb') as f:
                         f.read(1)
-                    
+
                     # Load the tissue mask
                     tissue_mask = load_image_with_fallback(check_path, "L")
+
+                    # Validate dimensions match the loaded image
+                    if tissue_mask.shape[:2] != image.shape[:2]:
+                        logger.warning(
+                            f"  Tissue mask shape {tissue_mask.shape[:2]} doesn't match "
+                            f"image shape {image.shape[:2]} at {location_name} location — skipping"
+                        )
+                        break  # Skip this location entirely
+
                     logger.info(f'  Existing TA loaded from {location_name} location: {check_path}')
                     return image, tissue_mask, output_path
-                    
+
                 except Exception as e:
                     logger.debug(f"  Failed to read from {location_name} on attempt {attempt + 1}: {type(e).__name__}: {e}")
                     if attempt == 0:
