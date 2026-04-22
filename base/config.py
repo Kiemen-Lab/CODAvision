@@ -47,13 +47,13 @@ class ModelDefaults:
     # Training defaults
     BATCH_SIZE = 8  # Default batch size for training
     LEARNING_RATE = 5e-4  # Default initial learning rate
-    EPOCHS = 100  # Default number of training epochs
+    EPOCHS = 12  # Default number of training epochs
 
     # Optimizer defaults
     OPTIMIZER_EPSILON = 1e-8  # Epsilon value for Adam and AdamW optimizers (for numerical stability)
 
     # Early stopping and learning rate reduction
-    ES_PATIENCE = 12  # Patience for early stopping
+    ES_PATIENCE = 6  # Patience for early stopping (epochs without improvement)
     LR_PATIENCE = 1  # Patience for learning rate reduction
     LR_FACTOR = 0.75  # Factor for learning rate reduction
     MIN_LR = 1e-7  # Minimum learning rate
@@ -65,7 +65,7 @@ class ModelDefaults:
     TILE_GENERATION_MODE = "modern"  # Default tile generation mode ("modern" or "legacy")
 
     # ===== FRAMEWORK CONFIGURATION =====
-    DEFAULT_FRAMEWORK = "pytorch"  # "pytorch" or "tensorflow"
+    DEFAULT_FRAMEWORK = "tensorflow"  # "pytorch" or "tensorflow"
 
     # PyTorch-specific settings
     PYTORCH_DEVICE = "auto"  # auto, cuda, mps, cpu
