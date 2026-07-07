@@ -146,7 +146,7 @@ def augment_image(
     # Hue augmentation (color shifting)
     if hue_shift:
         # Random factors for each channel, either reducing or increasing intensity
-        factors = np.concatenate((np.arange(0.88, 0.98, 0.01), np.arange(1.02, 1.12, 0.01)))
+        factors = np.concatenate((np.arange(0.88, 0.981, 0.01), np.arange(1.02, 1.121, 0.01)))
 
         # Apply different random factors to each channel
         for channel in range(3):
@@ -205,6 +205,8 @@ def augment_image(
     mask_indices = (augmented_mask != 0)
     mask_3d = np.dstack((mask_indices, mask_indices, mask_indices))
     augmented_image = augmented_image * mask_3d
+
+    augmented_image = np.clip(augmented_image, 0, 255)
 
     return augmented_image, augmented_mask
 
