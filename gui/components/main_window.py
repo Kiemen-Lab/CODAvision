@@ -315,8 +315,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def check_for_trained_model(self):
         model_exists = False
         self.loaded_xml = False
-        if os.path.isdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
-            for file in os.listdir(os.path.join(self.ui.trianing_LE.text(), self.ui.model_name.text())):
+
+        model_name = self.ui.model_name.text().replace(' ', '_')
+        if os.path.isdir(os.path.join(self.ui.trianing_LE.text(), model_name)):
+            for file in os.listdir(os.path.join(self.ui.trianing_LE.text(), model_name)):
                 if 'best_model' in file and file.endswith('.keras'):
                     model_exists = True
 
@@ -340,7 +342,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.ui.classify_PB.setEnabled(True)
                         self.pthim = self.ui.trianing_LE.text()
                         self.resolution = self.ui.resolution_CB.currentText()
-                        self.nm = self.ui.model_name.text()
+                        self.nm = model_name
                         self.classification_source = 2
                         with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
                             data = pickle.load(file)
@@ -356,7 +358,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.ui.classify_PB.setEnabled(True)
                         self.pthim = self.ui.trianing_LE.text()
                         self.resolution = self.ui.resolution_CB.currentText()
-                        self.nm = self.ui.model_name.text()
+                        self.nm = model_name
                         with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
                             data = pickle.load(file)
                             self.model_type = data['model_type']
@@ -381,7 +383,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.ui.classify_PB.setEnabled(True)
                     self.pthim = self.ui.trianing_LE.text()
                     self.resolution = self.ui.resolution_CB.currentText()
-                    self.nm = self.ui.model_name.text()
+                    self.nm = model_name
                     with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
                         data = pickle.load(file)
                         self.model_type = data['model_type']
@@ -409,7 +411,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.ui.classify_PB.setEnabled(True)
                 self.pthim = self.ui.trianing_LE.text()
                 self.resolution = self.ui.resolution_CB.currentText()
-                self.nm = self.ui.model_name.text()
+                self.nm = model_name
                 with open(os.path.join(self.pthim, self.nm, 'net.pkl'), 'rb') as file:
                     data = pickle.load(file)
                     self.model_type = data['model_type']
@@ -1389,7 +1391,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Paths
         pth = self.ui.trianing_LE.text()
         pthtest = self.ui.testing_LE.text()
-        model_name = self.ui.model_name.text()
+        model_name = self.ui.model_name.text().replace(' ', '_')
         resolution = self.ui.resolution_CB.currentText()
         pthim = os.path.join(pth, f'{resolution}')
         pthDL = os.path.join(pth, model_name)
@@ -1485,7 +1487,7 @@ class MainWindow(QtWidgets.QMainWindow):
     # Load paths
     def get_pthDL(self):
         pth = self.ui.trianing_LE.text()
-        model_name = self.ui.model_name.text()
+        model_name = self.ui.model_name.text().replace(' ', '_')
         return os.path.join(pth, model_name)
 
     def get_pthim(self):
