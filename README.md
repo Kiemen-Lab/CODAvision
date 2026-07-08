@@ -1,5 +1,5 @@
 # CODAvision
-[![bioRxiv](https://img.shields.io/badge/bioRxiv-10.1101/2025.04.11.648464-blue)](https://www.biorxiv.org/content/10.1101/2025.04.11.648464v1)
+[![Nature Protocols](https://img.shields.io/badge/Nature%20Protocols-s41596--026--01404--3-purple)](https://www.nature.com/articles/s41596-026-01404-3)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 
 CODAvision is an open-source Python package designed for semantic segmentation of biomedical images through a user-friendly interface.
@@ -186,7 +186,7 @@ The plugin architecture supports:
 
 ---
 
-For comprehensive guidance on annotation dataset creation, see the [CODAvision Protocol](https://www.biorxiv.org/content/10.1101/2025.04.11.648464v1).
+For comprehensive guidance on annotation dataset creation, see the [CODAvision Protocol](https://www.nature.com/articles/s41596-026-01404-3).
 
 ---
 
