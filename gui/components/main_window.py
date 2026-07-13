@@ -30,6 +30,19 @@ from gui.utils import save_model_metadata_GUI
 from .ui_definitions import Ui_MainWindow
 from .classification_window import MainWindowClassify
 
+# Checkpoint extensions written by the trainers: .keras/.h5 (TensorFlow), .pth (PyTorch)
+TRAINED_MODEL_EXTENSIONS = ('.keras', '.h5', '.pth')
+
+
+def trained_model_exists(model_dir):
+    """Return True if model_dir holds a best-model checkpoint from any supported framework."""
+    if not os.path.isdir(model_dir):
+        return False
+    return any(
+        'best_model' in file and file.endswith(TRAINED_MODEL_EXTENSIONS)
+        for file in os.listdir(model_dir)
+    )
+
 
 def choose_xml(parent):
     msg_box = QtWidgets.QMessageBox(parent)
@@ -298,11 +311,7 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
 
-        model_exists = False
-        if os.path.isdir(os.sep.join(pthim.split(os.sep)[:-1]) + os.sep + nm):
-            for file in os.listdir(os.sep.join(pthim.split(os.sep)[:-1]) + os.sep + nm):
-                if 'best_model' in file and file.endswith('.keras'):
-                    model_exists = True
+        model_exists = trained_model_exists(os.sep.join(pthim.split(os.sep)[:-1]) + os.sep + nm)
 
         if model_exists:
             self.ui.classify_PB.setVisible(True)
@@ -312,15 +321,22 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.classify_PB.setVisible(False)
             self.ui.classify_PB.setEnabled(False)
 
+    def resolve_model_name(self):
+        """Return the model folder name that actually exists in the training path.
+        """
+        raw_name = self.ui.model_name.text()
+        sanitized_name = raw_name.replace(' ', '_')
+        training_path = self.ui.trianing_LE.text()
+        if not os.path.isdir(os.path.join(training_path, sanitized_name)) and \
+                os.path.isdir(os.path.join(training_path, raw_name)):
+            return raw_name
+        return sanitized_name
+
     def check_for_trained_model(self):
-        model_exists = False
         self.loaded_xml = False
 
-        model_name = self.ui.model_name.text().replace(' ', '_')
-        if os.path.isdir(os.path.join(self.ui.trianing_LE.text(), model_name)):
-            for file in os.listdir(os.path.join(self.ui.trianing_LE.text(), model_name)):
-                if 'best_model' in file and file.endswith('.keras'):
-                    model_exists = True
+        model_name = self.resolve_model_name()
+        model_exists = trained_model_exists(os.path.join(self.ui.trianing_LE.text(), model_name))
 
         if self.ui.resolution_CB.currentText() == 'Custom':
             self.ui.label_43.setVisible(True)
@@ -1487,7 +1503,7 @@ class MainWindow(QtWidgets.QMainWindow):
     # Load paths
     def get_pthDL(self):
         pth = self.ui.trianing_LE.text()
-        model_name = self.ui.model_name.text().replace(' ', '_')
+        model_name = self.resolve_model_name()
         return os.path.join(pth, model_name)
 
     def get_pthim(self):

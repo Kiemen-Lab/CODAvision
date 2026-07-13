@@ -78,6 +78,7 @@ class ImageClassifier:
         self.model_name = None
         self.output_path = None
         self.model_paths = None
+        self.framework = None
 
         # Display options
         self.should_create_color_overlay = False
@@ -105,6 +106,9 @@ class ImageClassifier:
             self.nwhite = data.get('nwhite')
             self.image_size = data.get('sxy')
             self.model_name = data.get('nm')
+            # Framework the model was trained with. Absent for models trained before
+            # this was recorded, in which case the global default is used.
+            self.framework = data.get('framework')
 
             # Get standard paths
             self.model_paths = get_model_paths(self.model_path, self.model_type)
@@ -134,9 +138,6 @@ class ImageClassifier:
             ValueError: If model loading fails
         """
         try:
-            # Determine the framework from config
-            framework = FrameworkConfig.get_framework()
-
             # Get base model path (without extension)
             base_model_path = self.model_paths['best_model'].rsplit('.', 1)[0]
 
@@ -145,6 +146,21 @@ class ImageClassifier:
             pytorch_final = self.model_paths['final_model'].rsplit('.', 1)[0] + '.pth'
             tf_best = self.model_paths['best_model']
             tf_final = self.model_paths['final_model']
+
+            framework = self.framework
+            if framework is None:
+                # Models trained before the framework was recorded in net.pkl: infer it
+                # from the checkpoints on disk, since the global config default says
+                # nothing about how this particular model was trained. Only fall back to
+                # the config when the checkpoints are ambiguous (both or neither present).
+                has_pytorch = os.path.exists(pytorch_best) or os.path.exists(pytorch_final)
+                has_tf = os.path.exists(tf_best) or os.path.exists(tf_final)
+                if has_pytorch and not has_tf:
+                    framework = 'pytorch'
+                elif has_tf and not has_pytorch:
+                    framework = 'tensorflow'
+                else:
+                    framework = FrameworkConfig.get_framework()
 
             model_path = None
             is_pytorch = False
