@@ -122,6 +122,73 @@ class ImageClassifier:
         except Exception as e:
             raise ValueError(f"Failed to load model data: {e}")
 
+    def _resolve_checkpoint(self) -> Tuple[str, bool]:
+        """
+        Resolve which trained checkpoint file to load, and whether it is a PyTorch model.
+
+        Candidate paths are built here from the model directory + type using explicit extensions,
+        independent of the global default framework. (``self.model_paths`` cannot be used directly
+        for this: ``get_model_paths`` picks a single extension based on the global default, so its
+        TensorFlow paths would carry a ``.pth`` suffix whenever the default is PyTorch.) The
+        framework is resolved in three tiers: the framework recorded in ``net.pkl``, else inferred
+        from which checkpoints exist on disk, else the global config default.
+
+        Returns:
+            Tuple of (model_path, is_pytorch).
+
+        Raises:
+            FileNotFoundError: If no checkpoint exists for either framework.
+        """
+        best_base = self.model_paths['best_model'].rsplit('.', 1)[0]
+        final_base = self.model_paths['final_model'].rsplit('.', 1)[0]
+
+        # Framework-specific candidates, best-model before final-model.
+        # TensorFlow: .keras is the current format, .h5 is legacy Keras HDF5.
+        pytorch_candidates = [best_base + '.pth', final_base + '.pth']
+        tf_candidates = [
+            best_base + '.keras', best_base + '.h5',
+            final_base + '.keras', final_base + '.h5',
+        ]
+        pytorch_path = next((p for p in pytorch_candidates if os.path.exists(p)), None)
+        tf_path = next((p for p in tf_candidates if os.path.exists(p)), None)
+
+        # Framework recorded in net.pkl; treat blank/unknown as "not recorded" and normalize case.
+        framework = (self.framework or '').lower() or None
+        if framework is None:
+            # No recorded framework: infer from the checkpoints on disk, since the global config
+            # default says nothing about how this particular model was trained. Only fall back to
+            # the config when the checkpoints are ambiguous (both or neither present).
+            if pytorch_path and not tf_path:
+                framework = 'pytorch'
+            elif tf_path and not pytorch_path:
+                framework = 'tensorflow'
+            else:
+                framework = FrameworkConfig.get_framework()
+
+        # Prefer the resolved framework; fall back to the other with a warning.
+        if framework == 'pytorch':
+            if pytorch_path:
+                return pytorch_path, True
+            if tf_path:
+                logger.warning(
+                    f"PyTorch model requested but not found. Falling back to TensorFlow model: {tf_path}"
+                )
+                return tf_path, False
+        else:  # tensorflow (or any non-pytorch value)
+            if tf_path:
+                return tf_path, False
+            if pytorch_path:
+                logger.warning(
+                    f"TensorFlow model requested but not found. Falling back to PyTorch model: {pytorch_path}"
+                )
+                return pytorch_path, True
+
+        raise FileNotFoundError(
+            f"No model file found. Searched:\n"
+            f"  PyTorch: {pytorch_candidates}\n"
+            f"  TensorFlow: {tf_candidates}"
+        )
+
     def _load_model(self) -> Union['keras.Model', object]:
         """
         Load the trained model (supports both TensorFlow and PyTorch).
@@ -138,79 +205,7 @@ class ImageClassifier:
             ValueError: If model loading fails
         """
         try:
-            # Get base model path (without extension)
-            base_model_path = self.model_paths['best_model'].rsplit('.', 1)[0]
-
-            # Check what model files exist
-            pytorch_best = base_model_path + '.pth'
-            pytorch_final = self.model_paths['final_model'].rsplit('.', 1)[0] + '.pth'
-            tf_best = self.model_paths['best_model']
-            tf_final = self.model_paths['final_model']
-
-            framework = self.framework
-            if framework is None:
-                # Models trained before the framework was recorded in net.pkl: infer it
-                # from the checkpoints on disk, since the global config default says
-                # nothing about how this particular model was trained. Only fall back to
-                # the config when the checkpoints are ambiguous (both or neither present).
-                has_pytorch = os.path.exists(pytorch_best) or os.path.exists(pytorch_final)
-                has_tf = os.path.exists(tf_best) or os.path.exists(tf_final)
-                if has_pytorch and not has_tf:
-                    framework = 'pytorch'
-                elif has_tf and not has_pytorch:
-                    framework = 'tensorflow'
-                else:
-                    framework = FrameworkConfig.get_framework()
-
-            model_path = None
-            is_pytorch = False
-
-            # Priority: framework preference, then best model, then final model
-            if framework == 'pytorch':
-                if os.path.exists(pytorch_best):
-                    model_path = pytorch_best
-                    is_pytorch = True
-                elif os.path.exists(pytorch_final):
-                    model_path = pytorch_final
-                    is_pytorch = True
-                elif os.path.exists(tf_best):
-                    logger.warning(
-                        f"PyTorch model requested but not found. Falling back to TensorFlow model: {tf_best}"
-                    )
-                    model_path = tf_best
-                    is_pytorch = False
-                elif os.path.exists(tf_final):
-                    logger.warning(
-                        f"PyTorch model requested but not found. Falling back to TensorFlow model: {tf_final}"
-                    )
-                    model_path = tf_final
-                    is_pytorch = False
-            else:  # tensorflow (default)
-                if os.path.exists(tf_best):
-                    model_path = tf_best
-                    is_pytorch = False
-                elif os.path.exists(tf_final):
-                    model_path = tf_final
-                    is_pytorch = False
-                elif os.path.exists(pytorch_best):
-                    logger.warning(
-                        f"TensorFlow model requested but not found. Falling back to PyTorch model: {pytorch_best}"
-                    )
-                    model_path = pytorch_best
-                    is_pytorch = True
-                elif os.path.exists(pytorch_final):
-                    logger.warning(
-                        f"TensorFlow model requested but not found. Falling back to PyTorch model: {pytorch_final}"
-                    )
-                    model_path = pytorch_final
-                    is_pytorch = True
-
-            if model_path is None:
-                raise FileNotFoundError(
-                    f"No model file found. Searched:\n"
-                    f"  PyTorch: {pytorch_best}, {pytorch_final}\n"
-                    f"  TensorFlow: {tf_best}, {tf_final}"
-                )
+            model_path, is_pytorch = self._resolve_checkpoint()
 
             logger.info(f"Loading {'PyTorch' if is_pytorch else 'TensorFlow'} model from {model_path}")
 
