@@ -310,6 +310,10 @@ class MainWindow(QtWidgets.QMainWindow):
                 logger.info("Prerecorded data loaded successfully.")
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, 'Error', f'Failed to load prerecorded data: {str(e)}')
+            # Load failed: pthim/nm may be unbound below, so stop here with the button hidden.
+            self.ui.classify_PB.setVisible(False)
+            self.ui.classify_PB.setEnabled(False)
+            return
 
         model_exists = trained_model_exists(os.sep.join(pthim.split(os.sep)[:-1]) + os.sep + nm)
 
