@@ -1324,12 +1324,21 @@ def train_segmentation_model_cnns(
     framework_config = get_framework_config()
     framework = framework_config['framework']
 
-    # Check if model already exists and should not be retrained
-    from base.models.utils import get_model_paths
-    model_paths = get_model_paths(pthDL, model_type, framework=framework)
-    if os.path.isfile(model_paths['best_model']) and not retrain_model:
-        module_logger.info(f'Model already trained with name {model_name}. Use retrain_model=True to retrain.')
-        return
+    # Check if model already exists and should not be retrained. A model trained with
+    # either framework counts, so flipping DEFAULT_FRAMEWORK does not silently retrain
+    # an already-trained model.
+    for existing_framework in ('tensorflow', 'pytorch'):
+        existing_best = get_model_paths(pthDL, model_type, framework=existing_framework)['best_model']
+        if os.path.isfile(existing_best) and not retrain_model:
+            module_logger.info(
+                f'Model already trained with name {model_name} ({existing_framework}). '
+                f'Use retrain_model=True to retrain.'
+            )
+            return
+
+    # Record the framework in net.pkl so inference loads the matching checkpoint
+    # instead of falling back to the global default.
+    save_model_metadata(pthDL, {'framework': framework})
 
     # Create and use the appropriate trainer based on framework
     try:
