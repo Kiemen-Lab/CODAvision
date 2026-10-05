@@ -156,8 +156,10 @@ def print_status_summary(
         print("\nStatus: No NVIDIA GPU detected")
         print("-" * 60)
         print("\nYour system does not have an NVIDIA GPU or CUDA drivers.")
-        print("The supported CODAvision model workflows require an NVIDIA GPU.")
-        print("Check the GPU and driver before following the README installation guide.")
+        print("CODAvision can use CPU for computations.")
+        print("\nTo install CODAvision:")
+        print("  uv sync --locked")
+        print("\nNote: Training will be significantly slower on CPU.")
 
     elif torch_installed and torch_has_cuda:
         print("\nStatus: GPU support is working! ✓")
@@ -195,13 +197,12 @@ def print_status_summary(
         print("Installation with current dependencies:")
         print("-" * 60)
         print("From the checkout, use the locked CUDA 12.8 environment:")
-        print("  uv sync --locked --extra gpu")
-        print("  uv run --locked --extra gpu CODAvision")
+        print("  uv sync --locked")
+        print("  uv run --locked CODAvision")
         print("The NVIDIA driver must support CUDA 12.8; see README.md for requirements.")
-        print("For alternative backends, see README.md (Select a PyTorch backend).")
     if platform.system() == "Windows":
         print("Native Windows requires Python 3.10, TensorFlow 2.10.1, and CUDA 11.2/cuDNN 8.1.")
-        print("Install the legacy TensorFlow runtime separately; see README.md (Native Windows GPU).")
+        print("Install the legacy TensorFlow runtime separately; see README.md (Step 3).")
         print("PyTorch continues to use its own CUDA 12.8 wheels.")
 
     # Troubleshooting
@@ -220,7 +221,7 @@ def print_status_summary(
 
     print("\nFor detailed instructions, see:")
     print("  - CLAUDE.md (Framework Selection section)")
-    print("  - README.md (Installation section, including Conda and pip)")
+    print("  - README.md (Installation section)")
     print("\n" + "="*60 + "\n")
 
 

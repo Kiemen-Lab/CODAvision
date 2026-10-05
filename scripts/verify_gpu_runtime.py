@@ -1,6 +1,6 @@
 """Exercise both frameworks and CODAvision's AdamW paths in one GPU process.
 
-Run from an activated environment: uv run --locked --extra gpu python scripts/verify_gpu_runtime.py
+Run from an activated environment: uv run --locked python scripts/verify_gpu_runtime.py
 CPU fallback is a failure. No external dataset or model download is needed.
 """
 

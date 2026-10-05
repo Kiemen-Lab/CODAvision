@@ -20,17 +20,40 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: Microsoft :: Windows",
     "Topic :: Scientific/Engineering :: Image Recognition"
 ]
 
 keywords = ["medical imaging", "image labeling", "machine learning", "deep learning", "tissue labeling"]
 
 dependencies = [
-    # Shared numerical requirements on Linux and native Windows.
-    "numpy>=1.26,<2",
+    # Numerical computing (compatible with TensorFlow 2.10)
+    "numpy>=1.26,<2.0",
+
+    # Image processing
     "pillow==10.4.0",
+
+    # Deep Learning - Platform-specific TensorFlow installation
+    # Windows uses TensorFlow 2.10 (includes GPU support)
+    "tensorflow==2.10.1; sys_platform == 'win32'",
+    # Linux uses TensorFlow 2.21 with CUDA libraries
+    "tensorflow[and-cuda]==2.21.0; sys_platform == 'linux'",
+    # Apple Silicon macOS uses CPU-only TensorFlow 2.21
+    "tensorflow==2.21.0; sys_platform == 'darwin'",
+
+    "keras==2.10.0; sys_platform == 'win32'",
+    "tf-keras==2.21.0; sys_platform == 'linux'",
+    "tf-keras==2.21.0; sys_platform == 'darwin'",
+    # 0.31 is the last release providing native Windows filesystem wheels.
+    "tensorflow-io-gcs-filesystem<0.32; sys_platform == 'win32'",
+
+    # PyTorch - Default deep learning framework
+    # uv sources select CUDA 12.8 wheels on Linux/Windows and PyPI on macOS.
+    # For CUDA GPU support with pip, install PyTorch first:
+    #   pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
+    # Then: pip install -e .
+    # Or use: python scripts/check_cuda_version.py for guided installation
+    "torch==2.11.0",
+    "torchvision==0.26.0",
 
     # PySide6 owns the GUI; share one cv2 provider with inference libraries.
     "opencv-python-headless==4.10.0.84",
@@ -49,7 +72,7 @@ dependencies = [
     "xmltodict==0.13.0",
     "openpyxl==3.1.2",
 
-    # Whole Slide Imaging
+    # Whole Slide Imaging (cross-platform - works on Linux, macOS, Windows)
     "openslide-python",
     "openslide-bin",
 
@@ -57,7 +80,7 @@ dependencies = [
     "pydicom",
 
     # GUI framework
-    "PySide6==6.5.1.1",
+    "PySide6==6.5.1.1,<7",
 
     # Utilities
     "GPUtil==1.4.0",
@@ -82,27 +105,8 @@ dependencies = [
 requires-python = ">=3.10,<3.12"
 
 [project.optional-dependencies]
-# Required application runtime: install CODAvision[gpu] on both platforms.
-# Base dependencies alone do not provide the model frameworks needed at startup.
-gpu = [
-    # PyTorch on Linux and Windows. uv sources below select cu128 wheels.
-    "torch==2.11.0",
-    "torchvision==0.26.0",
-
-    # Linux: TensorFlow supplies CUDA 12 libraries and uses legacy Keras.
-    "tensorflow[and-cuda]==2.21.0; sys_platform == 'linux'",
-    "tf-keras==2.21.0; sys_platform == 'linux'",
-
-    # Native Windows: environment-windows.yml supplies CUDA 11.2/cuDNN 8.1.
-    # Trainer AdamW disables XLA JIT on Windows; no CUDA compiler is needed.
-    "tensorflow==2.10.1; sys_platform == 'win32'",
-    "keras==2.10.0; sys_platform == 'win32'",
-    # 0.31 is the last release providing native Windows filesystem wheels.
-    "tensorflow-io-gcs-filesystem<0.32; sys_platform == 'win32'",
-]
-
 # Development dependencies (includes all test and code quality tools)
-# Install with: uv sync --extra gpu --extra dev
+# Install with: pip install -e ".[dev]"
 dev = [
     # Testing framework
     "pytest>=7.4.0",
@@ -137,7 +141,7 @@ dev = [
 ]
 
 # Minimal testing dependencies (for CI pipelines)
-# Install with: uv sync --extra gpu --extra test
+# Install with: pip install -e ".[test]"
 test = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
@@ -158,6 +162,7 @@ include = ["/CODAvision.py", "/base", "/gui"]
 [tool.uv]
 required-version = ">=0.10.10"
 environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
     "sys_platform == 'linux' and platform_machine == 'x86_64'",
     "sys_platform == 'win32' and (platform_machine == 'AMD64' or platform_machine == 'x86_64') and python_version == '3.10'",
 ]

@@ -9,39 +9,6 @@ CODAvision uses a flexible plugin architecture that enables seamless integration
 - **Factory pattern**: Unified model creation through `model_call()`
 - **Automatic format conversion**: NHWC (TensorFlow) ↔ NCHW (PyTorch) handled transparently
 
-## External model dependencies
-
-The `gpu` extra owns both framework stacks: PyTorch/torchvision on both
-platforms, TensorFlow 2.21 with tf-keras on Linux, and TensorFlow 2.10.1 with
-Keras 2.10 on native Windows. The application imports model code at startup,
-so the base GUI/scientific dependencies alone are not a supported runtime.
-Windows still needs external CUDA 11.2/cuDNN 8.1 libraries for TensorFlow.
-Wheel backend selection belongs to the installation commands and uv index configuration
-documented in README.md. Installing another model does
-not make `--torch-backend=auto` validate TensorFlow's CUDA compatibility.
-
-For TiSAM, the shared Torch 2.11/torchvision 0.26 and NumPy 1.26.x versions
-satisfy its numerical dependencies and Mammoth's Torch range. The image I/O
-boundary also matters: use only `opencv-python-headless` as the `cv2`
-provider. CODAvision uses PySide6 for windows, so it does not need desktop
-OpenCV. Its open-ended `tifffile>=2024.8.28` requirement permits TiSAM's
-Python-specific TIFF/Zarr pairs: Python 3.10 uses tifffile before 2025.5.21
-with Zarr 2, while Python 3.11 uses tifffile 2025.5.21+ with Zarr 3. Resolve
-the combined requirements when adding TiSAM instead of reusing either
-project's existing lock unchanged.
-
-Native Windows uses Python 3.10. CODAvision and TiSAM's inference requirements
-resolve together with NumPy 1.26.4 and TensorFlow 2.10.1, but this does not
-verify same-process GPU execution. TiSAM's current Mammoth v0.8.8 pin requires
-TensorBoardX >=2.6.2.2, which conflicts with TensorFlow 2.10.1's protobuf <3.20
-requirement. Mammoth [commit c827276](https://github.com/zydtiger/mammoth/commit/c827276a54ffb3440467bf283c2931f722d54c7f)
-allows TensorBoardX 2.6. A Windows training integration must consume that change
-and select TensorBoardX 2.6 with protobuf 3.19.6 in its combined lockfile; do not
-bypass the resolver or assume the inference dependency result covers training.
-
-These dependency constraints prepare the shared environment. A TiSAM model
-adapter, checkpoint mapping, and GUI registration are not included here.
-
 ## 1. Framework Enum and Abstract Interface
 
 The framework-agnostic interface is defined in `base/models/base.py`:
@@ -333,7 +300,7 @@ class PyTorchKerasAdapter:
 Key features:
 - **Automatic format conversion**: NHWC (TensorFlow) ↔ NCHW (PyTorch)
 - **Full Keras API**: `predict()`, `compile()`, `fit()`, `test_on_batch()`, `save()`, `load_weights()`
-- **Supported devices**: CPU and CUDA on Linux/Windows
+- **Multi-device support**: CPU, CUDA, MPS (Apple Silicon)
 
 ## 5. Factory Function
 

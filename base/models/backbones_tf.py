@@ -17,7 +17,10 @@ import warnings
 import numpy as np
 
 import tensorflow as tf
-from tensorflow.keras import layers, Model, applications
+from tensorflow import keras
+
+# Share TensorFlow's legacy Keras API even when TensorFlow was imported first.
+layers, Model, applications = keras.layers, keras.Model, keras.applications
 
 from base.models.base import BaseSegmentationModelInterface, Framework
 
