@@ -1039,7 +1039,7 @@ class CustomDeepLabV3PlusTrainer(DeepLabV3PlusTrainer):
         """
         Compile model with custom learning rate and optional L2 regularization.
         """
-        import keras
+        from tensorflow import keras
         import tensorflow as tf
 
         # Use AdamW for weight decay or regular Adam with kernel regularizers

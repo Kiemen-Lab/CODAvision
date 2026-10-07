@@ -61,7 +61,8 @@ CODAvision is an open-source Python package designed for semantic segmentation o
 
 ### Install with uv
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then clone
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) **0.10.10 or
+newer** (check with `uv --version`; upgrade with `uv self update`), then clone
 CODAvision and install the locked dependencies:
 
 ```bash
@@ -70,6 +71,13 @@ cd CODAvision
 uv sync --locked
 uv run --locked CODAvision
 ```
+
+> **Windows with Anaconda:** an older `uv.exe` in Anaconda's base environment can
+> come first on `PATH` even when the CODAvision conda environment is active, which
+> fails with `Required uv version >=0.10.10 does not match the running version`.
+> Run `where.exe uv` and `uv --version` to check. If the wrong copy is used, call
+> the environment's copy instead, e.g. `& "$env:CONDA_PREFIX\Scripts\uv.exe" sync --locked`
+> in PowerShell, or define `Set-Alias uv "$env:CONDA_PREFIX\Scripts\uv.exe"` for the session.
 
 Both TensorFlow and PyTorch are installed by default. Linux x86_64 uses
 TensorFlow 2.21 / tf-keras 2.21 and PyTorch 2.11 / torchvision 0.26 with CUDA

@@ -13,6 +13,13 @@ import pytest
 from unittest.mock import Mock, MagicMock
 import numpy as np
 
+# On native Windows, importing torch after PySide6 fails with WinError 1114.
+# Load torch before the Qt imports below; skip silently if it is not installed.
+try:
+    import torch  # noqa: F401
+except ImportError:
+    pass
+
 # Configure Qt for testing
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')  # For headless testing
 
