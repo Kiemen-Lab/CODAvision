@@ -18,7 +18,8 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Image Recognition"
 ]
 
@@ -26,7 +27,7 @@ keywords = ["medical imaging", "image labeling", "machine learning", "deep learn
 
 dependencies = [
     # Numerical computing (compatible with TensorFlow 2.10)
-    "numpy>=1.23.5,<2.0",
+    "numpy>=1.26,<2.0",
 
     # Image processing
     "pillow==10.4.0",
@@ -34,31 +35,28 @@ dependencies = [
     # Deep Learning - Platform-specific TensorFlow installation
     # Windows uses TensorFlow 2.10 (includes GPU support)
     "tensorflow==2.10.1; sys_platform == 'win32'",
-    # Linux uses standard TensorFlow 2.12.1 (includes GPU support)
-    "tensorflow==2.12.1; sys_platform == 'linux'",
-    # macOS Intel uses CPU-only TensorFlow 2.12.1
-    "tensorflow==2.12.1; sys_platform == 'darwin' and platform_machine != 'arm64'",
-    # Note: macOS Silicon (M1/M2/M3) requires TensorFlow 2.9+ installed via optional extra [macos-silicon]
+    # Linux uses TensorFlow 2.21 with CUDA libraries
+    "tensorflow[and-cuda]==2.21.0; sys_platform == 'linux'",
+    # Apple Silicon macOS uses CPU-only TensorFlow 2.21
+    "tensorflow==2.21.0; sys_platform == 'darwin'",
 
     "keras==2.10.0; sys_platform == 'win32'",
-    "keras==2.12.0; sys_platform != 'win32'",
+    "tf-keras==2.21.0; sys_platform == 'linux'",
+    "tf-keras==2.21.0; sys_platform == 'darwin'",
+    # 0.31 is the last release providing native Windows filesystem wheels.
+    "tensorflow-io-gcs-filesystem<0.32; sys_platform == 'win32'",
 
     # PyTorch - Default deep learning framework
-    # Note: Default installation installs CPU-only version
-    # For CUDA GPU support, install PyTorch first:
-    #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+    # uv sources select CUDA 12.8 wheels on Linux/Windows and PyPI on macOS.
+    # For CUDA GPU support with pip, install PyTorch first:
+    #   pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
     # Then: pip install -e .
     # Or use: python scripts/check_cuda_version.py for guided installation
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
+    "torch==2.11.0",
+    "torchvision==0.26.0",
 
-
-    # TensorFlow 2.10 (Windows) requires protobuf <3.20
-    # TensorFlow 2.12+ (Linux/macOS) requires protobuf >=3.20.3
-    "protobuf>=3.9.2,<3.20; sys_platform == 'win32'",
-    "protobuf>=3.20.3,<5; sys_platform != 'win32'",
-
-    "opencv-python==4.10.0.84",
+    # PySide6 owns the GUI; share one cv2 provider with inference libraries.
+    "opencv-python-headless==4.10.0.84",
 
     # Scientific computing and visualization
     "matplotlib==3.9.2",
@@ -68,7 +66,7 @@ dependencies = [
 
     # Additional image processing
     "scikit-image==0.24.0",
-    "tifffile==2024.8.28",
+    "tifffile>=2024.8.28",
 
     # Data handling
     "xmltodict==0.13.0",
@@ -104,55 +102,9 @@ dependencies = [
     "zipp==3.20.1",
     ]
 
-requires-python = ">=3.9,<3.11"
+requires-python = ">=3.10,<3.12"
 
 [project.optional-dependencies]
-# Apple Silicon (M1/M2/M3/M4) GPU support
-# TensorFlow 2.10 is not compatible with macOS Silicon, so use TF 2.9+ instead
-# Install with: pip install -e ".[macos-silicon]"
-macos-silicon = [
-    "tensorflow-macos>=2.9.0",
-    "tensorflow-metal>=0.5.0",
-]
-
-# ===== PyTorch GPU Support =====
-# Due to pip limitations, CUDA-enabled PyTorch must be installed separately
-# Use the helper script: python scripts/check_cuda_version.py
-# Or install manually before pip install -e .
-
-# PyTorch with CUDA 11.8 (most compatible, works with CUDA 11.x, 12.x, 13.x)
-# Install: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 && pip install -e .
-pytorch-cuda118 = [
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-]
-
-# PyTorch with CUDA 12.1
-# Install: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121 && pip install -e .
-pytorch-cuda121 = [
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-]
-
-# PyTorch with CUDA 12.4 (latest)
-# Install: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124 && pip install -e .
-pytorch-cuda124 = [
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-]
-
-# Generic CUDA support (defaults to CUDA 11.8 - most compatible)
-pytorch-cuda = [
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-]
-
-# CPU-only PyTorch (explicit)
-pytorch-cpu = [
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-]
-
 # Development dependencies (includes all test and code quality tools)
 # Install with: pip install -e ".[dev]"
 dev = [
@@ -205,7 +157,24 @@ Documentation = "https://github.com/Kiemen-Lab/CODAvision#readme"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-include = ["*.ipynb", "*.qss"]
+include = ["/CODAvision.py", "/base", "/gui"]
+
+[tool.uv]
+required-version = ">=0.10.10"
+environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and (platform_machine == 'AMD64' or platform_machine == 'x86_64') and python_version == '3.10'",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+torchvision = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
 
 [project.scripts]
 CODAvision = "CODAvision:main"

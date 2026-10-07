@@ -55,6 +55,13 @@ elif os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] != str(pow(2,40)):
 from PIL import Image # PIL import after os.environ changes
 Image.MAX_IMAGE_PIXELS = None
 
+# On native Windows, importing torch after PySide6 fails with WinError 1114
+# (c10.dll initialization). Load torch first; skip silently if it is not installed.
+try:
+    import torch  # noqa: F401
+except ImportError:
+    pass
+
 # Now import other modules from the application.
 # These modules might import cv2, and the OPENCV_LOG_LEVEL setting will now be in effect.
 from gui.application import CODAVision

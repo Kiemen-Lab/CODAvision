@@ -117,6 +117,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.combined_df = None
         self.delete_count = 0
         self.classify = False
+        self.train = False
         self.img_type = '.ndpi'
         self.test_img_type = '.ndpi'
 

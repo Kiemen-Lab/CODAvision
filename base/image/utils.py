@@ -12,7 +12,7 @@ os.environ['OPENCV_IO_MAX_IMAGE_PIXELS'] = str(pow(2,40))  # Set max image size 
 
 import numpy as np
 import tensorflow as tf
-import keras
+from tensorflow import keras
 import cv2
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None

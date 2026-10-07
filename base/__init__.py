@@ -13,6 +13,13 @@ Modules:
 """
 
 
+import os
+
+# Configure TensorFlow before the eager imports below (also covers library use).
+# All CODAvision models and callbacks must share the legacy tf.keras API.
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+os.environ.setdefault('TF_FORCE_GPU_ALLOW_GROWTH', 'true')
+
 __version__ = '1.0.0'
 
 from .tissue_area.threshold import determine_optimal_TA

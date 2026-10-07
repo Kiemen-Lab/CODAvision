@@ -16,7 +16,7 @@ from glob import glob
 from typing import Dict, List, Optional, Tuple, Union, Any
 import numpy as np
 import tensorflow as tf
-import keras
+from tensorflow import keras
 import logging
 import traceback
 
@@ -501,12 +501,13 @@ class BatchAccuracyCallback(keras.callbacks.Callback):
                     self.best = current
                     self.wait = 0
 
-                    # Save the best model
+                    # Preserve the historical HDF5 checkpoint. Legacy Keras
+                    # treated the .keras suffix as HDF5 even with format='tf'.
                     if self.save_best_model:
                         tf.keras.models.save_model(
                             self._model,
                             self.save_path,
-                            save_format='tf'
+                            save_format='h5'
                         )
                         if self.verbose > 0 and self.logger:
                             self.logger.logger.debug(
@@ -996,7 +997,8 @@ class SegmentationModelTrainer:
 
         # Save model and training history
         model_name = f"{self.model_type}.keras"
-        model.save(os.path.join(self.model_path, model_name))
+        # Preserve the historical HDF5 payload despite the .keras filename.
+        model.save(os.path.join(self.model_path, model_name), save_format='h5')
 
         # Calculate training time
         training_time = time.time() - start_time
@@ -1079,13 +1081,16 @@ class DeepLabV3PlusTrainer(SegmentationModelTrainer):
                     global_clipnorm=1.0,
                 )
             else:
+                # The experimental namespace also supports native Windows TF 2.10.
                 # AdamW provides weight decay (different from L2 regularization)
                 # weight_decay is typically similar to L2 regularization weight
-                optimizer = tf.keras.optimizers.AdamW(
+                optimizer = tf.keras.optimizers.experimental.AdamW(
                     learning_rate=self.learning_rate,
                     weight_decay=self.l2_regularization_weight,
                     epsilon=self.optimizer_epsilon,
                     global_clipnorm=1.0,
+                    # Conda's Windows CUDA runtime lacks the XLA compiler tools.
+                    jit_compile=platform.system() != 'Windows',
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
@@ -1184,12 +1189,15 @@ class UNetTrainer(SegmentationModelTrainer):
                     global_clipnorm=1.0,
                 )
             else:
+                # The experimental namespace also supports native Windows TF 2.10.
                 # AdamW provides weight decay (different from L2 regularization)
-                optimizer = tf.keras.optimizers.AdamW(
+                optimizer = tf.keras.optimizers.experimental.AdamW(
                     learning_rate=learning_rate,
                     weight_decay=self.l2_regularization_weight,
                     epsilon=self.optimizer_epsilon,
                     global_clipnorm=1.0,
+                    # Conda's Windows CUDA runtime lacks the XLA compiler tools.
+                    jit_compile=platform.system() != 'Windows',
                 )
         else:
             # Regular Adam optimizer (L2 regularization handled by kernel_regularizer)
