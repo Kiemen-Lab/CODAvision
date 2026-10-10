@@ -471,3 +471,42 @@ To add a new model architecture:
    ```
 
 The model is then automatically available through `model_call()` and the GUI.
+
+
+## TiSAM checkpoint inference
+
+TiSAM uses a dedicated **TiSAM segmentation…** entry point on `MainWindow`.
+`gui/components/tisam_dialog.py` collects checkpoint, optional TiSAM YAML,
+source/output paths, device, patch geometry and batch size. It starts
+`base/models/tisam_inference.py` as a direct file using `sys.executable` via
+`QProcess`, with no shell. GUI and worker share the same virtual environment;
+there is no interpreter selector or separate dependency environment. The wheel includes the worker through `/base`.
+Direct execution avoids importing CODAvision's `base`/`gui` package initializers
+and their TensorFlow/Qt dependencies into the TiSAM process. Ordinary startup
+does not import TiSAM. This integration requires TiSAM's model/checkpoint APIs
+and `inference` extra; it does not install or call the training runtime.
+`pyproject.toml` declares `tisam[inference]` as a runtime dependency and maps
+its uv source to the sibling checkout `../tisam`. `uv.lock` resolves both
+projects together; normal `uv sync --locked` and `uv run --locked` preserve
+TiSAM in the shared environment. This is a local source configuration, so the
+sibling checkout must be present.
+
+The worker validates source geometry and output paths, reads native/historical
+checkpoint metadata using TiSAM's safe reader, resolves `ModelConfig`, class
+names and mean/std, and reconstructs the model with `TiSAM` and `apply_weights`.
+Incomplete metadata requires the original TiSAM YAML; explicit settings must
+agree with checkpoint metadata. Arbitrary pickle loading is not enabled.
+`segment_wsi` owns normalization, resizing, patch assembly, scratch identity,
+writer locking and atomic TIFF publication. Class IDs are never shifted into
+CODAvision's CNN convention. A neighboring `<mask>.json` records the ordered
+classes (void at index 0), preprocessing, geometry, source/checkpoint paths and
+model configuration. The worker reports failure if legend publication fails,
+even if the mask was already published; preserve that mask and investigate the
+reported filesystem error.
+
+The dialog streams merged process logs, disables inputs while running and
+blocks closing until the worker exits. Stop requests termination and escalates
+to killing that same worker after three seconds. It preserves TiSAM scratch for
+resume and does not terminate other processes. There is no training integration,
+CNN adapter registration, automatic tissue-class remapping or whole-slide
+resampling; source pixel resolution remains the caller's responsibility.

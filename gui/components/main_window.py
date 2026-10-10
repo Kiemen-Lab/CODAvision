@@ -29,6 +29,7 @@ from gui.utils import save_model_metadata_GUI
 # Import GUI components
 from .ui_definitions import Ui_MainWindow
 from .classification_window import MainWindowClassify
+from .tisam_dialog import TiSAMDialog
 
 # Checkpoint extensions written by the trainers: .keras/.h5 (TensorFlow), .pth (PyTorch)
 TRAINED_MODEL_EXTENSIONS = ('.keras', '.h5', '.pth')
@@ -127,6 +128,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.tabWidget.setTabEnabled(i, False)
 
         self.setWindowTitle("CODAvision")
+        self.tisam_button = QtWidgets.QPushButton("TiSAM segmentation…", self)
+        self.ui.gridLayout_6.addWidget(self.tisam_button, self.ui.gridLayout_6.rowCount(), 0)
+        self.tisam_button.clicked.connect(self.open_tisam)
+
+    def open_tisam(self):
+        """Open native checkpoint inference without entering the CNN training workflow."""
+        TiSAMDialog(self).exec()
 
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""

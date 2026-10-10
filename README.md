@@ -95,6 +95,43 @@ not included in this environment.
 For development, use `uv sync --locked --extra dev` and
 `uv run --locked --extra dev pytest`. Use `--extra test` for minimal test tools.
 
+### TiSAM checkpoint segmentation
+
+Keep the TiSAM checkout beside CODAvision at `../tisam`. The current uv source
+configuration installs `tisam[inference]` from that relative path into
+CODAvision's environment and includes its dependencies in `uv.lock`:
+
+```sh
+uv sync --locked
+uv run --locked CODAvision
+```
+
+No separate Python environment, manual TiSAM installation, or training extra
+is needed. This local source configuration requires the sibling checkout.
+
+Open **TiSAM segmentation…** from the main window. Select an existing
+`.safetensors` or safe native `.pt` checkpoint, an RGB TIFF/PNG, and a new output
+TIFF path. Inference automatically uses CODAvision's Python interpreter; it runs
+in a child process so segmentation does not block the GUI.
+
+Checkpoints need architecture, ordered class names, and normalization metadata.
+When any are missing, select the corresponding TiSAM YAML configuration
+(`model` and `data` sections); configured values must agree with saved metadata.
+Foundation encoder weights and any required access must be available to the
+CODAvision environment. Use `cuda:0` (or another CUDA device) for practical model
+execution; `cpu` is also accepted.
+
+Segmentation preserves source dimensions and canonical class IDs, including
+`void` at 0. It writes a tiled, Zstd-compressed TIFF mask and a neighboring JSON
+class legend with preprocessing and model settings. Patch/effective sizes use
+source-image pixels: choose an image at the checkpoint's intended resolution.
+The default patch/effective sizes are 1024/800; their difference must be even.
+Existing output files are not overwritten. **Stop** terminates the worker;
+selecting the same inputs and output resumes completed patches from TiSAM's
+`.work` directory. Logs report model loading, segmentation, errors and completion.
+This entry point performs inference only; it does not use CNN `net.pkl` files
+or CODAvision's training and classification metadata.
+
 To install with Conda and pip instead, follow the steps below.
 
 ---
