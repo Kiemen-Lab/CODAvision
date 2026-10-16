@@ -54,7 +54,7 @@ dependencies = [
     # Or use: python scripts/check_cuda_version.py for guided installation
     "torch==2.11.0",
     "torchvision==0.26.0",
-    "tisam[inference]",
+    "tisam[train,inference]",
 
     # PySide6 owns the GUI; share one cv2 provider with inference libraries.
     "opencv-python-headless==4.10.0.84",

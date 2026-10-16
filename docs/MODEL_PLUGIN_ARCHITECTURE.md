@@ -473,40 +473,131 @@ To add a new model architecture:
 The model is then automatically available through `model_call()` and the GUI.
 
 
-## TiSAM checkpoint inference
+## Independent TiSAM workflow
 
-TiSAM uses a dedicated **TiSAM segmentation…** entry point on `MainWindow`.
-`gui/components/tisam_dialog.py` collects checkpoint, optional TiSAM YAML,
-source/output paths, device, patch geometry and batch size. It starts
-`base/models/tisam_inference.py` as a direct file using `sys.executable` via
-`QProcess`, with no shell. GUI and worker share the same virtual environment;
-there is no interpreter selector or separate dependency environment. The wheel includes the worker through `/base`.
-Direct execution avoids importing CODAvision's `base`/`gui` package initializers
-and their TensorFlow/Qt dependencies into the TiSAM process. Ordinary startup
-does not import TiSAM. This integration requires TiSAM's model/checkpoint APIs
-and `inference` extra; it does not install or call the training runtime.
-`pyproject.toml` declares `tisam[inference]` as a runtime dependency and maps
-its uv source to the sibling checkout `../tisam`. `uv.lock` resolves both
-projects together; normal `uv sync --locked` and `uv run --locked` preserve
-TiSAM in the shared environment. This is a local source configuration, so the
-sibling checkout must be present.
+`MainWindow` mounts `WorkflowSwitcher` from `gui/components/tisam_page.py` around
+its original central widget. The selector changes a QStackedWidget in the same
+window. The original DeepLab/UNet form, metadata writer, XML sorter, tissue-mask
+logic, trainer and classification progress dialog are unchanged. TiSAM does not
+call those preprocessing or training paths.
 
-The worker validates source geometry and output paths, reads native/historical
-checkpoint metadata using TiSAM's safe reader, resolves `ModelConfig`, class
-names and mean/std, and reconstructs the model with `TiSAM` and `apply_weights`.
-Incomplete metadata requires the original TiSAM YAML; explicit settings must
-agree with checkpoint metadata. Arbitrary pickle loading is not enabled.
-`segment_wsi` owns normalization, resizing, patch assembly, scratch identity,
-writer locking and atomic TIFF publication. Class IDs are never shifted into
-CODAvision's CNN convention. A neighboring `<mask>.json` records the ordered
-classes (void at index 0), preprocessing, geometry, source/checkpoint paths and
-model configuration. The worker reports failure if legend publication fails,
-even if the mask was already published; preserve that mask and investigate the
-reported filesystem error.
+TiSAM uses three setup tabs: Data owns the YAML and four directory fields, Model
+shows read-only native settings, and Classes shows the canonical ID/color table
+and checked annotation preview, with a brief YAML-color/void note below the table.
+Downsample and validation split appear as separate Model rows.
+Back/Continue navigate the review steps; the run
+action appears on Classes. The independent Segmentation and viewer tab hides the
+setup controls. Busy-state handling disables setup navigation during a worker or
+viewer operation and restores it on completion, failure or Stop. Idle setup hides
+progress and log controls; errors and worker updates remain visible when relevant.
+The progress bar appears only during training (including validation) and Test
+inference. Configuration loading, data checks and preparation use status text;
+completion, failure and Stop hide the bar.
 
-The dialog streams merged process logs, disables inputs while running and
-blocks closing until the worker exits. Stop requests termination and escalates
-to killing that same worker after three seconds. It preserves TiSAM scratch for
-resume and does not terminate other processes. There is no training integration,
-CNN adapter registration, automatic tissue-class remapping or whole-slide
-resampling; source pixel resolution remains the caller's responsibility.
+### Configuration ownership
+
+`base/models/tisam_workflow.py` validates `workflow_version: 1` with a strict
+`WorkflowConfig`. `training` contains native `TrainConfig`; `colormap`,
+`preprocessing`, optional input `paths`, optional inference `checkpoint`, and
+`inference` are application-owned sections. Only native fields reach the trainer.
+Class names/order are `training.data.class_names`, beginning with void. A complete
+RGB colormap is required for every canonical name. XML colors are never consulted.
+Native train/validation/test sources must be empty in the source YAML; selected
+input directories determine the generated datasets. All paths resolve against the
+YAML directory, including the output root. The selected four directories override
+optional YAML path defaults without modifying the user's YAML. Selection loads the
+YAML once into the page; tab navigation and Start do not reread the source file.
+Each worker request includes a temporary snapshot of the loaded, path-resolved
+configuration, so subsequent disk edits cannot change the reviewed settings.
+Selecting the YAML again explicitly loads updated settings.
+
+`preprocessing` owns downsample, XML coordinate origin (0 or 1), explicit XML
+label-name mappings, class overlap order (later classes win), validation
+fraction/seed, tile stride, minimum labeled fraction and
+void supervision. Unannotated/padded pixels are canonical void. Void may be
+supervised or ignored in the loss, and is always excluded from validation/Test
+metrics. Real background is never implicitly merged with void. Online
+augmentation, architecture, optimizer, learning rate, epochs, precision and
+checkpointing stay native TiSAM configuration.
+
+### Data preparation and execution
+
+The page launches `base/models/tisam_pipeline.py check|run <request.json>` as a
+direct file with QProcess and the shared Python interpreter. This avoids eager
+TensorFlow/Qt imports in the worker. Machine-readable stdout events describe
+checking, CPU preparation, training, testing, failure and completion; native
+Mammoth event streams provide epoch/batch/validation progress. Error and Stop paths
+restore editable controls; closing/switching workflows is blocked while an
+operation is active. No separate TiSAM training window opens.
+
+`tisam_data.py` pairs only top-level NDPI slides with same-stem Aperio XML
+for training and testing; other input file types are ignored. OpenSlide reads
+NDPI regions. Aperio XML polygons are rasterized per window, with NegativeROA
+holes subtracted within each class and explicit precedence for overlapping
+classes. Source slides and XML are never rewritten; unknown class names are
+errors. Raster-mask inputs and their class-ID remapping configuration are not
+supported. Shared TIFF/Zarr and Pillow readers remain for generated results and
+the independent segmentation viewer.
+
+Training sources are deterministically partitioned into training and validation
+before direct tiling; at least two sources are required. Source-file disjointness
+is enforced against Testing. Patient/slide grouping across separately supplied
+crops must be handled by the caller. Small/boundary tiles are padded with void;
+minimum labeled fraction is evaluated over the real crop. No whitespace threshold,
+class-balanced mosaic, XML renumbering or CNN data cache is used. New paired TIFFs
+use canonical IDs directly and reside under `tiles/{train,validation}/{images,labels}`.
+Native dataset metadata retains those IDs; no extra remapping of tissue zero is
+needed because canonical zero is already void.
+
+The pipeline validates an input/configuration manifest before reusing any outputs.
+It uses an exclusive run lock; completed TIFFs are atomically published. A
+`prepared.json` marker is written only after preparation succeeds. Interrupted
+preparation reuses complete pairs, while missing pairs are regenerated. Changed
+inputs/configuration require a new run name; runtime device/loader-worker settings
+can change without changing the prepared data identity. Legacy CNN/old TiSAM output
+directories are not silently adopted.
+
+Native `tisam.training.runner.train(..., resume=True)` owns training and validation,
+checkpoints, optimizer state and execution logs. On success, the best safetensors
+checkpoint is restored once for independent testing. Scaled Test RGB and ground
+truth are streamed into continuous TIFFs; native `segment_wsi` produces prediction
+TIFFs with resumable scratch. Confusion counts are accumulated in bounded windows,
+excluding ground-truth void. `test/metrics.json` contains Test accuracy, macro
+precision/recall/F1 over supported non-void classes, per-class values and counts.
+
+### Output and viewer contract
+
+A run contains `workflow.yml` (the resolved workflow, including YAML colors and
+chosen paths), `input-manifest.json`, `prepared.json`, `tiles/`, native
+`checkpoints/` and `logs/`, and `test/{images,labels,predictions}` plus metrics.
+The saved YAML pins this run's best checkpoint for standalone inference. An explicit
+`checkpoint` is used for standalone inference only; training initializes natively
+and resumes its own run rather than fine-tuning an unrelated checkpoint.
+
+`TiSAMModel.load` accepts the workflow YAML and the existing saved-model descriptor
+(`schema_version: 1`, `model_type: TiSAM`, `nm`, `checkpoint`, `tisam_config`, optional
+`inference` and `device`). A workflow is adapted in memory; colors do not enter
+TrainConfig. Legacy descriptor colors are optional for grayscale masks, but any
+supplied palette must be complete and overlay requires one. Checkpoint architecture,
+class names and normalization are checked before native inference.
+
+`TiSAMClassificationWindow` reuses the original canvas/zoom/directory controls in a
+responsive embedded layout. It does not change `MainWindowClassify` or the CNN
+progress dialog. It accepts explicit Test result pairs as well as directory-based
+inference, and uses inline progress instead of a new training/model window.
+Successful training/testing automatically selects the embedded Test result viewer.
+Colors have a single YAML owner: preview color editing/reset controls are hidden.
+
+Directory inference uses `classification_<name>_TiSAM/<stem>.tif`, skips existing
+masks and resumes matching native scratch. Changing checkpoint/settings requires
+a new model name. NDPI/SVS, JPEG and downsampled sources are streamed to RGB TIFFs
+under `classification_.../images`; small source receipts verify cached geometry
+against source metadata. Original-resolution TIFF/PNG are read directly. The viewer
+uses prepared RGB whenever conversion/scaling was required, keeping mask alignment.
+
+`segmentation_result.py` handles bounded previews and background export;
+`tisam_metadata.py` supplies the shared YAML palette validator and overlay blending.
+Preview maximum side is 2048. Original TIFF export copies bytes; JPG overlay export
+uses aligned image dimensions, 50% YAML colors, unchanged void pixels before JPEG
+encoding and quality 95. JPG dimension limit is 65500; full RGB/mask/output still
+reside in memory during export. Existing destinations are never overwritten.

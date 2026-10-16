@@ -1,0 +1,120 @@
+# TiSAM workflow: select this YAML in the dedicated TiSAM page.
+# Configure class names and colors here; XML colors are ignored.
+workflow_version: 1
+training:
+  model:
+    num_classes: 11
+    total_queries: 12
+    extra_encoder: hf-hub:MahmoodLab/UNI2-h
+    input_hw:
+    - 1024
+    - 1024
+    output_hw:
+    - 1024
+    - 1024
+    pos_embed_mode: none
+    sam_proj: false
+    num_layers: 6
+  data:
+    class_names:
+    - void
+    - islet
+    - duct
+    - smooth_muscle
+    - fat
+    - acini
+    - stroma
+    - background
+    - PanIN
+    - nerve
+    - inflammation
+    - endothelium
+    train: []
+    validation: []
+    test: []
+    mean:
+    - 0.485
+    - 0.456
+    - 0.406
+    std:
+    - 0.229
+    - 0.224
+    - 0.225
+    crop_scale:
+    - 0.5
+    - 1.0
+    color_jitter_p: 0.5
+  device: cuda:0
+  batch_size: 1
+  accumulation_steps: 1
+  num_workers: 0
+  precision: bf16
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  loss: median_frequency_weighted_ce
+  epochs: 2
+  checkpoint_mode: latest
+  name: tisam-training
+  out_dir: ../runs
+preprocessing:
+  downsample: 1
+  xml_coordinate_origin: 1
+  label_mapping:
+    smooth muscle: smooth_muscle
+  validation_fraction: 0.2
+  validation_seed: 42
+  min_labeled_fraction: 0.01
+colormap:
+  void:
+  - 0
+  - 0
+  - 0
+  islet:
+  - 70
+  - 220
+  - 219
+  duct:
+  - 80
+  - 70
+  - 219
+  fat:
+  - 219
+  - 220
+  - 80
+  acini:
+  - 131
+  - 50
+  - 191
+  stroma:
+  - 240
+  - 180
+  - 231
+  background:
+  - 255
+  - 255
+  - 255
+  PanIN:
+  - 209
+  - 80
+  - 75
+  nerve:
+  - 160
+  - 130
+  - 40
+  inflammation:
+  - 15
+  - 80
+  - 110
+  endothelium:
+  - 160
+  - 30
+  - 120
+  smooth_muscle:
+  - 70
+  - 180
+  - 81
+inference:
+  patch_size: 1024
+  effective_size: 800
+  batch_size: 1
+paths: {}

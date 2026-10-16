@@ -95,42 +95,96 @@ not included in this environment.
 For development, use `uv sync --locked --extra dev` and
 `uv run --locked --extra dev pytest`. Use `--extra test` for minimal test tools.
 
-### TiSAM checkpoint segmentation
+### TiSAM training, testing and segmentation
 
-Keep the TiSAM checkout beside CODAvision at `../tisam`. The current uv source
-configuration installs `tisam[inference]` from that relative path into
-CODAvision's environment and includes its dependencies in `uv.lock`:
+Keep the TiSAM checkout beside CODAvision at `../tisam`. The uv configuration
+installs `tisam[train,inference]` into the same Python environment:
 
 ```sh
 uv sync --locked
 uv run --locked CODAvision
 ```
 
-No separate Python environment, manual TiSAM installation, or training extra
-is needed. This local source configuration requires the sibling checkout.
+Use the **Workflow** selector at the top of the main window. **DeepLab / UNet**
+retains the original forms and preprocessing. **TiSAM** switches the contents of
+the same window to **Data**, **Model**, **Classes**, and **Segmentation and viewer** tabs.
 
-Open **TiSAM segmentation…** from the main window. Select an existing
-`.safetensors` or safe native `.pt` checkpoint, an RGB TIFF/PNG, and a new output
-TIFF path. Inference automatically uses CODAvision's Python interpreter; it runs
-in a child process so segmentation does not block the GUI.
+For training, select [a workflow YAML](examples/tisam-training.yml) and four
+directories: **Training images**, **Training annotations**, **Testing images**,
+and **Testing annotations**. Image and annotation files must have matching stems.
+Training and testing inputs support only NDPI slides and matching Aperio XML.
+The image directories are scanned for NDPI files and the annotation directories
+for same-stem XML files; other file types are ignored. Inputs are read-only; no
+XML renumbering or color import occurs. A directory may contain both NDPI and XML.
 
-Checkpoints need architecture, ordered class names, and normalization metadata.
-When any are missing, select the corresponding TiSAM YAML configuration
-(`model` and `data` sections); configured values must agree with saved metadata.
-Foundation encoder weights and any required access must be available to the
-CODAvision environment. Use `cuda:0` (or another CUDA device) for practical model
-execution; `cpu` is also accepted.
+Use **Continue** and **Back** to review the setup: **Data** contains the YAML and
+four directories; **Model** shows read-only settings from YAML; **Classes** shows
+class IDs, YAML colors and the annotation preview. **Start training and testing**
+is on the Classes step. Tabs also allow direct navigation when no operation is
+running. Selecting a YAML loads it once; navigation, checks and training use those
+loaded settings. To use an edited configuration, select the YAML again. Status
+text and logs describe data checks and preparation. The progress bar
+appears only during training, validation and Test inference, and hides when the
+operation ends.
 
-Segmentation preserves source dimensions and canonical class IDs, including
-`void` at 0. It writes a tiled, Zstd-compressed TIFF mask and a neighboring JSON
-class legend with preprocessing and model settings. Patch/effective sizes use
-source-image pixels: choose an image at the checkpoint's intended resolution.
-The default patch/effective sizes are 1024/800; their difference must be even.
-Existing output files are not overwritten. **Stop** terminates the worker;
-selecting the same inputs and output resumes completed patches from TiSAM's
-`.work` directory. Logs report model loading, segmentation, errors and completion.
-This entry point performs inference only; it does not use CNN `net.pkl` files
-or CODAvision's training and classification metadata.
+The YAML defines class names/order, colors, model, device, output directory,
+training parameters and preprocessing. XML contributes annotation geometry and
+class names only. Use explicit `preprocessing.label_mapping` entries for XML names
+that differ from the canonical names. Class 0 is void; true background remains a
+separate class. Unknown classes and missing colors are errors. Colors are never
+generated.
+
+**Check data** verifies pairings, geometry, labels and configuration, then shows
+an annotation crop with YAML colors. **Start training and testing** repeats the
+checks, directly extracts paired tiles, runs native TiSAM training and validation,
+and segments/evaluates the independent testing images using the best checkpoint.
+There are no whitespace threshold dialogs or large composite mosaics. Resolution
+is controlled by the YAML downsample factor; XML coordinates refer to the original
+image. Choose the XML coordinate origin explicitly to match the annotation tool.
+
+Validation is split deterministically by source image before tiling; at least two
+training source images are required. Tiles from the same image remain in one
+split. Keep tiles from the same patient/slide together when preparing source
+images: the application cannot infer their shared origin from arbitrary filenames.
+Test images must be separate from training. Test metrics exclude void ground truth
+and report accuracy and class-macro precision, recall and F1 over supported classes.
+
+Status updates distinguish CPU preparation, training on the requested device, and
+independent testing. Detailed logs can be expanded. **Stop** retains completed
+outputs and checkpoints. Starting with the same YAML and directories reuses
+prepared data and resumes native checkpoints; incompatible data/configuration
+requires a new `training.name`. No CPU fallback occurs when CUDA is requested.
+Foundation encoder weights/access must be available in the shared environment.
+
+Outputs live under `training.out_dir/training.name`. Relative paths resolve
+against the selected YAML. The output contains a resolved `workflow.yml`, native
+checkpoints/logs, paired training/validation tiles, and continuous Test RGB,
+ground-truth and prediction TIFFs with `test/metrics.json`. The saved workflow is
+also an inference configuration; no manual colormap copying is needed.
+
+Successful runs open their Test predictions in the embedded viewer automatically.
+Use **View test results** to reopen them, or
+**Use model for segmentation** to classify additional image directories. The
+**Segmentation and viewer** tab also accepts the same workflow YAML independently:
+`checkpoint` optionally selects external weights; otherwise it uses the run's best
+checkpoint. A previously exported model descriptor (`schema_version: 1`,
+`model_type: TiSAM`, `nm`, `checkpoint`, `tisam_config`) remains accepted there.
+
+**Browse** or Enter adds a source directory; **Apply** classifies pending images.
+Masks are saved to `<source>/classification_<model-name>_TiSAM/<stem>.tif`.
+Completed masks are skipped and incomplete native WSI jobs resume. Use a new
+model name after changing checkpoint or inference settings. NDPI/SVS, JPEG or
+scaled sources are prepared as bounded-memory RGB TIFFs inside that output folder;
+previews and overlays use those same aligned pixels.
+
+The viewer supports **Original / Mask / Overlay**, zoom/pan, original-mask export
+and **Export overlay JPG**. Colors always come from YAML, including exported JPGs;
+there is no second editable preview palette. Legacy descriptors without colors can
+show grayscale masks, but overlay requires a complete colormap. Previews have a
+maximum side of 2048 pixels and do not load finer WSI detail on zoom. JPG export
+uses 50% class colors, leaves void pixels unchanged before JPEG encoding, and
+rejects dimensions above 65500. It loads the full aligned image and mask on a
+background thread. Exports never overwrite existing files.
 
 To install with Conda and pip instead, follow the steps below.
 
