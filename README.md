@@ -97,8 +97,9 @@ For development, use `uv sync --locked --extra dev` and
 
 ### TiSAM training, testing and segmentation
 
-Keep the TiSAM checkout beside CODAvision at `../tisam`. The uv configuration
-installs `tisam[train,inference]` into the same Python environment:
+The uv configuration installs `tisam[train,inference]` from
+[Kiemen-Lab/tisam](https://github.com/Kiemen-Lab/tisam) into the same Python
+environment, using the Git commit pinned in `uv.lock`:
 
 ```sh
 uv sync --locked

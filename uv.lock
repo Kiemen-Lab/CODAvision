@@ -467,7 +467,7 @@ requires-dist = [
     { name = "tf-keras", marker = "sys_platform == 'darwin'", specifier = "==2.21.0" },
     { name = "tf-keras", marker = "sys_platform == 'linux'", specifier = "==2.21.0" },
     { name = "tifffile", specifier = ">=2024.8.28" },
-    { name = "tisam", extras = ["train", "inference"], directory = "../tisam" },
+    { name = "tisam", extras = ["train", "inference"], git = "https://github.com/Kiemen-Lab/tisam.git" },
     { name = "torch", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = "==2.11.0" },
     { name = "torch", marker = "sys_platform == 'linux' or sys_platform == 'win32'", specifier = "==2.11.0", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torchvision", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = "==0.26.0" },
@@ -3617,7 +3617,7 @@ wheels = [
 [[package]]
 name = "tisam"
 version = "0.1.0"
-source = { directory = "../tisam" }
+source = { git = "https://github.com/Kiemen-Lab/tisam.git#4211b7170c4cfddd86fc14f70d78339c908f54a7" }
 dependencies = [
     { name = "einops" },
     { name = "huggingface-hub" },
@@ -3663,53 +3663,6 @@ train = [
     { name = "tifffile", version = "2026.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform != 'win32'" },
     { name = "zarr", version = "2.18.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or sys_platform == 'win32'" },
     { name = "zarr", version = "3.1.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11' and sys_platform != 'win32'" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "albumentations", marker = "extra == 'inference'", specifier = ">=2,<3" },
-    { name = "albumentations", marker = "extra == 'train'", specifier = ">=2,<3" },
-    { name = "einops" },
-    { name = "huggingface-hub", specifier = ">=0.36" },
-    { name = "imagecodecs", marker = "extra == 'inference'", specifier = ">=2024.6.1" },
-    { name = "imagecodecs", marker = "extra == 'train'", specifier = ">=2024.6.1" },
-    { name = "mammoth", extras = ["tensorboard", "torch"], marker = "extra == 'train'", git = "https://github.com/zydtiger/mammoth.git?rev=v0.9.0" },
-    { name = "numcodecs", marker = "python_full_version < '3.11' and extra == 'inference'", specifier = "<0.16" },
-    { name = "numcodecs", marker = "python_full_version < '3.11' and extra == 'train'", specifier = "<0.16" },
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "opencv-python-headless", marker = "extra == 'inference'", specifier = "<5.1" },
-    { name = "opencv-python-headless", marker = "extra == 'train'", specifier = "<5.1" },
-    { name = "pillow", marker = "extra == 'inference'" },
-    { name = "pillow", marker = "extra == 'train'" },
-    { name = "portalocker", marker = "extra == 'inference'", specifier = ">=3.2" },
-    { name = "prettyterm", git = "https://github.com/zydtiger/prettyterm.git?rev=76a34ed70afd5f12ecbc75d6f97c5e9b6ad142ee" },
-    { name = "psutil" },
-    { name = "pydantic", specifier = ">=2" },
-    { name = "pyyaml", specifier = ">=6" },
-    { name = "safetensors", specifier = "==0.6.2" },
-    { name = "sam3", git = "https://github.com/zydtiger/sam3?rev=34b5c4d6e02015863585cf6cacb9432ccda4e0e4" },
-    { name = "scipy" },
-    { name = "tifffile", marker = "python_full_version >= '3.11' and extra == 'inference'", specifier = ">=2025.5.21" },
-    { name = "tifffile", marker = "python_full_version >= '3.11' and extra == 'train'", specifier = ">=2025.5.21" },
-    { name = "tifffile", marker = "python_full_version < '3.11' and extra == 'inference'", specifier = ">=2024.8.28,<2025.5.21" },
-    { name = "tifffile", marker = "python_full_version < '3.11' and extra == 'train'", specifier = ">=2024.8.28,<2025.5.21" },
-    { name = "timm", specifier = "==1.0.30" },
-    { name = "torch", specifier = ">=2.8.0" },
-    { name = "torchvision", specifier = ">=0.23.0" },
-    { name = "typer", specifier = ">=0.21.2,<0.22" },
-    { name = "zarr", marker = "python_full_version >= '3.11' and extra == 'inference'", specifier = ">=3.1.5" },
-    { name = "zarr", marker = "python_full_version >= '3.11' and extra == 'train'", specifier = ">=3.1.5" },
-    { name = "zarr", marker = "python_full_version < '3.11' and extra == 'inference'", specifier = ">=2.18.2,<3" },
-    { name = "zarr", marker = "python_full_version < '3.11' and extra == 'train'", specifier = ">=2.18.2,<3" },
-]
-provides-extras = ["train", "inference"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.19" },
-    { name = "pytest", specifier = ">=8.4" },
-    { name = "ruff", specifier = ">=0.15" },
-    { name = "types-pyyaml" },
 ]
 
 [[package]]
