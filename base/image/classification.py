@@ -27,7 +27,7 @@ import numpy as np
 import cv2
 import tifffile
 import matplotlib.pyplot as plt
-import keras
+from tensorflow import keras
 from glob import glob
 from PIL import Image
 from typing import Tuple, List, Union

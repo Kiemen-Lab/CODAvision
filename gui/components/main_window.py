@@ -29,6 +29,7 @@ from gui.utils import save_model_metadata_GUI
 # Import GUI components
 from .ui_definitions import Ui_MainWindow
 from .classification_window import MainWindowClassify
+from .tisam_page import WorkflowSwitcher
 
 # Checkpoint extensions written by the trainers: .keras/.h5 (TensorFlow), .pth (PyTorch)
 TRAINED_MODEL_EXTENSIONS = ('.keras', '.h5', '.pth')
@@ -117,6 +118,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.combined_df = None
         self.delete_count = 0
         self.classify = False
+        self.train = False
         self.img_type = '.ndpi'
         self.test_img_type = '.ndpi'
 
@@ -126,6 +128,14 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ui.tabWidget.setTabEnabled(i, False)
 
         self.setWindowTitle("CODAvision")
+        self.workflow_switcher = WorkflowSwitcher(self)
+
+    def closeEvent(self, event):
+        """Keep the embedded TiSAM worker alive until explicitly stopped."""
+        if not self.workflow_switcher.can_close():
+            event.ignore()
+            return
+        super().closeEvent(event)
 
     def set_initial_model_name(self):
         """Set the initial text of the model_name text box to today's date."""

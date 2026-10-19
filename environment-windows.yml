@@ -1,0 +1,12 @@
+# Native Windows bootstrap only; uv.lock owns application dependencies.
+# Use a fresh name: conda env create -n codavision-gpu -f environment-windows.yml
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  - pip
+  - cudatoolkit=11.2.2
+  - cudnn=8.1.0.77
+  - pip:
+      - uv==0.10.10

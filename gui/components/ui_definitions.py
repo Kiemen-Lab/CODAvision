@@ -30,7 +30,8 @@ class Ui_MainWindow:
         MainWindow.resize(706, 453)
 
         # Set the application icon
-        MainWindow.setWindowIcon(QIcon("gui/resources/logoCODAvision.png"))
+        MainWindow.setWindowIcon(QIcon(os.path.join(
+            os.path.dirname(__file__), '..', 'resources', 'logoCODAvision.png')))
 
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -376,8 +377,8 @@ class Ui_MainWindow:
         self.gridLayout_5.addItem(self.horizontalSpacer_4, 1, 1, 1, 2)
 
         self.hover_label = HoverPreviewLabel(
-            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Question_mark_icon.png"),
-            os.path.join(os.getcwd(), 'gui', 'components', 'images', "Nesting_example.jpg"),
+            os.path.join(os.path.dirname(__file__), 'images', "Question_mark_icon.png"),
+            os.path.join(os.path.dirname(__file__), 'images', "Nesting_example.jpg"),
             self.tab_3)
         self.verticalLayout_42 = QVBoxLayout()
         self.verticalLayout_42.setObjectName(u"verticalLayout_42")

@@ -30,7 +30,7 @@ from typing import List, Optional
 
 import numpy as np
 import tensorflow as tf
-import keras
+from tensorflow import keras
 
 from base.utils.logger import Logger
 

@@ -301,7 +301,7 @@ def _run_worker(args):
     matplotlib.use('Agg')
 
     import tensorflow as tf
-    import keras
+    from tensorflow import keras
 
     from base.config import ModelDefaults, DataConfig
     ModelDefaults.DEFAULT_FRAMEWORK = "tensorflow"
